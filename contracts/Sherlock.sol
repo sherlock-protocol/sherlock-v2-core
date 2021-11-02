@@ -6,10 +6,6 @@ pragma solidity 0.8.9;
 * Sherlock Protocol: https://sherlock.xyz
 /******************************************************************************/
 
-import '@openzeppelin/contracts/token/ERC721/IERC721.sol';
-import './ISherlockStake.sol';
-import './ISherlockGov.sol';
-import './ISherlockPayout.sol';
-import './ISherlockProtocols.sol';
+import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 
-interface ISherlock is ISherlockStake, ISherlockGov, ISherlockPayout, ISherlockProtocols, IERC721 {}
+contract Sherlock {}

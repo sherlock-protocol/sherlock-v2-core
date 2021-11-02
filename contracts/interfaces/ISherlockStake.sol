@@ -21,6 +21,12 @@ interface ISherlockStake {
   /// @return Amount of tokens assigned to owner when burning position
   function balanceOf(uint256 _tokenID) external view returns (uint256);
 
+  /// @notice View current total staker TVL
+  /// @return Total amount of tokens staked
+  /// @dev Contains principles + strategy + premiums
+  /// @dev Will calculate the most up to date value for each block
+  function balanceOf() external view returns (uint256);
+
   /// @notice Stake `_amount` and lockup for `_period` seconds, `_receiver` will receive the receipt.`
   /// @param _amount Amount of tokens to stake
   /// @param _period Period of time, in seconds, to lockup your funds
@@ -58,7 +64,5 @@ interface ISherlockStake {
   /// @dev Can only be called after lockup `_period` is more than 2 weeks in the past
   /// @dev Max 10% of tokens in positions are used to incentivize arbs (x)
   /// @dev During a 2 week period the reward ratio will move from 0% to 100% (* x)
-  function holdArb(uint256 _id)
-    external
-    returns (uint256 _sher, uint256 _arbReward);
+  function holdArb(uint256 _id) external returns (uint256 _sher, uint256 _arbReward);
 }

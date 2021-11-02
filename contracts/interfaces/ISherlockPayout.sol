@@ -6,10 +6,8 @@ pragma solidity 0.8.9;
 * Sherlock Protocol: https://sherlock.xyz
 /******************************************************************************/
 
-import '@openzeppelin/contracts/token/ERC721/IERC721.sol';
-import './ISherlockStake.sol';
-import './ISherlockGov.sol';
-import './ISherlockPayout.sol';
-import './ISherlockProtocols.sol';
+/// @title Sherlock core interface for stakers
+/// @author Evert Kors
+interface ISherlockPayout {
 
-interface ISherlock is ISherlockStake, ISherlockGov, ISherlockPayout, ISherlockProtocols, IERC721 {}
+}

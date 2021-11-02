@@ -1,5 +1,8 @@
 {
   "name": "hardhat-project",
+  "scripts": {
+    "prettier": "prettier --write contracts/*.sol contracts/**/*.sol"
+  },
   "devDependencies": {
     "@nomiclabs/hardhat-ethers": "^2.0.2",
     "@nomiclabs/hardhat-waffle": "^2.0.1",
@@ -8,7 +11,17 @@
     "ethers": "^5.5.1",
     "hardhat": "^2.6.7"
   },
+  "prettier": {
+    "tabWidth": 2,
+    "singleQuote": true,
+    "bracketSpacing": true,
+    "printWidth": 100,
+    "trailingComma": "all",
+    "quoteProps": "consistent",
+    "semi": true
+  },
   "dependencies": {
-    "@openzeppelin/contracts": "^4.3.2"
+    "@openzeppelin/contracts": "^4.3.2",
+    "prettier-plugin-solidity": "^1.0.0-beta.18"
   }
 }

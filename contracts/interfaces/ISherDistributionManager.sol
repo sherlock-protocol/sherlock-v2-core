@@ -6,7 +6,7 @@ pragma solidity 0.8.9;
 * Sherlock Protocol: https://sherlock.xyz
 /******************************************************************************/
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 
 interface ISherDistributionManager {
   // constructor: all variables for curve + sherlock address + owner + SHER token contract
@@ -17,18 +17,13 @@ interface ISherDistributionManager {
   /// @param _period Period of time, in seconds
   /// @return _sher Amount of SHER tokens to be receiver
   /// @dev calling contract will depend of before + after balance diff and return value
-  function pullReward(uint256 _amount, uint256 _period)
-    external
-    returns (uint256 _sher);
+  function pullReward(uint256 _amount, uint256 _period) external returns (uint256 _sher);
 
   /// @notice Calculate how much `_sher` SHER tokens will be send based on `_amount` and `_period`
   /// @param _amount Amount of tokens
   /// @param _period Period of time, in seconds
   /// @return _sher Amount of SHER tokens
-  function calcReward(uint256 _amount, uint256 _period)
-    external
-    view
-    returns (uint256 _sher);
+  function calcReward(uint256 _amount, uint256 _period) external view returns (uint256 _sher);
 
   /// @notice Function used to check if this is the current actice distribution manager
   /// @return Boolean indicating it's active
