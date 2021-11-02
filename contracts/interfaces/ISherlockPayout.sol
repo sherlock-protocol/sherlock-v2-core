@@ -6,12 +6,13 @@ pragma solidity 0.8.9;
 * Sherlock Protocol: https://sherlock.xyz
 /******************************************************************************/
 
-/// @title Sherlock core interface for stakers
+/// @title Sherlock interface for payout manager
 /// @author Evert Kors
 interface ISherlockPayout {
   /// @notice Initiate a payout of `_amount` to `_receiver`
   /// @param _amount Amount to send
   /// @param _receiver Receiver of payout
   /// @dev only payout manager should call this
+  /// @dev should pull money out of strategy
   function payout(uint256 _amount, address _receiver) external;
 }

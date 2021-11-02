@@ -11,5 +11,13 @@ import './ISherlockStake.sol';
 import './ISherlockGov.sol';
 import './ISherlockPayout.sol';
 import './ISherlockProtocols.sol';
+import './ISherlockNonStakerRewards.sol';
 
-interface ISherlock is ISherlockStake, ISherlockGov, ISherlockPayout, ISherlockProtocols, IERC721 {}
+interface ISherlock is
+  ISherlockStake,
+  ISherlockGov,
+  ISherlockPayout,
+  ISherlockProtocols,
+  ISherlockNonStakerRewards,
+  IERC721
+{}

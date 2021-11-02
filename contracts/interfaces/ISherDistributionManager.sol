@@ -25,9 +25,10 @@ interface ISherDistributionManager {
   /// @return _sher Amount of SHER tokens
   function calcReward(uint256 _amount, uint256 _period) external view returns (uint256 _sher);
 
-  /// @notice Function used to check if this is the current actice distribution manager
+  /// @notice Function used to check if this is the current active distribution manager
   /// @return Boolean indicating it's active
   /// @dev if inactive the owner can pull all ERC20s
+  /// @dev will be checked by calling the sherlock contract
   function isActive() external view returns (bool);
 
   /// @notice Get ERC20 tokens out of contract
