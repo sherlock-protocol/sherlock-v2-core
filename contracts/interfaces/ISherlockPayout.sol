@@ -9,5 +9,9 @@ pragma solidity 0.8.9;
 /// @title Sherlock core interface for stakers
 /// @author Evert Kors
 interface ISherlockPayout {
-
+  /// @notice Initiate a payout of `_amount` to `_receiver`
+  /// @param _amount Amount to send
+  /// @param _receiver Receiver of payout
+  /// @dev only payout manager should call this
+  function payout(uint256 _amount, address _receiver) external;
 }

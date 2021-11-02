@@ -17,12 +17,12 @@ interface ISherlockProtocols {
 
   event ProtocolUpdated(bytes32 protocol, bytes32 coverage, uint256 nonStakers);
 
-  event ClaimStarterTransfer(bytes32 protocol, address from, address to);
+  event ProtocolAgentTransfer(bytes32 protocol, address from, address to);
 
-  /// @notice View current claimstarter of `_protocol`
+  /// @notice View current protocolAgent of `_protocol`
   /// @param _protocol Protocol identifier
   /// @return Address able to submit claims
-  function claimStarters(bytes32 _protocol) external view returns (address);
+  function protocolAgent(bytes32 _protocol) external view returns (address);
 
   // @TODO, add or remove?
   //   /// @notice View current non staker share of `_protocol` premium
@@ -61,16 +61,16 @@ interface ISherlockProtocols {
 
   /// @notice Add a new protocol to Sherlock
   /// @param _protocol Protocol identifier
-  /// @param _claimStarter Account able to submit a claim on behalve of the protocol
+  /// @param _protocolAgent Account able to submit a claim on behalve of the protocol
   /// @param _coverage Hash referencing the active coverage agreement
   /// @param _nonStakers Percentage of premium payments that is not redirected to stakers
-  /// @dev Adding a protocol allows the `_claimStarter` to submit a claim.
+  /// @dev Adding a protocol allows the `_protocolAgent` to submit a claim.
   /// @dev Coverage is not started yet as the protocol doesn't pay a premium at this point
   /// @dev `_nonStakers` is scaled by 10**18
   /// @dev Only callable by governance
   function protocolAdd(
     bytes32 _protocol,
-    address _claimStarter,
+    address _protocolAgent,
     bytes32 _coverage,
     uint256 _nonStakers
   ) external;
@@ -89,7 +89,7 @@ interface ISherlockProtocols {
   /// @notice Remove a protocol
   /// @param _protocol Protocol identifier
   /// @dev Before removing a protocol the premium should be 0
-  /// @dev Removing a protocol basically stops the `_claimStarter` from submitting claims
+  /// @dev Removing a protocol basically stops the `_protocolAgent` from being active
   /// @dev This call should be subject to a timelock
   /// @dev Only callable by governance
   function protocolRemove(bytes32 _protocol) external;
@@ -124,7 +124,7 @@ interface ISherlockProtocols {
 
   /// @notice Transfer claimStarer role
   /// @param _protocol Protocol identifier
-  /// @param _claimStarter Account able to submit a claim on behalve of the protocol
-  /// @dev Only the active claimStarter is able to transfer the role
-  function transferClaimStarter(bytes32 _protocol, address _claimStarter) external;
+  /// @param _protocolAgent Account able to submit a claim on behalve of the protocol
+  /// @dev Only the active protocolAgent is able to transfer the role
+  function transferProtocolAgent(bytes32 _protocol, address _protocolAgent) external;
 }

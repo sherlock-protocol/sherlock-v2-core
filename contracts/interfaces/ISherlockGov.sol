@@ -55,4 +55,17 @@ interface ISherlockGov {
   /// @notice View current non stakers address
   /// @return Current non staker address
   function nonStakersAddress() external view returns (address);
+
+  /// @notice View current address able to pull payouts
+  /// @return Address able to pull payouts
+  function sherlockPayoutManager() external view returns (address);
+
+  /// @notice Transfer payout manager role to different address
+  /// @param _sherlockPayoutManager New address of payout manager
+  function updateSherlockPayoutManager(address _sherlockPayoutManager) external;
+
+  /// @notice Update max limit of TVL sherlock writes for coverage
+  /// @param _limit New max percentage of TVL to be paid out
+  /// @dev scaled by 10**18, 100% = 10**18
+  function updateRiskLimit(uint256 _limit) external;
 }
