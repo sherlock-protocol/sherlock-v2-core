@@ -35,6 +35,8 @@ interface ISherlockProtocols {
   /// @dev Accrued debt is subtracted from the stored balance
   function balances(bytes32 _protocol) external view returns (uint256);
 
+  // @todo seconds of coverage remaining?
+
   /// @notice Add a new protocol to Sherlock
   /// @param _protocol Protocol identifier
   /// @param _protocolAgent Account able to submit a claim on behalve of the protocol
@@ -69,6 +71,9 @@ interface ISherlockProtocols {
   /// @dev This call should be subject to a timelock
   /// @dev Only callable by governance
   function protocolRemove(bytes32 _protocol) external;
+
+  // @TODO
+  // remove protocol force? Allow anyone to remove a protocol if their balance is insufficient.
 
   /// @notice Set premium of `_protocol` to `_premium`
   /// @param _protocol Protocol identifier
