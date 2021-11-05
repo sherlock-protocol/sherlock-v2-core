@@ -6,8 +6,8 @@ pragma solidity 0.8.9;
 * Sherlock Protocol: https://sherlock.xyz
 /******************************************************************************/
 
-import './ISherDistributionManager.sol';
-import './IStrategy.sol';
+import './Managers/ISherDistributionManager.sol';
+import './Managers/IStrategyManager.sol';
 
 /// @title Sherlock core interface for governance
 /// @author Evert Kors
@@ -39,14 +39,14 @@ interface ISherlockGov {
 
   /// @notice Update yield strategy
   /// @param _strategy News address of the strategy
-  function updateStrategy(IStrategy _strategy) external;
+  function updateStrategy(IStrategyManager _strategy) external;
 
   /// @notice Remove SHER strategy
   function removeStrategy() external;
 
   /// @notice Read current strategy
   /// @return Address of current strategy
-  function strategy() external view returns (IStrategy);
+  function strategy() external view returns (IStrategyManager);
 
   /// @notice Update address eligble for non staker rewards from protocol premiums
   /// @param _nonStakers Address eligble for non staker rewards
