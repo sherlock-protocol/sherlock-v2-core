@@ -7,8 +7,9 @@ pragma solidity 0.8.9;
 /******************************************************************************/
 
 import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
+import './IManager.sol';
 
-interface ISherDistributionManager {
+interface ISherDistributionManager is IManager {
   // constructor: all variables for curve + sherlock address + owner + SHER token contract
   // anyone can just send token to this contract to fund rewards
 

@@ -8,8 +8,9 @@ pragma solidity 0.8.9;
 
 import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import '../UMAprotocol/OptimisticRequester.sol';
+import './IManager.sol';
 
-interface ISherlockClaimManager is OptimisticRequester {
+interface ISherlockClaimManager is IManager, OptimisticRequester {
   // governance can transfer SPCC and UHO roles with a big timelock
 
   enum State {
@@ -92,6 +93,7 @@ interface ISherlockClaimManager is OptimisticRequester {
 
   /// @notice execute claim, storage will be removed after
   /// @dev needs to be SpccApproved or UmaApproved && >1 day
+  /// @dev funds will be pulled from core
   function enactClaim(uint256 _claimID) external;
 
   /// @notice uho is able to execute a halt if the state is UmaApproved + less then 1 day changed

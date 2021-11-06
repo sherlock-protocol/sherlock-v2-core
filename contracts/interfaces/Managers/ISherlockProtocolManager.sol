@@ -6,9 +6,11 @@ pragma solidity 0.8.9;
 * Sherlock Protocol: https://sherlock.xyz
 /******************************************************************************/
 
+import './IManager.sol';
+
 /// @title Sherlock core interface for protocols
 /// @author Evert Kors
-interface ISherlockProtocols {
+interface ISherlockProtocolManager is IManager {
   // We do some internal accounting with (lastBlockAccounted - block.now) * premium
   // we have mapping(protocol => uint256) for lastSettled but also a global one
   // TODO add totalPremiumPerBlock view function which will just read a variable
@@ -18,6 +20,18 @@ interface ISherlockProtocols {
   event ProtocolUpdated(bytes32 protocol, bytes32 coverage, uint256 nonStakers);
 
   event ProtocolAgentTransfer(bytes32 protocol, address from, address to);
+
+  /// @notice View current chunk of premium that are claimable
+  /// @return Premiums claimable
+  /// @dev will increase every block
+  /// @dev base + (now - last_settled) * pb
+  function claimablePremiums() external view returns (uint256);
+
+  /// @notice Transfer current claimable premiums to core address
+  /// @dev callable by everyone
+  /// @dev will be called on burn() from sherlock
+  /// @dev funds will be transferred to sherlock core
+  function claimPremiums() external;
 
   /// @notice View current protocolAgent of `_protocol`
   /// @param _protocol Protocol identifier

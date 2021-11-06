@@ -6,9 +6,11 @@ pragma solidity 0.8.9;
 * Sherlock Protocol: https://sherlock.xyz
 /******************************************************************************/
 
+import './IManager.sol';
+
 import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 
-interface IStrategyManager {
+interface IStrategyManager is IManager {
   function want() external view returns (IERC20);
 
   function withdrawAll() external returns (uint256);
@@ -19,5 +21,7 @@ interface IStrategyManager {
 
   function balanceOf() external view returns (uint256);
 
+  /// @notice Sweep tokens
+  /// @dev only callable by owner when not active
   function sweep(address _receiver, IERC20[] memory _extraTokens) external;
 }
