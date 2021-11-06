@@ -7,6 +7,9 @@ pragma solidity 0.8.9;
 /******************************************************************************/
 
 import './Managers/ISherDistributionManager.sol';
+import './Managers/ISherlockProtocolManager.sol';
+import './Managers/ISherlockClaimManager.sol';
+import './Managers/IStrategyManager.sol';
 
 /// @title Sherlock core interface for governance
 /// @author Evert Kors
@@ -47,23 +50,33 @@ interface ISherlockGov {
 
   /// @notice View current address able to manage protocols
   /// @return Protocol manager implemenation
-  function sherlockProtocolManager() external view returns (address);
+  function sherlockProtocolManager() external view returns (ISherlockProtocolManager);
 
   /// @notice Transfer protocol manager implementation address
-  /// @param _sherlockProtocolManager new implementation address
-  function updateSherlockProtocolManager(address _sherlockProtocolManager) external;
+  /// @param _protocolManager new implementation address
+  function updateSherlockProtocolManager(ISherlockProtocolManager _protocolManager) external;
 
   /// @notice View current address able to pull payouts
   /// @return Address able to pull payouts
-  function sherlockPayoutManager() external view returns (address);
+  function sherlockClaimManager() external view returns (ISherlockClaimManager);
 
-  /// @notice Transfer payout manager role to different address
-  /// @param _sherlockPayoutManager New address of payout manager
-  function updateSherlockPayoutManager(address _sherlockPayoutManager) external;
+  /// @notice Transfer claim manager role to different address
+  /// @param _sherlockClaimManager New address of claim manager
+  function updateSherlockClaimManager(ISherlockClaimManager _sherlockClaimManager) external;
 
   /// @notice Update max limit of TVL sherlock writes for coverage
   /// @param _limit New max percentage of TVL to be paid out
   /// @dev scaled by 10**18, 100% = 10**18
-  /// @dev will be used to limit payout manager
+  /// @dev will be used to limit claim manager
   function updateRiskLimit(uint256 _limit) external;
+
+  /// @notice Update yield strategy
+  /// @param _strategy News address of the strategy
+  /// @dev try a strategyWithdrawAll() on old, ignore failure
+  function updateStrategy(IStrategyManager _strategy) external;
+
+  /// @notice Read current strategy
+  /// @return Address of current strategy
+  /// @dev can never be address(0)
+  function strategy() external view returns (IStrategyManager);
 }
