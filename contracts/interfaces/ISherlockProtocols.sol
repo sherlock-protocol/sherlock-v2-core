@@ -35,7 +35,10 @@ interface ISherlockProtocols {
   /// @dev Accrued debt is subtracted from the stored balance
   function balances(bytes32 _protocol) external view returns (uint256);
 
-  // @todo seconds of coverage remaining?
+  /// @notice View seconds of coverage left of `_protocol`
+  /// @param _protocol Protocol identifier
+  /// @return Seconds of coverage left
+  function secondsOfCoverageLeft(bytes32 _protocol) external view returns (uint256);
 
   /// @notice Add a new protocol to Sherlock
   /// @param _protocol Protocol identifier
@@ -68,12 +71,36 @@ interface ISherlockProtocols {
   /// @param _protocol Protocol identifier
   /// @dev Before removing a protocol the premium should be 0
   /// @dev Removing a protocol basically stops the `_protocolAgent` from being active
+  /// @dev Pays off debt + sends remaining balance to protocol agent
   /// @dev This call should be subject to a timelock
   /// @dev Only callable by governance
   function protocolRemove(bytes32 _protocol) external;
 
-  // @TODO
-  // remove protocol force? Allow anyone to remove a protocol if their balance is insufficient.
+  /// @notice Remove a protocol with insufificient balance
+  /// @param _protocol Protocol identifier
+  function forceRemoveByBalance(bytes32 _protocol) external;
+
+  /// @notice Remove a protocol with insufificient coverage time
+  /// @param _protocol Protocol identifier
+  function forceRemoveByRemainingCoverage(bytes32 _protocol) external;
+
+  /// @notice View minimal balance needed before liquidation can start
+  /// @return Minimal balance needed
+  function minBalance() external view returns (uint256);
+
+  /// @notice View minimal seconds of coverage needed before liquidation can start
+  /// @return Minimal seconds of coverage needed
+  function minSecondsOfCoverage() external view returns (uint256);
+
+  /// @notice Set minimal balance needed before liquidation can start
+  /// @param _minBalance Mininal balance needed
+  /// @dev only gov
+  function setMinBalance(uint256 _minBalance) external;
+
+  /// @notice Set minimal seconds of coverage needed before liquidation can start
+  /// @param _minSeconds Mininal seconds of coverage needed
+  /// @dev only gov
+  function setMinSecondsOfCoverage(uint256 _minSeconds) external;
 
   /// @notice Set premium of `_protocol` to `_premium`
   /// @param _protocol Protocol identifier
