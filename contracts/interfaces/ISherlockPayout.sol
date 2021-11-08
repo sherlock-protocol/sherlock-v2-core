@@ -10,9 +10,9 @@ pragma solidity 0.8.9;
 /// @author Evert Kors
 interface ISherlockPayout {
   /// @notice Initiate a payout of `_amount` to `_receiver`
-  /// @param _amount Amount to send
   /// @param _receiver Receiver of payout
+  /// @param _amount Amount to send
   /// @dev only payout manager should call this
   /// @dev should pull money out of strategy
-  function payout(uint256 _amount, address _receiver) external;
+  function payout(address _receiver, uint256 _amount) external;
 }

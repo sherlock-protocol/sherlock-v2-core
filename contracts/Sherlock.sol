@@ -43,12 +43,25 @@ contract Sherlock is ISherlock, ERC721, Ownable {
     IERC20 _token,
     IERC20 _sher,
     string memory _name,
-    string memory _symbol
+    string memory _symbol,
+    IStrategyManager _strategy,
+    ISherDistributionManager _sherDistributionManager,
+    address _nonStakersAddress,
+    ISherlockProtocolManager _sherlockProtocolManager,
+    ISherlockClaimManager _sherlockClaimManager,
+    uint256[] memory _initialPeriods
   ) ERC721(_name, _symbol) {
     token = _token;
     sher = _sher;
-    // todo
-    // initial strategy and mamanager
+    strategy = _strategy;
+    sherDistributionManager = _sherDistributionManager;
+    nonStakersAddress = _nonStakersAddress;
+    sherlockProtocolManager = _sherlockProtocolManager;
+    sherlockClaimManager = _sherlockClaimManager;
+
+    for (uint256 i; i < _initialPeriods.length; i++) {
+      _setPeriod(_initialPeriods[i]);
+    }
   }
 
   //
@@ -68,9 +81,15 @@ contract Sherlock is ISherlock, ERC721, Ownable {
   //
   // Gov functions
   //
+
+  function _setPeriod(uint256 _period) internal {
+    periods[_period] = true;
+    // todo emit event
+  }
+
   function enablePeriod(uint256 _period) external override onlyOwner {
     require(!periods[_period], 'active');
-    periods[_period] = true;
+    _setPeriod(_period);
   }
 
   function disablePeriod(uint256 _period) external override onlyOwner {
@@ -120,23 +139,29 @@ contract Sherlock is ISherlock, ERC721, Ownable {
   }
 
   function strategyDeposit(uint256 _amount) external override onlyOwner {
-    // token.transfer() naar strategy
-    // call strategy deposit
+    require(_amount != 0, 'amount');
+    sherlockProtocolManager.claimPremiums();
+    token.transfer(address(strategy), _amount);
+    strategy.deposit();
   }
 
   function strategyWithdraw(uint256 _amount) external override onlyOwner {
-    // call withdraw(_amount)
+    require(_amount != 0, 'amount');
+    strategy.withdraw(_amount);
   }
 
   function strategyWithdrawAll() external override onlyOwner {
-    // call withdrawAll()
+    strategy.withdrawAll();
   }
 
   //
   // Access control functions
   //
 
-  function payout(uint256 _amount, address _receiver) external override {}
+  function payout(address _receiver, uint256 _amount) external override {
+    require(msg.sender == address(sherlockProtocolManager), 'manager');
+    _transferOut(_receiver, _amount);
+  }
 
   //
   // Non-access control functions
@@ -171,13 +196,22 @@ contract Sherlock is ISherlock, ERC721, Ownable {
     delete sherRewards[_id];
   }
 
+  function _transferOut(address _receiver, uint256 _amount) internal {
+    sherlockProtocolManager.claimPremiums();
+    uint256 mainBalance = token.balanceOf(address(this));
+    if (_amount > mainBalance) {
+      strategy.withdraw(_amount - mainBalance);
+    }
+    token.safeTransfer(_receiver, _amount);
+  }
+
   function _burnShares(
     uint256 _id,
     uint256 _shares,
     address _receiver
   ) internal returns (uint256 _amount) {
     _amount = (_shares * balanceOf()) / totalShares;
-    if (_amount != 0) token.safeTransfer(_receiver, _amount);
+    if (_amount != 0) _transferOut(_receiver, _amount);
 
     shares[_id] -= _shares;
     totalShares -= _shares;
