@@ -9,13 +9,6 @@ pragma solidity 0.8.9;
 /// @title Sherlock interface for non staker rewards
 /// @author Evert Kors
 interface ISherlockNonStakerRewards {
-  // @TODO, add or remove?
-  //   /// @notice View current non staker share of `_protocol` premium
-  //   /// @param _protocol Protocol identifier
-  //   /// @return Percentage of premiums redirected to non-stakers
-  //   /// @dev Scaled by 10**18
-  //   function nonStakersShares(bytes32 _protocol) external view returns (uint256);
-
   /// @notice View how much the non stakers can claim for this protocol
   /// @param _protocol Protocol identifier
   /// @return Amount of token claimable by non stakers

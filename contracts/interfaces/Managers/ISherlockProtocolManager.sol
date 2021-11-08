@@ -13,7 +13,6 @@ import './IManager.sol';
 interface ISherlockProtocolManager is IManager {
   // We do some internal accounting with (lastBlockAccounted - block.now) * premium
   // we have mapping(protocol => uint256) for lastSettled but also a global one
-  // TODO add totalPremiumPerBlock view function which will just read a variable
 
   event ProtocolAdded(bytes32 protocol);
 

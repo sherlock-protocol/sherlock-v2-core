@@ -1,0 +1,1 @@
+// abstract contract manager is Imanager, ownable.

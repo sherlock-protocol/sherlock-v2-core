@@ -11,8 +11,6 @@ import '../UMAprotocol/OptimisticRequester.sol';
 import './IManager.sol';
 
 interface ISherlockClaimManager is IManager, OptimisticRequester {
-  // governance can transfer SPCC and UHO roles with a big timelock
-
   enum State {
     NonExistent, // Claim doesn't exist
     SpccPending, // Claim is created, SPCC is able to set state to valid
