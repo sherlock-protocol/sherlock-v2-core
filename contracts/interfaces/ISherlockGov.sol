@@ -6,10 +6,10 @@ pragma solidity 0.8.9;
 * Sherlock Protocol: https://sherlock.xyz
 /******************************************************************************/
 
-import './Managers/ISherDistributionManager.sol';
-import './Managers/ISherlockProtocolManager.sol';
-import './Managers/ISherlockClaimManager.sol';
-import './Managers/IStrategyManager.sol';
+import './managers/ISherDistributionManager.sol';
+import './managers/ISherlockProtocolManager.sol';
+import './managers/ISherlockClaimManager.sol';
+import './managers/IStrategyManager.sol';
 
 /// @title Sherlock core interface for governance
 /// @author Evert Kors

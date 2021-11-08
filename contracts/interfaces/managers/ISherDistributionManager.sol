@@ -24,6 +24,7 @@ interface ISherDistributionManager is IManager {
   /// @param _amount Amount of tokens
   /// @param _period Period of time, in seconds
   /// @return _sher Amount of SHER tokens
+  /// @dev IMPORTANT: will treat the `_amount` to be including the TVL
   function calcReward(uint256 _amount, uint256 _period) external view returns (uint256 _sher);
 
   /// @notice Function used to check if this is the current active distribution manager
