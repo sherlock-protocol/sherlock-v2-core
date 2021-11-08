@@ -32,18 +32,19 @@ contract SherDistributionManager is ISherDistributionManager, Manager {
     // @TODO, emit event to show constructor parmas
   }
 
-  function pullReward(uint256 _amount, uint256 _period) external override returns (uint256 _sher) {}
+  function pullReward(
+    uint256 _tvl,
+    uint256 _amount,
+    uint256 _period
+  ) external override returns (uint256 _sher) {}
 
-  function calcReward(uint256 _amount, uint256 _period)
-    public
-    view
-    override
-    returns (uint256 _sher)
-  {
-    uint256 tvl = sherlockCore.balanceOf();
-
-    uint256 maxRewardsAvailable = maxRewardsTVL - tvl;
-    uint256 slopeRewardsAvailable = zeroRewardsTVL - tvl;
+  function calcReward(
+    uint256 _tvl,
+    uint256 _amount,
+    uint256 _period
+  ) public view override returns (uint256 _sher) {
+    uint256 maxRewardsAvailable = maxRewardsTVL - _tvl;
+    uint256 slopeRewardsAvailable = zeroRewardsTVL - _tvl;
   }
 
   function isActive() external view override returns (bool) {}

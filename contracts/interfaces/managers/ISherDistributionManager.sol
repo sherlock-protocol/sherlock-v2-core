@@ -14,18 +14,28 @@ interface ISherDistributionManager is IManager {
   // anyone can just send token to this contract to fund rewards
 
   /// @notice Caller will receive `_sher` SHER tokens based on `_amount` and `_period`
+  /// @param _tvl TVL to use for reward calculation
   /// @param _amount Amount of tokens
   /// @param _period Period of time, in seconds
   /// @return _sher Amount of SHER tokens to be receiver
   /// @dev calling contract will depend of before + after balance diff and return value
-  function pullReward(uint256 _amount, uint256 _period) external returns (uint256 _sher);
+  function pullReward(
+    uint256 _tvl,
+    uint256 _amount,
+    uint256 _period
+  ) external returns (uint256 _sher);
 
   /// @notice Calculate how much `_sher` SHER tokens will be send based on `_amount` and `_period`
+  /// @param _tvl TVL to use for reward calculation
   /// @param _amount Amount of tokens
   /// @param _period Period of time, in seconds
   /// @return _sher Amount of SHER tokens
   /// @dev IMPORTANT: will treat the `_amount` to be including the TVL
-  function calcReward(uint256 _amount, uint256 _period) external view returns (uint256 _sher);
+  function calcReward(
+    uint256 _tvl,
+    uint256 _amount,
+    uint256 _period
+  ) external view returns (uint256 _sher);
 
   /// @notice Function used to check if this is the current active distribution manager
   /// @return Boolean indicating it's active
