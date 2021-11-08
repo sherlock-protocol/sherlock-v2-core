@@ -19,7 +19,7 @@ contract Sherlock is ISherlock, ERC721, Ownable {
   uint256 constant ARB_RESTAKE_WAIT_TIME = 2 weeks;
   uint256 constant ARB_RESTAKE_GROWTH_TIME = 2 weeks;
   uint256 constant ARB_RESTAKE_PERIOD = 12 weeks;
-  uint256 constant ARB_RESTAKE_MAX_PERCENTAGE = (10**18 / 10) * 2;
+  uint256 constant ARB_RESTAKE_MAX_PERCENTAGE = (10**18 / 100) * 20; // 20%
 
   IERC20 public immutable token;
   IERC20 public immutable sher;
@@ -37,8 +37,6 @@ contract Sherlock is ISherlock, ERC721, Ownable {
   ISherlockProtocolManager public override sherlockProtocolManager;
   ISherlockClaimManager public override sherlockClaimManager;
 
-  // 100% = 10**18
-  uint256 riskLimit;
   uint256 nftCounter;
 
   constructor(
@@ -114,11 +112,6 @@ contract Sherlock is ISherlock, ERC721, Ownable {
   {
     require(address(_sherlockClaimManager) != address(0), 'ZERO');
     sherlockClaimManager = _sherlockClaimManager;
-  }
-
-  function updateRiskLimit(uint256 _limit) external override onlyOwner {
-    require(_limit <= 10**18, 'limit');
-    riskLimit = _limit;
   }
 
   function updateStrategy(IStrategyManager _strategy) external override onlyOwner {

@@ -64,12 +64,6 @@ interface ISherlockGov {
   /// @param _sherlockClaimManager New address of claim manager
   function updateSherlockClaimManager(ISherlockClaimManager _sherlockClaimManager) external;
 
-  /// @notice Update max limit of TVL sherlock writes for coverage
-  /// @param _limit New max percentage of TVL to be paid out
-  /// @dev scaled by 10**18, 100% = 10**18
-  /// @dev will be used to limit claim manager
-  function updateRiskLimit(uint256 _limit) external;
-
   /// @notice Update yield strategy
   /// @param _strategy News address of the strategy
   /// @dev try a strategyWithdrawAll() on old, ignore failure
