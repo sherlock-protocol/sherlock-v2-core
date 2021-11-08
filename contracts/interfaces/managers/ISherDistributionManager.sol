@@ -14,23 +14,21 @@ interface ISherDistributionManager is IManager {
   // anyone can just send token to this contract to fund rewards
 
   /// @notice Caller will receive `_sher` SHER tokens based on `_amount` and `_period`
-  /// @param _tvl TVL to use for reward calculation
   /// @param _amount Amount of tokens
   /// @param _period Period of time, in seconds
   /// @return _sher Amount of SHER tokens to be receiver
-  /// @dev calling contract will depend of before + after balance diff and return value
-  function pullReward(
-    uint256 _tvl,
-    uint256 _amount,
-    uint256 _period
-  ) external returns (uint256 _sher);
+  /// @dev calling contract will depend of before + after balance diff and return value\
+  /// @dev INCLUDING, function expects the `_amount` to be deposited already
+  /// @dev e.g. if tvl=50, amount=50. It would calculate for the first 50 tokens going in
+  function pullReward(uint256 _amount, uint256 _period) external returns (uint256 _sher);
 
   /// @notice Calculate how much `_sher` SHER tokens will be send based on `_amount` and `_period`
   /// @param _tvl TVL to use for reward calculation
   /// @param _amount Amount of tokens
   /// @param _period Period of time, in seconds
   /// @return _sher Amount of SHER tokens
-  /// @dev IMPORTANT: will treat the `_amount` to be including the TVL
+  /// @dev EXCLUDING `_amount` will be added on top of TVL (_tvl is excluding _amount)
+  /// @dev e.g. if tvl=0, amount=50. It would calculate for the first 50 tokens going in
   function calcReward(
     uint256 _tvl,
     uint256 _amount,
@@ -42,10 +40,4 @@ interface ISherDistributionManager is IManager {
   /// @dev if inactive the owner can pull all ERC20s
   /// @dev will be checked by calling the sherlock contract
   function isActive() external view returns (bool);
-
-  /// @notice Get ERC20 tokens out of contract
-  /// @param _receiver Address that will receive tokens
-  /// @param _extraTokens Array of tokens to be send
-  /// @dev can only be called if not active
-  function sweep(address _receiver, IERC20[] memory _extraTokens) external;
 }
