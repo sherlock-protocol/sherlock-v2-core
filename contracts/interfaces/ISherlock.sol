@@ -10,14 +10,6 @@ import '@openzeppelin/contracts/token/ERC721/IERC721.sol';
 import './ISherlockStake.sol';
 import './ISherlockGov.sol';
 import './ISherlockPayout.sol';
-import './ISherlockNonStakerRewards.sol';
 import './ISherlockStrategy.sol';
 
-interface ISherlock is
-  ISherlockStake,
-  ISherlockGov,
-  ISherlockPayout,
-  ISherlockNonStakerRewards,
-  ISherlockStrategy,
-  IERC721
-{}
+interface ISherlock is ISherlockStake, ISherlockGov, ISherlockPayout, ISherlockStrategy, IERC721 {}
