@@ -205,12 +205,16 @@ contract Sherlock is ISherlock, ERC721, Ownable {
     token.safeTransfer(_receiver, _amount);
   }
 
+  function _burnSharesCalc(uint256 _shares) internal view returns (uint256) {
+    return (_shares * balanceOf()) / totalShares;
+  }
+
   function _burnShares(
     uint256 _id,
     uint256 _shares,
     address _receiver
   ) internal returns (uint256 _amount) {
-    _amount = (_shares * balanceOf()) / totalShares;
+    _amount = _burnSharesCalc(_shares);
     if (_amount != 0) _transferOut(_receiver, _amount);
 
     shares[_id] -= _shares;
@@ -265,21 +269,32 @@ contract Sherlock is ISherlock, ERC721, Ownable {
     _sher = _hold(_id, _period, nftOwner);
   }
 
-  function holdArb(uint256 _id) external override returns (uint256 _sher, uint256 _arbReward) {
-    address nftOwner = ownerOf(_id);
+  function _holdArbCalcShares(uint256 _id) internal view returns (uint256) {
     uint256 initialArbTime = deadlines[_id] + ARB_RESTAKE_WAIT_TIME;
-    uint256 maxRewardArbTime = initialArbTime + ARB_RESTAKE_GROWTH_TIME;
 
-    require(nftOwner != address(0), 'owner');
-    require(initialArbTime <= block.timestamp);
+    if (initialArbTime >= block.timestamp) return 0;
+
+    uint256 maxRewardArbTime = initialArbTime + ARB_RESTAKE_GROWTH_TIME;
+    uint256 targetTime = block.timestamp < maxRewardArbTime ? block.timestamp : maxRewardArbTime;
 
     // scaled by 10**18
-    uint256 targetTime = block.timestamp < maxRewardArbTime ? block.timestamp : maxRewardArbTime;
     uint256 maxRewardScaled = ARB_RESTAKE_MAX_PERCENTAGE * shares[_id];
-    uint256 arbRewardShares = ((targetTime - initialArbTime) * maxRewardScaled) /
+
+    return
+      ((targetTime - initialArbTime) * maxRewardScaled) /
       (maxRewardArbTime - initialArbTime) /
       10**18;
+  }
 
+  function holdArbCalc(uint256 _id) external view returns (uint256) {
+    return _burnSharesCalc(_holdArbCalcShares(_id));
+  }
+
+  function holdArb(uint256 _id) external override returns (uint256 _sher, uint256 _arbReward) {
+    address nftOwner = ownerOf(_id);
+    require(nftOwner != address(0), 'owner');
+
+    uint256 arbRewardShares = _holdArbCalcShares(_id);
     _arbReward = _burnShares(_id, arbRewardShares, msg.sender);
     _sher = _hold(_id, ARB_RESTAKE_PERIOD, nftOwner);
   }
