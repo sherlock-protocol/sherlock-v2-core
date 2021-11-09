@@ -127,7 +127,7 @@ interface ISherlockProtocolManager is IManager {
   /// @param _premium Amount of premium `_protocol` pays per second
   /// @dev The value 0 would mean inactive coverage
   /// @dev Only callable by governance
-  function setProtocolPremium(bytes32[] calldata _protocol, uint256[] calldata _premium) external;
+  function setProtocolPremiums(bytes32[] calldata _protocol, uint256[] calldata _premium) external;
 
   /// @notice Deposit `_amount` token for pay premium for `_protocol`
   /// @param _protocol Protocol identifier

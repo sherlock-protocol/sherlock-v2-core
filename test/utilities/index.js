@@ -1,36 +1,7 @@
 const { utils } = require('ethers/lib');
 const { BigNumber } = require('ethers');
 
-FacetCutAction = {
-  Add: 0,
-  Replace: 1,
-  Remove: 2,
-};
-
-function getSelectors(contract) {
-  const signatures = [];
-  for (const key of Object.keys(contract.functions)) {
-    signatures.push(utils.keccak256(utils.toUtf8Bytes(key)).substr(0, 10));
-  }
-  return signatures;
-}
-
-async function getDiamondCut(facets, action = FacetCutAction.Add) {
-  diamondCut = [];
-  for (let i = 0; i < facets.length; i++) {
-    const f = await facets[i].deploy();
-    diamondCut.push({
-      action,
-      facetAddress: f.address,
-      functionSelectors: getSelectors(f),
-    });
-  }
-  return diamondCut;
-}
-
 module.exports = {
-  FacetCutAction: this.FacetCutAction,
-  getSelectors: this.getSelectors,
   prepare: async (thisObject, contracts) => {
     for (let i in contracts) {
       let contract = contracts[i];
@@ -75,11 +46,14 @@ module.exports = {
   blockNumber: async (tx) => {
     return BigNumber.from(await (await tx).blockNumber);
   },
+  timestamp: async (tx) => {
+    block = await (await tx).blockNumber;
+    data = await ethers.provider.getBlock(block);
+    return BigNumber.from(data.timestamp);
+  },
   events: async (tx) => {
     return (await (await tx).wait()).events;
   },
-  getDiamondCut,
-  FacetCutAction,
   Uint16Fragment: function (fragment) {
     const f = BigNumber.from(fragment * 10000);
     return BigNumber.from(2 ** 16 - 1)
