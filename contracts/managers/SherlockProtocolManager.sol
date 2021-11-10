@@ -65,12 +65,13 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
     return balances(_protocol) / premiums[_protocol];
   }
 
-  //
-  // State methods
-  //
   function balances(bytes32 _protocol) public view override returns (uint256) {
     return balancesInternal[_protocol] - _calcProtocolDebt(_protocol);
   }
+
+  //
+  // State methods
+  //
 
   function _settleProtocolDebt(bytes32 _protocol) internal returns (uint256 _nonStakerShares) {
     uint256 debt = _calcProtocolDebt(_protocol);
@@ -95,20 +96,61 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
     lastAccounted = block.timestamp;
   }
 
-  function _updateTotalPremiumPerBlock(
-    bytes32 _protocol,
+  function _calcTotalPremiumPerBlockValue(
     uint256 _premiumOld,
     uint256 _premiumNew,
     uint256 _nonStakerSharesOld,
-    uint256 _nonStakerSharesNew
-  ) internal {
-    console.log(((10**18 - _nonStakerSharesOld) * _premiumOld) / 10**18);
-    console.log(((10**18 - _nonStakerSharesNew) * _premiumNew) / 10**18);
-    totalPremiumPerBlock +=
+    uint256 _nonStakerSharesNew,
+    uint256 _inMemTotalPremiumPerBlock
+  ) internal pure returns (uint256) {
+    return
+      _inMemTotalPremiumPerBlock +
       ((10**18 - _nonStakerSharesNew) * _premiumNew) /
       10**18 -
       ((10**18 - _nonStakerSharesOld) * _premiumOld) /
       10**18;
+  }
+
+  function _protocolRemove(bytes32 _protocol) internal {
+    address agent = protocolAgent[_protocol];
+    require(agent != address(0));
+    require(premiums[_protocol] == 0);
+
+    uint256 balance = balancesInternal[_protocol];
+    if (balance > 0) {
+      token.safeTransfer(agent, balance);
+      delete balancesInternal[_protocol];
+    }
+
+    delete protocolAgent[_protocol];
+    delete nonStakersShares[_protocol];
+  }
+
+  function _forceRemoveProtocol(bytes32 _protocol) internal {
+    _setProtocolPremium(_protocol, 0);
+    _protocolRemove(_protocol);
+  }
+
+  function _setProtocolPremium(bytes32 _protocol, uint256 _premium) internal {
+    uint256 nonStakerShares = _settleProtocolDebt(_protocol);
+    uint256 oldPremium = _updateProtocolPremium(_protocol, _premium);
+
+    _settleTotalDebt();
+    totalPremiumPerBlock = _calcTotalPremiumPerBlockValue(
+      oldPremium,
+      _premium,
+      nonStakerShares,
+      nonStakerShares,
+      totalPremiumPerBlock
+    );
+  }
+
+  function setMinBalance(uint256 _minBalance) external override onlyOwner {
+    minBalance = _minBalance;
+  }
+
+  function setMinSecondsOfCoverage(uint256 _minSeconds) external override onlyOwner {
+    minSecondsOfCoverage = _minSeconds;
   }
 
   function nonStakersClaim(
@@ -165,37 +207,17 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
     _settleTotalDebt();
 
     uint256 premium = premiums[_protocol];
-    _updateTotalPremiumPerBlock(
-      _protocol,
+    totalPremiumPerBlock = _calcTotalPremiumPerBlockValue(
       premium,
       premium,
       nonStakersShares[_protocol],
-      _nonStakers
+      _nonStakers,
+      totalPremiumPerBlock
     );
     nonStakersShares[_protocol] = _nonStakers;
   }
 
   function protocolRemove(bytes32 _protocol) external override onlyOwner {
-    _protocolRemove(_protocol);
-  }
-
-  function _protocolRemove(bytes32 _protocol) internal {
-    address agent = protocolAgent[_protocol];
-    require(agent != address(0));
-    require(premiums[_protocol] == 0);
-
-    uint256 balance = balancesInternal[_protocol];
-    if (balance > 0) {
-      token.safeTransfer(agent, balance);
-      delete balancesInternal[_protocol];
-    }
-
-    delete protocolAgent[_protocol];
-    delete nonStakersShares[_protocol];
-  }
-
-  function _forceRemoveProtocol(bytes32 _protocol) internal {
-    _setProtocolPremium(_protocol, 0);
     _protocolRemove(_protocol);
   }
 
@@ -215,22 +237,6 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
     _forceRemoveProtocol(_protocol);
   }
 
-  function setMinBalance(uint256 _minBalance) external override onlyOwner {
-    minBalance = _minBalance;
-  }
-
-  function setMinSecondsOfCoverage(uint256 _minSeconds) external override onlyOwner {
-    minSecondsOfCoverage = _minSeconds;
-  }
-
-  function _setProtocolPremium(bytes32 _protocol, uint256 _premium) internal {
-    uint256 nonStakerShares = _settleProtocolDebt(_protocol);
-    uint256 oldPremium = _updateProtocolPremium(_protocol, _premium);
-
-    _settleTotalDebt();
-    _updateTotalPremiumPerBlock(_protocol, oldPremium, _premium, nonStakerShares, nonStakerShares);
-  }
-
   function setProtocolPremium(bytes32 _protocol, uint256 _premium) external override onlyOwner {
     // @todo require protocol exist
     // @todo should have at least 1 day of of coverage left with the _premium amount
@@ -241,7 +247,27 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
     external
     override
     onlyOwner
-  {}
+  {
+    require(_protocol.length == _premium.length);
+    _settleTotalDebt();
+
+    uint256 totalPremiumPerBlock_ = totalPremiumPerBlock;
+
+    for (uint256 i; i < _protocol.length; i++) {
+      uint256 nonStakerShares = _settleProtocolDebt(_protocol[i]);
+      uint256 oldPremium = _updateProtocolPremium(_protocol[i], _premium[i]);
+
+      totalPremiumPerBlock_ = _calcTotalPremiumPerBlockValue(
+        oldPremium,
+        _premium[i],
+        nonStakerShares,
+        nonStakerShares,
+        totalPremiumPerBlock_
+      );
+    }
+
+    totalPremiumPerBlock = totalPremiumPerBlock_;
+  }
 
   function depositProtocolBalance(bytes32 _protocol, uint256 _amount) external override {
     require(protocolAgent[_protocol] != address(0));
