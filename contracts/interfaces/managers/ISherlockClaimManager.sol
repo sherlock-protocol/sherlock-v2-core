@@ -11,11 +11,23 @@ import '../UMAprotocol/OptimisticRequester.sol';
 import './IManager.sol';
 
 interface ISherlockClaimManager is IManager, OptimisticRequester {
+  event ClaimCreated(uint256 claimID, bytes32 protocol, uint256 amount, address receiver, bool previousCoverageAmount);
+
+  event ClaimStatusChanged(uint256 claimID, State previousState, State currentState);
+
+  event ClaimPayout(uint256 claimID);
+
+  event ClaimHalted(uint256 claimID);
+
+  event UMAHORenounced();
+
   enum State {
     NonExistent, // Claim doesn't exist
     SpccPending, // Claim is created, SPCC is able to set state to valid
     SpccApproved, // Final state, claim is valid
     SpccDenied, // Claim denied by SPCC, claim can be escalated within 7 days
+    UmaPriceProposed, // Price is proposed by not escalated
+    UmaDisputeProposed, // Escaltion is done, waiting for confirmation
     UmaPending, // Claim is escalated, in case Spcc denied or didn't act within 7 days.
     UmaApproved, // Final state, claim is valid, claim can be enacted after 3 day, umaHaltOperator has 3 day to change to denied
     UmaDenied // Final state, claim is invalid
@@ -27,6 +39,8 @@ interface ISherlockClaimManager is IManager, OptimisticRequester {
     bytes32 protocol;
     uint256 amount;
     address receiver;
+    uint32 timestamp;
+    bytes ancillaryData;
     State state;
   }
 
@@ -52,16 +66,10 @@ interface ISherlockClaimManager is IManager, OptimisticRequester {
   /// @notice `SHERLOCK_CLAIM` in utf8
   function umaIdentifier() external view returns (bytes32);
 
-  //   /// @notice gov is able to transfer the role
-  //   function transferSherlockProtocolClaimsCommittee(address _spcc) external;
-
   function sherlockProtocolClaimsCommittee() external view returns (address);
 
   /// @notice operator is able to deny approved UMA claims
   function umaHaltOperator() external view returns (address);
-
-  //   /// @notice gov is able to transfer this role
-  //   function transferUmaHaltOperator(address _uho) external;
 
   /// @notice gov is able to renounce the role
   function renounceUmaHaltOperator() external;

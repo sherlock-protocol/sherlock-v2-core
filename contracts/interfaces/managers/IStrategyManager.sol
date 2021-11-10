@@ -20,8 +20,4 @@ interface IStrategyManager is IManager {
   function deposit() external;
 
   function balanceOf() external view returns (uint256);
-
-  /// @notice Sweep tokens
-  /// @dev only callable by owner when not active
-  function sweep(address _receiver, IERC20[] memory _extraTokens) external;
 }

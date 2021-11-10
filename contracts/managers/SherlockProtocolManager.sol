@@ -30,6 +30,9 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
   uint256 public override minBalance;
   uint256 public override minSecondsOfCoverage;
 
+  mapping(bytes32 => uint256) currentCoverage;
+  mapping(bytes32 => uint256) previousCoverage;
+
   constructor(IERC20 _token) {
     token = _token;
   }
@@ -121,12 +124,22 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
     lastAccounted = block.timestamp;
   }
 
+  function viewCoverageAmounts(bytes32 _protocol)
+    external
+    view
+    override
+    returns (uint256 current, uint256 previous)
+  {
+    return (currentCoverage[_protocol], previousCoverage[_protocol]);
+  }
+
   function protocolAdd(
     bytes32 _protocol,
     address _protocolAgent,
     bytes32 _coverage,
     uint256 _nonStakers
   ) external override onlyOwner {
+    // @todo add coverage amount
     require(protocolAgent[_protocol] == address(0));
     require(_nonStakers <= 10**18);
     protocolAgent[_protocol] = _protocolAgent;
@@ -138,6 +151,7 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
     bytes32 _coverage,
     uint256 _nonStakers
   ) external override onlyOwner {
+    // @todo add coverage amount
     require(protocolAgent[_protocol] != address(0));
     require(_nonStakers <= 10**18);
 
@@ -215,4 +229,6 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
     require(msg.sender == protocolAgent[_protocol]);
     protocolAgent[_protocol] = _protocolAgent;
   }
+
+  // @todo implement sweep function
 }
