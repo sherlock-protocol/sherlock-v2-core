@@ -13,6 +13,8 @@ import '../interfaces/UMAprotocol/SkinnyOptimisticOracleInterface.sol';
 
 import 'hardhat/console.sol';
 
+// @todo everyone can escalate and enact?
+
 /// @dev expects 6 decimals input tokens
 contract SherlockClaimManager is ISherlockClaimManager, Manager {
   using SafeERC20 for IERC20;
