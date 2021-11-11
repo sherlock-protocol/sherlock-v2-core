@@ -89,6 +89,8 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
       premiums[_protocol] = _premium;
       emit ProtocolPremiumChanged(_protocol, oldPremium, _premium);
     }
+
+    require(secondsOfCoverageLeft(_protocol) >= minSecondsOfCoverage, 'BALANCE');
   }
 
   function _setSingleProtocolPremium(bytes32 _protocol, uint256 _premium) internal {
