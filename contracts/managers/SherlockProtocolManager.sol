@@ -57,6 +57,8 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
   }
 
   function nonStakersClaimable(bytes32 _protocol) external view override returns (uint256) {
+    // non stakers can claim rewards after protocol is removed
+
     return
       nonStakersClaimableStored[_protocol] +
       (block.timestamp - lastAccountedProtocol[_protocol]) *
@@ -182,9 +184,11 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
     if (_amount == uint256(0)) revert ZeroArgument();
     if (_receiver == address(0)) revert ZeroArgument();
     if (msg.sender != sherlockCore.nonStakersAddress()) revert Unauthorized();
-    _verifyProtocolExists(_protocol);
 
-    _settleProtocolDebt(_protocol);
+    // call can be executed on protocol that is removed
+    if (protocolAgent[_protocol] != address(0)) {
+      _settleProtocolDebt(_protocol);
+    }
 
     nonStakersClaimableStored[_protocol] -= _amount;
     token.safeTransfer(_receiver, _amount);
@@ -348,8 +352,7 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
     if (msg.sender != _verifyProtocolExists(_protocol)) revert Unauthorized();
 
     balancesInternal[_protocol] -= _amount;
-    if (secondsOfCoverageLeft(_protocol) < MIN_SECONDS_LEFT)
-      revert InsufficientBalance(_protocol);
+    if (secondsOfCoverageLeft(_protocol) < MIN_SECONDS_LEFT) revert InsufficientBalance(_protocol);
 
     token.safeTransfer(msg.sender, _amount);
     emit ProtocolBalanceWithdrawn(_protocol, _amount);
