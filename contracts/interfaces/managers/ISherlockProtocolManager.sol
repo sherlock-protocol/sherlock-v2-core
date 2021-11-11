@@ -14,11 +14,23 @@ interface ISherlockProtocolManager is IManager {
   // We do some internal accounting with (lastBlockAccounted - block.now) * premium
   // we have mapping(protocol => uint256) for lastSettled but also a global one
 
+  error UnauthorizedAgent();
+
+  error ProtocolNotExists(bytes32 protocol);
+
   event ProtocolAdded(bytes32 protocol);
+
+  event ProtocolRemoved(bytes32 protocol);
 
   event ProtocolUpdated(bytes32 protocol, bytes32 coverage, uint256 nonStakers);
 
   event ProtocolAgentTransfer(bytes32 protocol, address from, address to);
+
+  event ProtocolBalanceDeposited(bytes32 protocol, uint256 amount);
+
+  event ProtocolBalanceWithdrawn(bytes32 protocol, uint256 amount);
+
+  event ProtocolPremiumChanged(bytes32 protocol, uint256 oldPremium, uint256 newPremium);
 
   /// @notice View current chunk of premium that are claimable
   /// @return Premiums claimable
