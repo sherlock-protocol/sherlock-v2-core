@@ -155,8 +155,10 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
 
     _setProtocolAgent(_protocol, _agent, address(0));
     delete nonStakersShares[_protocol];
+    delete currentCoverage[_protocol];
+    delete previousCoverage[_protocol];
 
-    emit ProtocolUpdated(_protocol, bytes32(0), uint256(0));
+    emit ProtocolUpdated(_protocol, bytes32(0), uint256(0), uint256(0));
     emit ProtocolRemoved(_protocol);
   }
 
@@ -200,29 +202,31 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
     bytes32 _protocol,
     address _protocolAgent,
     bytes32 _coverage,
-    uint256 _nonStakers
+    uint256 _nonStakers,
+    uint256 _coverageAmount
   ) external override onlyOwner {
-    // @todo add coverage amount
     require(protocolAgent[_protocol] == address(0));
     require(_nonStakers <= 10**18);
     _setProtocolAgent(_protocol, address(0), _protocolAgent);
-    nonStakersShares[_protocol] = _nonStakers;
 
-    emit ProtocolUpdated(_protocol, _coverage, _nonStakers);
+    nonStakersShares[_protocol] = _nonStakers;
+    currentCoverage[_protocol] = _coverageAmount;
+
+    emit ProtocolUpdated(_protocol, _coverage, _nonStakers, _coverageAmount);
     emit ProtocolAdded(_protocol);
   }
 
   function protocolUpdate(
     bytes32 _protocol,
     bytes32 _coverage,
-    uint256 _nonStakers
+    uint256 _nonStakers,
+    uint256 _coverageAmount
   ) external override onlyOwner {
     require(_protocol != bytes32(0), 'PROTOCOL');
     require(_coverage != bytes32(0), 'COVERAGE');
     require(_nonStakers <= 10**18, 'NONSTAKERS');
+    require(_coverageAmount != uint256(0), 'AMOUNT');
     _verifyProtocolExists(_protocol);
-
-    // @todo add coverage amount
 
     _settleProtocolDebt(_protocol);
     _settleTotalDebt();
@@ -237,7 +241,10 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
     );
     nonStakersShares[_protocol] = _nonStakers;
 
-    emit ProtocolUpdated(_protocol, _coverage, _nonStakers);
+    previousCoverage[_protocol] = currentCoverage[_protocol];
+    currentCoverage[_protocol] = _coverageAmount;
+
+    emit ProtocolUpdated(_protocol, _coverage, _nonStakers, _coverageAmount);
   }
 
   function protocolRemove(bytes32 _protocol) external override onlyOwner {

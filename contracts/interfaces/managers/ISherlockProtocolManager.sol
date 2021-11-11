@@ -22,7 +22,12 @@ interface ISherlockProtocolManager is IManager {
 
   event ProtocolRemoved(bytes32 protocol);
 
-  event ProtocolUpdated(bytes32 protocol, bytes32 coverage, uint256 nonStakers);
+  event ProtocolUpdated(
+    bytes32 protocol,
+    bytes32 coverage,
+    uint256 nonStakers,
+    uint256 _coverageAmount
+  );
 
   event ProtocolAgentTransfer(bytes32 protocol, address from, address to);
 
@@ -70,6 +75,7 @@ interface ISherlockProtocolManager is IManager {
   /// @param _protocolAgent Account able to submit a claim on behalve of the protocol
   /// @param _coverage Hash referencing the active coverage agreement
   /// @param _nonStakers Percentage of premium payments that is not redirected to stakers
+  /// @param _coverageAmount Max amount claimable
   /// @dev Adding a protocol allows the `_protocolAgent` to submit a claim.
   /// @dev Coverage is not started yet as the protocol doesn't pay a premium at this point
   /// @dev `_nonStakers` is scaled by 10**18
@@ -78,18 +84,21 @@ interface ISherlockProtocolManager is IManager {
     bytes32 _protocol,
     address _protocolAgent,
     bytes32 _coverage,
-    uint256 _nonStakers
+    uint256 _nonStakers,
+    uint256 _coverageAmount
   ) external;
 
   /// @notice Update info regarding a protocol
   /// @param _protocol Protocol identifier
   /// @param _coverage Hash referencing the active coverage agreement
   /// @param _nonStakers Percentage of premium payments that is not redirected to stakers, scaled by 10**18
+  /// @param _coverageAmount Max amount claimable
   /// @dev Only callable by governance
   function protocolUpdate(
     bytes32 _protocol,
     bytes32 _coverage,
-    uint256 _nonStakers
+    uint256 _nonStakers,
+    uint256 _coverageAmount
   ) external;
 
   /// @notice Remove a protocol
