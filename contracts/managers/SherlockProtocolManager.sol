@@ -53,7 +53,6 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
   }
 
   function _calcProtocolDebt(bytes32 _protocol) internal view returns (uint256) {
-    console.log('a', premiums[_protocol]);
     return (block.timestamp - lastAccountedProtocol[_protocol]) * premiums[_protocol];
   }
 
@@ -71,6 +70,8 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
   }
 
   function secondsOfCoverageLeft(bytes32 _protocol) public view override returns (uint256) {
+    uint256 premium = premiums[_protocol];
+    if (premium == 0) return 0;
     return balances(_protocol) / premiums[_protocol];
   }
 
@@ -94,7 +95,9 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
       emit ProtocolPremiumChanged(_protocol, oldPremium, _premium);
     }
 
-    if (secondsOfCoverageLeft(_protocol) < MIN_SECONDS_LEFT) revert InsufficientBalance(_protocol);
+    if (_premium != 0 && secondsOfCoverageLeft(_protocol) < MIN_SECONDS_LEFT) {
+      revert InsufficientBalance(_protocol);
+    }
   }
 
   function _setSingleProtocolPremium(bytes32 _protocol, uint256 _premium) internal {

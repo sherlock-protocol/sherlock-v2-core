@@ -46,10 +46,20 @@ module.exports = {
   blockNumber: async (tx) => {
     return BigNumber.from(await (await tx).blockNumber);
   },
-  timestamp: async (tx) => {
-    block = await (await tx).blockNumber;
+  meta: async (tx) => {
+    data = await tx;
+    const block = data.blockNumber;
+
+    data = await data.wait();
+    const events = data.events;
+
     data = await ethers.provider.getBlock(block);
-    return BigNumber.from(data.timestamp);
+
+    return {
+      time: BigNumber.from(data.timestamp),
+      block: BigNumber.from(block),
+      events: events,
+    };
   },
   events: async (tx) => {
     return (await (await tx).wait()).events;
