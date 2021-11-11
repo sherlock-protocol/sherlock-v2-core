@@ -205,15 +205,11 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
     uint256 _nonStakers,
     uint256 _coverageAmount
   ) external override onlyOwner {
-    require(protocolAgent[_protocol] == address(0));
-    require(_nonStakers <= 10**18);
+    require(_protocolAgent != address(0), 'AGENT');
     _setProtocolAgent(_protocol, address(0), _protocolAgent);
 
-    nonStakersShares[_protocol] = _nonStakers;
-    currentCoverage[_protocol] = _coverageAmount;
-
-    emit ProtocolUpdated(_protocol, _coverage, _nonStakers, _coverageAmount);
     emit ProtocolAdded(_protocol);
+    protocolUpdate(_protocol, _coverage, _nonStakers, _coverageAmount);
   }
 
   function protocolUpdate(
@@ -221,7 +217,7 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
     bytes32 _coverage,
     uint256 _nonStakers,
     uint256 _coverageAmount
-  ) external override onlyOwner {
+  ) public override onlyOwner {
     require(_protocol != bytes32(0), 'PROTOCOL');
     require(_coverage != bytes32(0), 'COVERAGE');
     require(_nonStakers <= 10**18, 'NONSTAKERS');
