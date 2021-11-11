@@ -14,11 +14,23 @@ interface ISherlockProtocolManager is IManager {
   // We do some internal accounting with (lastBlockAccounted - block.now) * premium
   // we have mapping(protocol => uint256) for lastSettled but also a global one
 
-  error UnauthorizedAgent();
+  error Unauthorized();
 
   error ProtocolNotExists(bytes32 protocol);
 
+  error InvalidConditions();
+
+  error ZeroArgument();
+
+  error InvalidArgument();
+
+  error UnequalArrayLength();
+
+  error InsufficientBalance(bytes32 protocol);
+
   event ProtocolAdded(bytes32 protocol);
+
+  event ProtocolRemovedByArb(bytes32 protocol, address arb, uint256 profit);
 
   event ProtocolRemoved(bytes32 protocol);
 
