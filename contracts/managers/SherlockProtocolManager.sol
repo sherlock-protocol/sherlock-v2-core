@@ -22,7 +22,7 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
   mapping(bytes32 => uint256) nonStakersShares;
 
   mapping(bytes32 => uint256) public override premiums;
-  mapping(bytes32 => uint256) public balancesInternal;
+  mapping(bytes32 => uint256) balancesInternal;
   mapping(bytes32 => uint256) lastAccountedProtocol;
   mapping(bytes32 => uint256) nonStakersClaimableStored;
 
@@ -53,6 +53,7 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
   }
 
   function _calcProtocolDebt(bytes32 _protocol) internal view returns (uint256) {
+    console.log('a', premiums[_protocol]);
     return (block.timestamp - lastAccountedProtocol[_protocol]) * premiums[_protocol];
   }
 
@@ -123,8 +124,8 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
     if (debt != 0) {
       balancesInternal[_protocol] -= debt;
       nonStakersClaimableStored[_protocol] += (_nonStakerShares * debt) / HUNDRED_PERCENT;
-      lastAccountedProtocol[_protocol] = block.timestamp;
     }
+    lastAccountedProtocol[_protocol] = block.timestamp;
   }
 
   function _settleTotalDebt() internal {
@@ -339,7 +340,7 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
 
     _verifyProtocolExists(_protocol);
 
-    token.safeTransfer(address(this), _amount);
+    token.safeTransferFrom(msg.sender, address(this), _amount);
     balancesInternal[_protocol] += _amount;
 
     emit ProtocolBalanceDeposited(_protocol, _amount);
