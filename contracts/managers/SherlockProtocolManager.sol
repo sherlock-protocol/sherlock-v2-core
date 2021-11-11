@@ -120,8 +120,8 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
     if (debt != 0) {
       balancesInternal[_protocol] -= debt;
       nonStakersClaimableStored[_protocol] += (_nonStakerShares * debt) / 10**18;
+      lastAccountedProtocol[_protocol] = block.timestamp;
     }
-    lastAccountedProtocol[_protocol] = block.timestamp;
   }
 
   function _settleTotalDebt() internal {
@@ -175,7 +175,12 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
     uint256 _amount,
     address _receiver
   ) external override {
+    require(_protocol != bytes32(0), 'PROTOCOL');
+    require(_amount != uint256(0), 'AMOUNT');
+    require(_receiver != address(0), 'RECEIVER');
     require(msg.sender == sherlockCore.nonStakersAddress());
+    _verifyProtocolExists(_protocol);
+
     _settleProtocolDebt(_protocol);
 
     nonStakersClaimableStored[_protocol] -= _amount;
@@ -195,6 +200,9 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
     override
     returns (uint256 current, uint256 previous)
   {
+    require(_protocol != bytes32(0), 'PROTOCOL');
+    _verifyProtocolExists(_protocol);
+
     return (currentCoverage[_protocol], previousCoverage[_protocol]);
   }
 
