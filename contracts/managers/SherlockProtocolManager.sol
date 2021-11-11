@@ -194,12 +194,18 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
       _settleProtocolDebt(_protocol);
     }
 
-    nonStakersClaimableStored[_protocol] -= _amount;
+    uint256 balance = nonStakersClaimableStored[_protocol];
+    if (_amount > balance) revert InsufficientBalance(_protocol);
+
+    nonStakersClaimableStored[_protocol] = balance - _amount;
     token.safeTransfer(_receiver, _amount);
   }
 
   function claimPremiums() external override {
-    token.safeTransfer(address(sherlockCore), claimablePremiums());
+    address sherlock = address(sherlockCore);
+    if (sherlock == address(0)) revert InvalidConditions();
+
+    token.safeTransfer(sherlock, claimablePremiums());
 
     claimablePremiumsStored = 0;
     lastAccounted = block.timestamp;
@@ -242,7 +248,6 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
     if (_coverage == bytes32(0)) revert ZeroArgument();
     if (_nonStakers > HUNDRED_PERCENT) revert InvalidArgument();
     if (_coverageAmount == uint256(0)) revert ZeroArgument();
-
     _verifyProtocolExists(_protocol);
 
     _settleProtocolDebt(_protocol);
@@ -303,7 +308,9 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
   }
 
   function setProtocolPremium(bytes32 _protocol, uint256 _premium) external override onlyOwner {
+    if (_protocol == bytes32(0)) revert ZeroArgument();
     _verifyProtocolExists(_protocol);
+
     _setSingleProtocolPremium(_protocol, _premium);
   }
 
@@ -318,6 +325,7 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
 
     uint256 totalPremiumPerBlock_ = totalPremiumPerBlock;
     for (uint256 i; i < _protocol.length; i++) {
+      if (_protocol[i] == bytes32(0)) revert ZeroArgument();
       _verifyProtocolExists(_protocol[i]);
 
       (uint256 oldPremium, uint256 nonStakerShares) = _setProtocolPremium(
@@ -340,7 +348,6 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
   function depositProtocolBalance(bytes32 _protocol, uint256 _amount) external override {
     if (_protocol == bytes32(0)) revert ZeroArgument();
     if (_amount == uint256(0)) revert ZeroArgument();
-
     _verifyProtocolExists(_protocol);
 
     token.safeTransferFrom(msg.sender, address(this), _amount);
@@ -352,10 +359,12 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
   function withdrawProtocolBalance(bytes32 _protocol, uint256 _amount) external override {
     if (_protocol == bytes32(0)) revert ZeroArgument();
     if (_amount == uint256(0)) revert ZeroArgument();
-
     if (msg.sender != _verifyProtocolExists(_protocol)) revert Unauthorized();
 
-    balancesInternal[_protocol] -= _amount;
+    uint256 currentBalance = balancesInternal[_protocol];
+    if (_amount > currentBalance) revert InsufficientBalance(_protocol);
+
+    balancesInternal[_protocol] = currentBalance - _amount;
     if (secondsOfCoverageLeft(_protocol) < MIN_SECONDS_LEFT) revert InsufficientBalance(_protocol);
 
     token.safeTransfer(msg.sender, _amount);
@@ -366,7 +375,6 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
     if (_protocol == bytes32(0)) revert ZeroArgument();
     if (_protocolAgent == address(0)) revert ZeroArgument();
     if (msg.sender == _protocolAgent) revert InvalidArgument();
-
     if (msg.sender != _verifyProtocolExists(_protocol)) revert Unauthorized();
 
     _setProtocolAgent(_protocol, msg.sender, _protocolAgent);

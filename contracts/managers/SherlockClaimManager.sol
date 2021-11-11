@@ -188,7 +188,7 @@ contract SherlockClaimManager is ISherlockClaimManager, Manager {
     } else {
       require(
         _oldState == State.SpccApproved ||
-          (_oldState == State.UmaApproved && updated + UMAHO_TIME >= block.timestamp)
+          (_oldState == State.UmaApproved && updated + UMAHO_TIME <= block.timestamp)
       );
     }
 
