@@ -73,10 +73,6 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
   //
   // View methods
   //
-  function _nonStakersPerblock(bytes32 _protocol) internal view returns (uint256) {
-    return (premiums_[_protocol] * nonStakersShares[_protocol]) / HUNDRED_PERCENT;
-  }
-
   function _calcProtocolDebt(bytes32 _protocol) internal view returns (uint256) {
     return (block.timestamp - lastAccountedProtocol[_protocol]) * premiums_[_protocol];
   }

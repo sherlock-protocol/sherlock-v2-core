@@ -319,7 +319,6 @@ describe('SherlockProtocolManager ─ Functional', function () {
     it('Initial state', async function () {
       expect(await this.spm.viewBalancesInternal(this.protocolX)).to.eq(0);
       expect(await this.spm.viewLastAccountedProtocol(this.protocolX)).to.eq(0);
-      expect(await this.spm.viewNonStakersPerBlock(this.protocolX)).to.eq(0);
       expect(await this.spm.viewNonStakersClaimableStored(this.protocolX)).to.eq(0);
       expect(await this.spm.viewNonStakersShares(this.protocolX)).to.eq(0);
       expect(await this.spm.viewCurrentCoverage(this.protocolX)).to.eq(0);
@@ -359,7 +358,6 @@ describe('SherlockProtocolManager ─ Functional', function () {
 
       expect(await this.spm.viewBalancesInternal(this.protocolX)).to.eq(0);
       expect(await this.spm.viewLastAccountedProtocol(this.protocolX)).to.eq(this.t0.time);
-      expect(await this.spm.viewNonStakersPerBlock(this.protocolX)).to.eq(0);
       expect(await this.spm.viewNonStakersClaimableStored(this.protocolX)).to.eq(0);
       expect(await this.spm.viewNonStakersShares(this.protocolX)).to.eq(parseEther('0.1'));
       expect(await this.spm.viewCurrentCoverage(this.protocolX)).to.eq(500);
@@ -404,7 +402,6 @@ describe('SherlockProtocolManager ─ Functional', function () {
     it('Initial state', async function () {
       expect(await this.spm.viewBalancesInternal(this.protocolX)).to.eq(maxTokens);
       expect(await this.spm.viewLastAccountedProtocol(this.protocolX)).to.eq(this.t1.time);
-      expect(await this.spm.viewNonStakersPerBlock(this.protocolX)).to.eq(this.premiumNonStakers);
       expect(await this.spm.viewNonStakersClaimableStored(this.protocolX)).to.eq(0);
       expect(await this.spm.viewNonStakersShares(this.protocolX)).to.eq(parseEther('0.1'));
       expect(await this.spm.viewCurrentCoverage(this.protocolX)).to.eq(500);
@@ -450,9 +447,6 @@ describe('SherlockProtocolManager ─ Functional', function () {
         maxTokens.sub(this.premium.mul(11)),
       );
       expect(await this.spm.viewLastAccountedProtocol(this.protocolX)).to.eq(this.t2.time);
-      expect(await this.spm.viewNonStakersPerBlock(this.protocolX)).to.eq(
-        this.newPremiumNonStakers,
-      );
       expect(await this.spm.viewNonStakersClaimableStored(this.protocolX)).to.eq(
         this.premiumNonStakers.mul(11),
       );
@@ -486,9 +480,6 @@ describe('SherlockProtocolManager ─ Functional', function () {
         maxTokens.sub(this.premium.mul(11)),
       );
       expect(await this.spm.viewLastAccountedProtocol(this.protocolX)).to.eq(this.t2.time);
-      expect(await this.spm.viewNonStakersPerBlock(this.protocolX)).to.eq(
-        this.newPremiumNonStakers,
-      );
       expect(await this.spm.viewNonStakersClaimableStored(this.protocolX)).to.eq(
         this.premiumNonStakers.mul(11),
       );
@@ -532,7 +523,6 @@ describe('SherlockProtocolManager ─ Functional', function () {
     it('Initial state', async function () {
       expect(await this.spm.viewBalancesInternal(this.protocolX)).to.eq(0);
       expect(await this.spm.viewLastAccountedProtocol(this.protocolX)).to.eq(this.t0.time);
-      expect(await this.spm.viewNonStakersPerBlock(this.protocolX)).to.eq(0);
       expect(await this.spm.viewNonStakersClaimableStored(this.protocolX)).to.eq(0);
       expect(await this.spm.viewNonStakersShares(this.protocolX)).to.eq(parseEther('0.1'));
       expect(await this.spm.viewCurrentCoverage(this.protocolX)).to.eq(500);
@@ -572,7 +562,6 @@ describe('SherlockProtocolManager ─ Functional', function () {
 
       expect(await this.spm.viewBalancesInternal(this.protocolX)).to.eq(0);
       expect(await this.spm.viewLastAccountedProtocol(this.protocolX)).to.eq(0);
-      expect(await this.spm.viewNonStakersPerBlock(this.protocolX)).to.eq(0);
       expect(await this.spm.viewNonStakersClaimableStored(this.protocolX)).to.eq(0);
       expect(await this.spm.viewNonStakersShares(this.protocolX)).to.eq(0);
       expect(await this.spm.viewCurrentCoverage(this.protocolX)).to.eq(0);
@@ -605,7 +594,6 @@ describe('SherlockProtocolManager ─ Functional', function () {
     it('Initial state', async function () {
       expect(await this.spm.viewBalancesInternal(this.protocolX)).to.eq(maxTokens);
       expect(await this.spm.viewLastAccountedProtocol(this.protocolX)).to.eq(this.t0.time);
-      expect(await this.spm.viewNonStakersPerBlock(this.protocolX)).to.eq(0);
       expect(await this.spm.viewNonStakersClaimableStored(this.protocolX)).to.eq(0);
       expect(await this.spm.viewNonStakersShares(this.protocolX)).to.eq(parseEther('0.1'));
       expect(await this.spm.viewCurrentCoverage(this.protocolX)).to.eq(500);
@@ -650,7 +638,6 @@ describe('SherlockProtocolManager ─ Functional', function () {
 
       expect(await this.spm.viewBalancesInternal(this.protocolX)).to.eq(0);
       expect(await this.spm.viewLastAccountedProtocol(this.protocolX)).to.eq(0);
-      expect(await this.spm.viewNonStakersPerBlock(this.protocolX)).to.eq(0);
       expect(await this.spm.viewNonStakersClaimableStored(this.protocolX)).to.eq(0);
       expect(await this.spm.viewNonStakersShares(this.protocolX)).to.eq(0);
       expect(await this.spm.viewCurrentCoverage(this.protocolX)).to.eq(0);
@@ -691,7 +678,6 @@ describe('SherlockProtocolManager ─ Functional', function () {
     it('Initial state', async function () {
       expect(await this.spm.viewBalancesInternal(this.protocolX)).to.eq(maxTokens);
       expect(await this.spm.viewLastAccountedProtocol(this.protocolX)).to.eq(this.t1.time);
-      expect(await this.spm.viewNonStakersPerBlock(this.protocolX)).to.eq(this.premiumNonStakers);
       expect(await this.spm.viewNonStakersClaimableStored(this.protocolX)).to.eq(0);
       expect(await this.spm.viewNonStakersShares(this.protocolX)).to.eq(parseEther('0.1'));
       expect(await this.spm.viewCurrentCoverage(this.protocolX)).to.eq(500);
@@ -742,7 +728,6 @@ describe('SherlockProtocolManager ─ Functional', function () {
 
       expect(await this.spm.viewBalancesInternal(this.protocolX)).to.eq(0);
       expect(await this.spm.viewLastAccountedProtocol(this.protocolX)).to.eq(0);
-      expect(await this.spm.viewNonStakersPerBlock(this.protocolX)).to.eq(0);
       expect(await this.spm.viewNonStakersClaimableStored(this.protocolX)).to.eq(
         this.premiumNonStakers,
       );
@@ -768,7 +753,7 @@ describe('SherlockProtocolManager ─ Functional', function () {
       );
     });
   });
-  describe.only('protocolRemove() b0,p!0', function () {
+  describe('protocolRemove() b0,p!0', function () {
     // could have premium + balance=0 <-- in case remove incentives have failed
     before(async function () {
       this.premium = parseUnits('10', 6);
@@ -795,7 +780,6 @@ describe('SherlockProtocolManager ─ Functional', function () {
     it('Initial state', async function () {
       expect(await this.spm.viewBalancesInternal(this.protocolX)).to.eq(this.balance);
       expect(await this.spm.viewLastAccountedProtocol(this.protocolX)).to.eq(this.t1.time);
-      expect(await this.spm.viewNonStakersPerBlock(this.protocolX)).to.eq(this.premiumNonStakers);
       expect(await this.spm.viewNonStakersClaimableStored(this.protocolX)).to.eq(0);
       expect(await this.spm.viewNonStakersShares(this.protocolX)).to.eq(parseEther('0.1'));
       expect(await this.spm.viewCurrentCoverage(this.protocolX)).to.eq(500);
@@ -851,7 +835,6 @@ describe('SherlockProtocolManager ─ Functional', function () {
 
       expect(await this.spm.viewBalancesInternal(this.protocolX)).to.eq(0);
       expect(await this.spm.viewLastAccountedProtocol(this.protocolX)).to.eq(0);
-      expect(await this.spm.viewNonStakersPerBlock(this.protocolX)).to.eq(0);
       expect(await this.spm.viewNonStakersClaimableStored(this.protocolX)).to.eq(
         this.balance.div(10),
       );
@@ -903,7 +886,6 @@ describe('SherlockProtocolManager ─ Functional', function () {
       expect(await this.spm.viewClaimablePremiumsStored()).to.eq(0);
       expect(await this.spm.viewLastAccounted()).to.eq(this.t0.time);
       expect(await this.spm.viewTotalPremiumPerBlock()).to.eq(0);
-      expect(await this.spm.viewNonStakersPerBlock(this.protocolX)).to.eq(0);
     });
     it('Insufficient balance', async function () {
       this.premium = parseUnits('10', 6);
@@ -932,7 +914,6 @@ describe('SherlockProtocolManager ─ Functional', function () {
       expect(await this.spm.viewClaimablePremiumsStored()).to.eq(0);
       expect(await this.spm.viewLastAccounted()).to.eq(this.tfail.time);
       expect(await this.spm.viewTotalPremiumPerBlock()).to.eq(0);
-      expect(await this.spm.viewNonStakersPerBlock(this.protocolX)).to.eq(0);
     });
     it('Do, t=1', async function () {
       this.t1 = await meta(this.spm.setProtocolPremium(this.protocolX, this.premium));
@@ -959,7 +940,6 @@ describe('SherlockProtocolManager ─ Functional', function () {
       expect(await this.spm.viewClaimablePremiumsStored()).to.eq(0);
       expect(await this.spm.viewLastAccounted()).to.eq(this.t1.time);
       expect(await this.spm.viewTotalPremiumPerBlock()).to.eq(this.premiumStakers);
-      expect(await this.spm.viewNonStakersPerBlock(this.protocolX)).to.eq(this.premiumNonStakers);
     });
     it('Verify, t=2', async function () {
       await timeTraveler.mine(1);
@@ -978,7 +958,6 @@ describe('SherlockProtocolManager ─ Functional', function () {
       expect(await this.spm.viewClaimablePremiumsStored()).to.eq(0);
       expect(await this.spm.viewLastAccounted()).to.eq(this.t1.time);
       expect(await this.spm.viewTotalPremiumPerBlock()).to.eq(this.premiumStakers);
-      expect(await this.spm.viewNonStakersPerBlock(this.protocolX)).to.eq(this.premiumNonStakers);
     });
     it('Do again, t=3', async function () {
       this.newPremium = this.premium.mul(10);
@@ -1013,9 +992,6 @@ describe('SherlockProtocolManager ─ Functional', function () {
       expect(await this.spm.viewClaimablePremiumsStored()).to.eq(this.premiumStakers.mul(2));
       expect(await this.spm.viewLastAccounted()).to.eq(this.t3.time);
       expect(await this.spm.viewTotalPremiumPerBlock()).to.eq(this.newPremiumStakers);
-      expect(await this.spm.viewNonStakersPerBlock(this.protocolX)).to.eq(
-        this.newPremiumNonStakers,
-      );
     });
     it('Verify, t=4', async function () {
       await timeTraveler.mine(1);
@@ -1044,9 +1020,6 @@ describe('SherlockProtocolManager ─ Functional', function () {
       expect(await this.spm.viewClaimablePremiumsStored()).to.eq(this.premiumStakers.mul(2));
       expect(await this.spm.viewLastAccounted()).to.eq(this.t3.time);
       expect(await this.spm.viewTotalPremiumPerBlock()).to.eq(this.newPremiumStakers);
-      expect(await this.spm.viewNonStakersPerBlock(this.protocolX)).to.eq(
-        this.newPremiumNonStakers,
-      );
     });
   });
   describe('setProtocolPremiums()', function () {});

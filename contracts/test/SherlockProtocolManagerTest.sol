@@ -44,10 +44,6 @@ contract SherlockProtocolManagerTest is SherlockProtocolManager {
     return claimablePremiumsStored;
   }
 
-  function viewNonStakersPerBlock(bytes32 _protocol) external view returns (uint256) {
-    return _nonStakersPerblock(_protocol);
-  }
-
   function viewBalancesInternal(bytes32 _protocol) external view returns (uint256) {
     return balancesInternal[_protocol];
   }
