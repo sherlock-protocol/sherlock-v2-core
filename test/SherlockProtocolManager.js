@@ -83,6 +83,11 @@ describe('SherlockProtocolManager ─ Stateless', function () {
         this.spm.connect(this.bob).protocolUpdate(this.protocolX, id('x'), parseEther('0.1'), 500),
       ).to.be.revertedWith('Ownable: caller is not the owner');
     });
+    it('Zero protocol', async function () {
+      await expect(
+        this.spm.protocolUpdate(constants.HashZero, id('x'), parseEther('0.1'), 500),
+      ).to.be.revertedWith('ProtocolNotExists("' + constants.HashZero + '")');
+    });
     it('Zero coverage', async function () {
       await expect(
         this.spm.protocolUpdate(this.protocolX, constants.HashZero, parseEther('0.1'), 500),
@@ -112,7 +117,7 @@ describe('SherlockProtocolManager ─ Stateless', function () {
     });
     it('Zero protocol', async function () {
       await expect(this.spm.protocolRemove(constants.HashZero)).to.be.revertedWith(
-        'ZeroArgument()',
+        'ProtocolNotExists("' + constants.HashZero + '")',
       );
     });
     it('Protocol not exists', async function () {
@@ -124,7 +129,7 @@ describe('SherlockProtocolManager ─ Stateless', function () {
   describe('forceRemoveByBalance()', function () {
     it('Zero protocol', async function () {
       await expect(this.spm.forceRemoveByBalance(constants.HashZero)).to.be.revertedWith(
-        'ZeroArgument()',
+        'ProtocolNotExists("' + constants.HashZero + '")',
       );
     });
     it('Protocol not exists', async function () {
@@ -136,7 +141,7 @@ describe('SherlockProtocolManager ─ Stateless', function () {
   describe('forceRemoveByRemainingCoverage()', function () {
     it('Zero protocol', async function () {
       await expect(this.spm.forceRemoveByRemainingCoverage(constants.HashZero)).to.be.revertedWith(
-        'ZeroArgument()',
+        'ProtocolNotExists("' + constants.HashZero + '")',
       );
     });
     it('Protocol not exists', async function () {
@@ -160,7 +165,7 @@ describe('SherlockProtocolManager ─ Stateless', function () {
     });
     it('Zero protocol', async function () {
       await expect(this.spm.setProtocolPremium(constants.HashZero, 1)).to.be.revertedWith(
-        'ZeroArgument()',
+        'ProtocolNotExists("' + constants.HashZero + '")',
       );
     });
     it('Protocol not exists', async function () {
@@ -182,7 +187,7 @@ describe('SherlockProtocolManager ─ Stateless', function () {
     });
     it('Zero protocol', async function () {
       await expect(this.spm.setProtocolPremiums([constants.HashZero], [2])).to.be.revertedWith(
-        'ZeroArgument()',
+        'ProtocolNotExists("' + constants.HashZero + '")',
       );
     });
     it('Protocol not exists', async function () {
@@ -194,7 +199,7 @@ describe('SherlockProtocolManager ─ Stateless', function () {
   describe('depositProtocolBalance()', function () {
     it('Zero protocol', async function () {
       await expect(this.spm.depositProtocolBalance(constants.HashZero, 1)).to.be.revertedWith(
-        'ZeroArgument()',
+        'ProtocolNotExists("' + constants.HashZero + '")',
       );
     });
     it('Zero amount', async function () {
@@ -211,7 +216,7 @@ describe('SherlockProtocolManager ─ Stateless', function () {
   describe('withdrawProtocolBalance()', function () {
     it('Zero protocol', async function () {
       await expect(this.spm.withdrawProtocolBalance(constants.HashZero, 1)).to.be.revertedWith(
-        'ZeroArgument()',
+        'ProtocolNotExists("' + constants.HashZero + '")',
       );
     });
     it('Zero amount', async function () {
@@ -239,7 +244,7 @@ describe('SherlockProtocolManager ─ Stateless', function () {
     it('Zero protocol', async function () {
       await expect(
         this.spm.transferProtocolAgent(constants.HashZero, this.bob.address),
-      ).to.be.revertedWith('ZeroArgument()');
+      ).to.be.revertedWith('ProtocolNotExists("' + constants.HashZero + '")');
     });
     it('Zero protocol agent', async function () {
       await expect(
@@ -304,17 +309,54 @@ describe('SherlockProtocolManager ─ Functional', function () {
     await deploy(this, [['ERC20Mock6d', this.ERC20Mock6d, ['USDC Token', 'USDC', maxTokens]]]);
     await deploy(this, [['spm', this.SherlockProtocolManagerTest, [this.ERC20Mock6d.address]]]);
 
+    await this.ERC20Mock6d.approve(this.spm.address, maxTokens);
     await timeTraveler.snapshot();
   });
+  describe('protocolAdd()', function () {
+    before(async function () {});
+    it('Initial state', async function () {
+      expect(await this.spm.viewBalancesInternal(this.protocolX)).to.eq(0);
+      expect(await this.spm.viewLastAccountedProtocol(this.protocolX)).to.eq(0);
+      expect(await this.spm.viewNonStakersPerBlock(this.protocolX)).to.eq(0);
+      expect(await this.spm.viewNonStakersClaimableStored(this.protocolX)).to.eq(0);
+      expect(await this.spm.viewNonStakersShares(this.protocolX)).to.eq(0);
+      expect(await this.spm.viewCurrentCoverage(this.protocolX)).to.eq(0);
+      expect(await this.spm.viewPreviousCoverage(this.protocolX)).to.eq(0);
+
+      expect(await this.spm.viewTotalPremiumPerBlock()).to.eq(0);
+      expect(await this.spm.viewLastAccounted()).to.eq(0);
+      expect(await this.spm.viewClaimablePremiumsStored()).to.eq(0);
+
+      await expect(this.spm.protocolAgent(this.protocolX)).to.be.reverted;
+      await expect(this.spm.balances(this.protocolX)).to.be.reverted;
+      expect(await this.spm.nonStakersClaimable(this.protocolX)).to.eq(0);
+      await expect(this.spm.secondsOfCoverageLeft(this.protocolX)).to.be.reverted;
+      await expect(this.spm.premiums(this.protocolX)).to.be.reverted;
+      await expect(this.spm.coverageAmounts(this.protocolX)).to.be.reverted;
+
+      expect(await this.spm.claimablePremiums()).to.eq(0);
+    });
+    it('Do', async function () {
+      this.t0 = await meta(
+        this.spm.protocolAdd(this.protocolX, this.alice.address, id('t'), parseEther('0.1'), 500),
+      );
+    });
+  });
+  describe('protocolUpdate()', function () {});
+  describe('protocolRemove()', function () {});
+  describe('forceRemoveByBalance()', function () {});
+  describe('forceRemoveByRemainingCoverage()', function () {});
+  describe('claimPremiums()', function () {});
+  describe('setMinBalance()', function () {});
+  describe('setMinSecondsOfCoverage()', function () {});
   describe('setProtocolPremium()', function () {
     before(async function () {
       this.t0 = await meta(
         this.spm.protocolAdd(this.protocolX, this.alice.address, id('t'), parseEther('0.1'), 500),
       );
-
-      await this.ERC20Mock6d.approve(this.spm.address, maxTokens);
     });
     it('Initial state', async function () {
+      expect(await this.spm.viewBalancesInternal(this.protocolX)).to.eq(0);
       expect(await this.spm.balances(this.protocolX)).to.eq(0);
       expect(await this.spm.viewNonStakersClaimableStored(this.protocolX)).to.eq(0);
       expect(await this.spm.nonStakersClaimable(this.protocolX)).to.eq(0);
@@ -343,6 +385,7 @@ describe('SherlockProtocolManager ─ Functional', function () {
 
       expect(this.tfail.events.length).to.eq(0);
 
+      expect(await this.spm.viewBalancesInternal(this.protocolX)).to.eq(maxTokens);
       expect(await this.spm.balances(this.protocolX)).to.eq(maxTokens);
       expect(await this.spm.viewNonStakersClaimableStored(this.protocolX)).to.eq(0);
       expect(await this.spm.nonStakersClaimable(this.protocolX)).to.eq(0);
@@ -367,6 +410,7 @@ describe('SherlockProtocolManager ─ Functional', function () {
       expect(this.t1.events[0].args.protocol).to.eq(this.protocolX);
 
       // storage
+      expect(await this.spm.viewBalancesInternal(this.protocolX)).to.eq(maxTokens);
       expect(await this.spm.balances(this.protocolX)).to.eq(maxTokens);
       expect(await this.spm.viewNonStakersClaimableStored(this.protocolX)).to.eq(0);
       expect(await this.spm.nonStakersClaimable(this.protocolX)).to.eq(0);
@@ -385,6 +429,7 @@ describe('SherlockProtocolManager ─ Functional', function () {
     it('Verify, t=2', async function () {
       await timeTraveler.mine(1);
 
+      expect(await this.spm.viewBalancesInternal(this.protocolX)).to.eq(maxTokens);
       expect(await this.spm.balances(this.protocolX)).to.eq(maxTokens.sub(this.premium));
       expect(await this.spm.viewNonStakersClaimableStored(this.protocolX)).to.eq(0);
       expect(await this.spm.nonStakersClaimable(this.protocolX)).to.eq(this.premiumNonStakers);
@@ -413,6 +458,9 @@ describe('SherlockProtocolManager ─ Functional', function () {
       expect(this.t3.events[0].args.newPremium).to.eq(this.newPremium);
       expect(this.t3.events[0].args.protocol).to.eq(this.protocolX);
 
+      expect(await this.spm.viewBalancesInternal(this.protocolX)).to.eq(
+        maxTokens.sub(this.premium.mul(2)),
+      );
       expect(await this.spm.balances(this.protocolX)).to.eq(maxTokens.sub(this.premium.mul(2)));
       expect(await this.spm.viewNonStakersClaimableStored(this.protocolX)).to.eq(
         this.premiumNonStakers.mul(2),
@@ -437,6 +485,9 @@ describe('SherlockProtocolManager ─ Functional', function () {
     it('Verify, t=4', async function () {
       await timeTraveler.mine(1);
 
+      expect(await this.spm.viewBalancesInternal(this.protocolX)).to.eq(
+        maxTokens.sub(this.premium.mul(2)),
+      );
       expect(await this.spm.balances(this.protocolX)).to.eq(
         maxTokens.sub(this.premium.mul(2)).sub(this.newPremium),
       );
@@ -463,4 +514,9 @@ describe('SherlockProtocolManager ─ Functional', function () {
       );
     });
   });
+  describe('setProtocolPremiums()', function () {});
+  describe('depositProtocolBalance()', function () {});
+  describe('withdrawProtocolBalance()', function () {});
+  describe('transferProtocolAgent()', function () {});
+  describe('nonStakersClaim()', function () {});
 });

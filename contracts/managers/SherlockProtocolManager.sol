@@ -18,10 +18,10 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
   uint256 constant MIN_SECONDS_LEFT = 3 days;
   uint256 constant HUNDRED_PERCENT = 10**18;
 
-  mapping(bytes32 => address) public override protocolAgent;
+  mapping(bytes32 => address) protocolAgent_;
   mapping(bytes32 => uint256) nonStakersShares;
 
-  mapping(bytes32 => uint256) public override premiums;
+  mapping(bytes32 => uint256) premiums_;
   mapping(bytes32 => uint256) balancesInternal;
   mapping(bytes32 => uint256) lastAccountedProtocol;
   mapping(bytes32 => uint256) nonStakersClaimableStored;
@@ -41,13 +41,32 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
   }
 
   modifier protocolExists(bytes32 _protocol) {
-    if (_protocol == bytes32(0)) revert ZeroArgument();
     _verifyProtocolExists(_protocol);
     _;
   }
 
+  function protocolAgent(bytes32 _protocol)
+    external
+    view
+    override
+    protocolExists(_protocol)
+    returns (address)
+  {
+    return protocolAgent_[_protocol];
+  }
+
+  function premiums(bytes32 _protocol)
+    external
+    view
+    override
+    protocolExists(_protocol)
+    returns (uint256)
+  {
+    return premiums_[_protocol];
+  }
+
   function _verifyProtocolExists(bytes32 _protocol) internal view returns (address _protocolAgent) {
-    _protocolAgent = protocolAgent[_protocol];
+    _protocolAgent = protocolAgent_[_protocol];
     if (_protocolAgent == address(0)) revert ProtocolNotExists(_protocol);
   }
 
@@ -55,11 +74,11 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
   // View methods
   //
   function _nonStakersPerblock(bytes32 _protocol) internal view returns (uint256) {
-    return (premiums[_protocol] * nonStakersShares[_protocol]) / HUNDRED_PERCENT;
+    return (premiums_[_protocol] * nonStakersShares[_protocol]) / HUNDRED_PERCENT;
   }
 
   function _calcProtocolDebt(bytes32 _protocol) internal view returns (uint256) {
-    return (block.timestamp - lastAccountedProtocol[_protocol]) * premiums[_protocol];
+    return (block.timestamp - lastAccountedProtocol[_protocol]) * premiums_[_protocol];
   }
 
   function nonStakersClaimable(bytes32 _protocol) external view override returns (uint256) {
@@ -82,9 +101,9 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
     protocolExists(_protocol)
     returns (uint256)
   {
-    uint256 premium = premiums[_protocol];
+    uint256 premium = premiums_[_protocol];
     if (premium == 0) return 0;
-    return balances(_protocol) / premiums[_protocol];
+    return balances(_protocol) / premiums_[_protocol];
   }
 
   function balances(bytes32 _protocol)
@@ -106,10 +125,10 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
     returns (uint256 oldPremium, uint256 nonStakerShares)
   {
     nonStakerShares = _settleProtocolDebt(_protocol);
-    oldPremium = premiums[_protocol];
+    oldPremium = premiums_[_protocol];
 
     if (oldPremium != _premium) {
-      premiums[_protocol] = _premium;
+      premiums_[_protocol] = _premium;
       emit ProtocolPremiumChanged(_protocol, oldPremium, _premium);
     }
 
@@ -135,7 +154,7 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
     address _oldAgent,
     address _protocolAgent
   ) internal {
-    protocolAgent[_protocol] = _protocolAgent;
+    protocolAgent_[_protocol] = _protocolAgent;
     emit ProtocolAgentTransfer(_protocol, _oldAgent, _protocolAgent);
   }
 
@@ -208,7 +227,7 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
     if (msg.sender != sherlockCore.nonStakersAddress()) revert Unauthorized();
 
     // call can be executed on protocol that is removed
-    if (protocolAgent[_protocol] != address(0)) {
+    if (protocolAgent_[_protocol] != address(0)) {
       _settleProtocolDebt(_protocol);
     }
 
@@ -246,6 +265,7 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
     uint256 _nonStakers,
     uint256 _coverageAmount
   ) external override onlyOwner {
+    if (_protocol == bytes32(0)) revert ZeroArgument();
     if (_protocolAgent == address(0)) revert ZeroArgument();
 
     _setProtocolAgent(_protocol, address(0), _protocolAgent);
@@ -260,7 +280,6 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
     uint256 _nonStakers,
     uint256 _coverageAmount
   ) public override onlyOwner {
-    if (_protocol == bytes32(0)) revert ZeroArgument();
     if (_coverage == bytes32(0)) revert ZeroArgument();
     if (_nonStakers > HUNDRED_PERCENT) revert InvalidArgument();
     if (_coverageAmount == uint256(0)) revert ZeroArgument();
@@ -269,7 +288,7 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
     _settleProtocolDebt(_protocol);
     _settleTotalDebt();
 
-    uint256 premium = premiums[_protocol];
+    uint256 premium = premiums_[_protocol];
     totalPremiumPerBlock = _calcTotalPremiumPerBlockValue(
       premium,
       premium,
@@ -286,14 +305,12 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
   }
 
   function protocolRemove(bytes32 _protocol) external override onlyOwner {
-    if (_protocol == bytes32(0)) revert ZeroArgument();
     address agent = _verifyProtocolExists(_protocol);
 
     _forceRemoveProtocol(_protocol, agent);
   }
 
   function forceRemoveByBalance(bytes32 _protocol) external override {
-    if (_protocol == bytes32(0)) revert ZeroArgument();
     address agent = _verifyProtocolExists(_protocol);
 
     uint256 remainingBalance = balances(_protocol);
@@ -307,7 +324,6 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
   }
 
   function forceRemoveByRemainingCoverage(bytes32 _protocol) external override {
-    if (_protocol == bytes32(0)) revert ZeroArgument();
     address agent = _verifyProtocolExists(_protocol);
 
     uint256 percentageScaled = (secondsOfCoverageLeft(_protocol) * HUNDRED_PERCENT) /
@@ -324,7 +340,6 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
   }
 
   function setProtocolPremium(bytes32 _protocol, uint256 _premium) external override onlyOwner {
-    if (_protocol == bytes32(0)) revert ZeroArgument();
     _verifyProtocolExists(_protocol);
 
     _setSingleProtocolPremium(_protocol, _premium);
@@ -341,7 +356,6 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
 
     uint256 totalPremiumPerBlock_ = totalPremiumPerBlock;
     for (uint256 i; i < _protocol.length; i++) {
-      if (_protocol[i] == bytes32(0)) revert ZeroArgument();
       _verifyProtocolExists(_protocol[i]);
 
       (uint256 oldPremium, uint256 nonStakerShares) = _setProtocolPremium(
@@ -362,7 +376,6 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
   }
 
   function depositProtocolBalance(bytes32 _protocol, uint256 _amount) external override {
-    if (_protocol == bytes32(0)) revert ZeroArgument();
     if (_amount == uint256(0)) revert ZeroArgument();
     _verifyProtocolExists(_protocol);
 
@@ -373,7 +386,6 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
   }
 
   function withdrawProtocolBalance(bytes32 _protocol, uint256 _amount) external override {
-    if (_protocol == bytes32(0)) revert ZeroArgument();
     if (_amount == uint256(0)) revert ZeroArgument();
     if (msg.sender != _verifyProtocolExists(_protocol)) revert Unauthorized();
 
@@ -388,7 +400,6 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
   }
 
   function transferProtocolAgent(bytes32 _protocol, address _protocolAgent) external override {
-    if (_protocol == bytes32(0)) revert ZeroArgument();
     if (_protocolAgent == address(0)) revert ZeroArgument();
     if (msg.sender == _protocolAgent) revert InvalidArgument();
     if (msg.sender != _verifyProtocolExists(_protocol)) revert Unauthorized();
