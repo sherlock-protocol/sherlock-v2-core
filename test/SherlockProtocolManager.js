@@ -520,7 +520,12 @@ describe('SherlockProtocolManager ─ Functional', function () {
       );
     });
   });
-  describe('protocolRemove()', function () {});
+  describe('protocolRemove()', function () {
+    // could have premium + balance=0 <-- in case remove incentives have failed
+    // could have balance + premium=0 <-- in case premium was set by 0 by gov first
+    // could have balance + premium <-- in case active
+    // could have balance=0 + premium=0 <-- in case never been active (or made to this state)
+  });
   describe('forceRemoveByBalance()', function () {});
   describe('forceRemoveByRemainingCoverage()', function () {});
   describe('claimPremiums()', function () {});

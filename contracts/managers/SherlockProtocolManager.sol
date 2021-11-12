@@ -162,7 +162,16 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
     uint256 debt = _calcProtocolDebt(_protocol);
     _nonStakerShares = nonStakersShares[_protocol];
     if (debt != 0) {
-      balancesInternal[_protocol] -= debt;
+      uint256 balance = balancesInternal[_protocol];
+      if (debt > balance) {
+        // Economically seen, this should never be reached as arb can remove a protocol and make a profit
+        // using forceRemoveByBalance and forceRemoveByRemainingCoverage
+        // premium should be set to 0 as soon as possible
+        // otherise stakers/nonstakers will be disadvantaged
+        emit AccountingError(_protocol, debt - balance);
+        debt = balance;
+      }
+      balancesInternal[_protocol] = balance - debt;
       nonStakersClaimableStored[_protocol] += (_nonStakerShares * debt) / HUNDRED_PERCENT;
     }
     lastAccountedProtocol[_protocol] = block.timestamp;
@@ -192,7 +201,7 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
     _setSingleProtocolPremium(_protocol, 0);
 
     uint256 balance = balancesInternal[_protocol];
-    if (balance > 0) {
+    if (balance != 0) {
       token.safeTransfer(_agent, balance);
       delete balancesInternal[_protocol];
 

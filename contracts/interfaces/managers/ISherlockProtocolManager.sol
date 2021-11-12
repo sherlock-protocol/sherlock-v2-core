@@ -28,6 +28,8 @@ interface ISherlockProtocolManager is IManager {
 
   error InsufficientBalance(bytes32 protocol);
 
+  event AccountingError(bytes32 protocol, uint256 amount);
+
   event ProtocolAdded(bytes32 protocol);
 
   event ProtocolRemovedByArb(bytes32 protocol, address arb, uint256 profit);
