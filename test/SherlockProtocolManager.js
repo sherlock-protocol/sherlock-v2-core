@@ -313,7 +313,9 @@ describe('SherlockProtocolManager ─ Functional', function () {
     await timeTraveler.snapshot();
   });
   describe('protocolAdd()', function () {
-    before(async function () {});
+    before(async function () {
+      await timeTraveler.revertSnapshot();
+    });
     it('Initial state', async function () {
       expect(await this.spm.viewBalancesInternal(this.protocolX)).to.eq(0);
       expect(await this.spm.viewLastAccountedProtocol(this.protocolX)).to.eq(0);
@@ -340,9 +342,184 @@ describe('SherlockProtocolManager ─ Functional', function () {
       this.t0 = await meta(
         this.spm.protocolAdd(this.protocolX, this.alice.address, id('t'), parseEther('0.1'), 500),
       );
+
+      // events
+      expect(this.t0.events.length).to.eq(3);
+      expect(this.t0.events[0].event).to.eq('ProtocolAgentTransfer');
+      expect(this.t0.events[0].args.protocol).to.eq(this.protocolX);
+      expect(this.t0.events[0].args.from).to.eq(constants.AddressZero);
+      expect(this.t0.events[0].args.to).to.eq(this.alice.address);
+      expect(this.t0.events[1].event).to.eq('ProtocolAdded');
+      expect(this.t0.events[1].args.protocol).to.eq(this.protocolX);
+      expect(this.t0.events[2].event).to.eq('ProtocolUpdated');
+      expect(this.t0.events[2].args.protocol).to.eq(this.protocolX);
+      expect(this.t0.events[2].args.coverage).to.eq(id('t'));
+      expect(this.t0.events[2].args.nonStakers).to.eq(parseEther('0.1'));
+      expect(this.t0.events[2].args.coverageAmount).to.eq(500);
+
+      expect(await this.spm.viewBalancesInternal(this.protocolX)).to.eq(0);
+      expect(await this.spm.viewLastAccountedProtocol(this.protocolX)).to.eq(this.t0.time);
+      expect(await this.spm.viewNonStakersPerBlock(this.protocolX)).to.eq(0);
+      expect(await this.spm.viewNonStakersClaimableStored(this.protocolX)).to.eq(0);
+      expect(await this.spm.viewNonStakersShares(this.protocolX)).to.eq(parseEther('0.1'));
+      expect(await this.spm.viewCurrentCoverage(this.protocolX)).to.eq(500);
+      expect(await this.spm.viewPreviousCoverage(this.protocolX)).to.eq(0);
+
+      expect(await this.spm.viewTotalPremiumPerBlock()).to.eq(0);
+      expect(await this.spm.viewLastAccounted()).to.eq(this.t0.time);
+      expect(await this.spm.viewClaimablePremiumsStored()).to.eq(0);
+
+      expect(await this.spm.protocolAgent(this.protocolX)).to.eq(this.alice.address);
+      expect(await this.spm.balances(this.protocolX)).to.eq(0);
+      expect(await this.spm.nonStakersClaimable(this.protocolX)).to.eq(0);
+      expect(await this.spm.secondsOfCoverageLeft(this.protocolX)).to.eq(0);
+      expect(await this.spm.premiums(this.protocolX)).to.eq(0);
+      const coverageAmounts = await this.spm.coverageAmounts(this.protocolX);
+      expect(coverageAmounts[0]).to.eq(500);
+      expect(coverageAmounts[1]).to.eq(0);
+
+      expect(await this.spm.claimablePremiums()).to.eq(0);
     });
   });
-  describe('protocolUpdate()', function () {});
+  describe('protocolUpdate()', function () {
+    before(async function () {
+      await timeTraveler.revertSnapshot();
+
+      this.premium = parseUnits('10', 6);
+      this.premiumStakers = parseUnits('9', 6);
+      this.premiumNonStakers = parseUnits('1', 6);
+
+      await this.spm.protocolAdd(
+        this.protocolX,
+        this.alice.address,
+        id('t'),
+        parseEther('0.1'),
+        500,
+      );
+      await this.spm.depositProtocolBalance(this.protocolX, maxTokens);
+      this.t1 = await meta(this.spm.setProtocolPremium(this.protocolX, this.premium));
+
+      await timeTraveler.mine(10);
+    });
+    it('Initial state', async function () {
+      expect(await this.spm.viewBalancesInternal(this.protocolX)).to.eq(maxTokens);
+      expect(await this.spm.viewLastAccountedProtocol(this.protocolX)).to.eq(this.t1.time);
+      expect(await this.spm.viewNonStakersPerBlock(this.protocolX)).to.eq(this.premiumNonStakers);
+      expect(await this.spm.viewNonStakersClaimableStored(this.protocolX)).to.eq(0);
+      expect(await this.spm.viewNonStakersShares(this.protocolX)).to.eq(parseEther('0.1'));
+      expect(await this.spm.viewCurrentCoverage(this.protocolX)).to.eq(500);
+      expect(await this.spm.viewPreviousCoverage(this.protocolX)).to.eq(0);
+
+      expect(await this.spm.viewTotalPremiumPerBlock()).to.eq(this.premiumStakers);
+      expect(await this.spm.viewLastAccounted()).to.eq(this.t1.time);
+      expect(await this.spm.viewClaimablePremiumsStored()).to.eq(0);
+
+      expect(await this.spm.protocolAgent(this.protocolX)).to.eq(this.alice.address);
+      expect(await this.spm.balances(this.protocolX)).to.eq(maxTokens.sub(this.premium.mul(10)));
+      expect(await this.spm.nonStakersClaimable(this.protocolX)).to.eq(
+        this.premiumNonStakers.mul(10),
+      );
+      expect(await this.spm.secondsOfCoverageLeft(this.protocolX)).to.eq(
+        maxTokens.div(this.premium).sub(10),
+      );
+      expect(await this.spm.premiums(this.protocolX)).to.eq(this.premium);
+      const coverageAmounts = await this.spm.coverageAmounts(this.protocolX);
+      expect(coverageAmounts[0]).to.eq(500);
+      expect(coverageAmounts[1]).to.eq(0);
+
+      expect(await this.spm.claimablePremiums()).to.eq(this.premiumStakers.mul(10));
+    });
+    it('Do', async function () {
+      this.newPremium = parseUnits('10', 6);
+      this.newPremiumStakers = parseUnits('8', 6);
+      this.newPremiumNonStakers = parseUnits('2', 6);
+
+      this.t2 = await meta(
+        this.spm.protocolUpdate(this.protocolX, id('tx'), parseEther('0.2'), 1500),
+      );
+
+      // events
+      expect(this.t2.events.length).to.eq(1);
+      expect(this.t2.events[0].event).to.eq('ProtocolUpdated');
+      expect(this.t2.events[0].args.protocol).to.eq(this.protocolX);
+      expect(this.t2.events[0].args.coverage).to.eq(id('tx'));
+      expect(this.t2.events[0].args.nonStakers).to.eq(parseEther('0.2'));
+      expect(this.t2.events[0].args.coverageAmount).to.eq(1500);
+
+      expect(await this.spm.viewBalancesInternal(this.protocolX)).to.eq(
+        maxTokens.sub(this.premium.mul(11)),
+      );
+      expect(await this.spm.viewLastAccountedProtocol(this.protocolX)).to.eq(this.t2.time);
+      expect(await this.spm.viewNonStakersPerBlock(this.protocolX)).to.eq(
+        this.newPremiumNonStakers,
+      );
+      expect(await this.spm.viewNonStakersClaimableStored(this.protocolX)).to.eq(
+        this.premiumNonStakers.mul(11),
+      );
+      expect(await this.spm.viewNonStakersShares(this.protocolX)).to.eq(parseEther('0.2'));
+      expect(await this.spm.viewCurrentCoverage(this.protocolX)).to.eq(1500);
+      expect(await this.spm.viewPreviousCoverage(this.protocolX)).to.eq(500);
+
+      expect(await this.spm.viewTotalPremiumPerBlock()).to.eq(this.newPremiumStakers);
+      expect(await this.spm.viewLastAccounted()).to.eq(this.t2.time);
+      expect(await this.spm.viewClaimablePremiumsStored()).to.eq(this.premiumStakers.mul(11));
+
+      expect(await this.spm.protocolAgent(this.protocolX)).to.eq(this.alice.address);
+      expect(await this.spm.balances(this.protocolX)).to.eq(maxTokens.sub(this.premium.mul(11)));
+      expect(await this.spm.nonStakersClaimable(this.protocolX)).to.eq(
+        this.premiumNonStakers.mul(11),
+      );
+      expect(await this.spm.secondsOfCoverageLeft(this.protocolX)).to.eq(
+        maxTokens.div(this.premium).sub(11),
+      );
+      expect(await this.spm.premiums(this.protocolX)).to.eq(this.premium);
+      const coverageAmounts = await this.spm.coverageAmounts(this.protocolX);
+      expect(coverageAmounts[0]).to.eq(1500);
+      expect(coverageAmounts[1]).to.eq(500);
+
+      expect(await this.spm.claimablePremiums()).to.eq(this.premiumStakers.mul(11));
+    });
+    it('Verify', async function () {
+      await timeTraveler.mine(1);
+
+      expect(await this.spm.viewBalancesInternal(this.protocolX)).to.eq(
+        maxTokens.sub(this.premium.mul(11)),
+      );
+      expect(await this.spm.viewLastAccountedProtocol(this.protocolX)).to.eq(this.t2.time);
+      expect(await this.spm.viewNonStakersPerBlock(this.protocolX)).to.eq(
+        this.newPremiumNonStakers,
+      );
+      expect(await this.spm.viewNonStakersClaimableStored(this.protocolX)).to.eq(
+        this.premiumNonStakers.mul(11),
+      );
+      expect(await this.spm.viewNonStakersShares(this.protocolX)).to.eq(parseEther('0.2'));
+      expect(await this.spm.viewCurrentCoverage(this.protocolX)).to.eq(1500);
+      expect(await this.spm.viewPreviousCoverage(this.protocolX)).to.eq(500);
+
+      expect(await this.spm.viewTotalPremiumPerBlock()).to.eq(this.newPremiumStakers);
+      expect(await this.spm.viewLastAccounted()).to.eq(this.t2.time);
+      expect(await this.spm.viewClaimablePremiumsStored()).to.eq(this.premiumStakers.mul(11));
+
+      expect(await this.spm.protocolAgent(this.protocolX)).to.eq(this.alice.address);
+      expect(await this.spm.balances(this.protocolX)).to.eq(
+        maxTokens.sub(this.premium.mul(11)).sub(this.newPremium),
+      );
+      expect(await this.spm.nonStakersClaimable(this.protocolX)).to.eq(
+        this.premiumNonStakers.mul(11).add(this.newPremiumNonStakers),
+      );
+      expect(await this.spm.secondsOfCoverageLeft(this.protocolX)).to.eq(
+        maxTokens.div(this.premium).sub(11).sub(1),
+      );
+      expect(await this.spm.premiums(this.protocolX)).to.eq(this.premium);
+      const coverageAmounts = await this.spm.coverageAmounts(this.protocolX);
+      expect(coverageAmounts[0]).to.eq(1500);
+      expect(coverageAmounts[1]).to.eq(500);
+
+      expect(await this.spm.claimablePremiums()).to.eq(
+        this.premiumStakers.mul(11).add(this.newPremiumStakers),
+      );
+    });
+  });
   describe('protocolRemove()', function () {});
   describe('forceRemoveByBalance()', function () {});
   describe('forceRemoveByRemainingCoverage()', function () {});
@@ -351,6 +528,8 @@ describe('SherlockProtocolManager ─ Functional', function () {
   describe('setMinSecondsOfCoverage()', function () {});
   describe('setProtocolPremium()', function () {
     before(async function () {
+      await timeTraveler.revertSnapshot();
+
       this.t0 = await meta(
         this.spm.protocolAdd(this.protocolX, this.alice.address, id('t'), parseEther('0.1'), 500),
       );

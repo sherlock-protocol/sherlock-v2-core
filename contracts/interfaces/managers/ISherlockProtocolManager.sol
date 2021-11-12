@@ -38,7 +38,7 @@ interface ISherlockProtocolManager is IManager {
     bytes32 protocol,
     bytes32 coverage,
     uint256 nonStakers,
-    uint256 _coverageAmount
+    uint256 coverageAmount
   );
 
   event ProtocolAgentTransfer(bytes32 protocol, address from, address to);
