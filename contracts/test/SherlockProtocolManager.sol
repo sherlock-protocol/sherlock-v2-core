@@ -16,6 +16,14 @@ contract SherlockProtocolManagerTest is SherlockProtocolManager {
     return nonStakersShares[_protocol];
   }
 
+  function viewCurrentCoverage(bytes32 _protocol) external view returns (uint256) {
+    return currentCoverage[_protocol];
+  }
+
+  function viewPreviousCoverage(bytes32 _protocol) external view returns (uint256) {
+    return previousCoverage[_protocol];
+  }
+
   function viewLastAccountedProtocol(bytes32 _protocol) external view returns (uint256) {
     return lastAccountedProtocol[_protocol];
   }
@@ -38,5 +46,9 @@ contract SherlockProtocolManagerTest is SherlockProtocolManager {
 
   function viewNonStakersPerBlock(bytes32 _protocol) external view returns (uint256) {
     return _nonStakersPerblock(_protocol);
+  }
+
+  function viewBalancesInternal(bytes32 _protocol) external view returns (uint256) {
+    return balancesInternal[_protocol];
   }
 }

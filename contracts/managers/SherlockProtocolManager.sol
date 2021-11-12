@@ -40,6 +40,12 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
     token = _token;
   }
 
+  modifier protocolExists(bytes32 _protocol) {
+    if (_protocol == bytes32(0)) revert ZeroArgument();
+    _verifyProtocolExists(_protocol);
+    _;
+  }
+
   function _verifyProtocolExists(bytes32 _protocol) internal view returns (address _protocolAgent) {
     _protocolAgent = protocolAgent[_protocol];
     if (_protocolAgent == address(0)) revert ProtocolNotExists(_protocol);
@@ -69,13 +75,25 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
     return claimablePremiumsStored + (block.timestamp - lastAccounted) * totalPremiumPerBlock;
   }
 
-  function secondsOfCoverageLeft(bytes32 _protocol) public view override returns (uint256) {
+  function secondsOfCoverageLeft(bytes32 _protocol)
+    public
+    view
+    override
+    protocolExists(_protocol)
+    returns (uint256)
+  {
     uint256 premium = premiums[_protocol];
     if (premium == 0) return 0;
     return balances(_protocol) / premiums[_protocol];
   }
 
-  function balances(bytes32 _protocol) public view override returns (uint256) {
+  function balances(bytes32 _protocol)
+    public
+    view
+    override
+    protocolExists(_protocol)
+    returns (uint256)
+  {
     return balancesInternal[_protocol] - _calcProtocolDebt(_protocol);
   }
 
@@ -211,15 +229,13 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
     lastAccounted = block.timestamp;
   }
 
-  function viewCoverageAmounts(bytes32 _protocol)
+  function coverageAmounts(bytes32 _protocol)
     external
     view
     override
+    protocolExists(_protocol)
     returns (uint256 current, uint256 previous)
   {
-    if (_protocol == bytes32(0)) revert ZeroArgument();
-    _verifyProtocolExists(_protocol);
-
     return (currentCoverage[_protocol], previousCoverage[_protocol]);
   }
 
