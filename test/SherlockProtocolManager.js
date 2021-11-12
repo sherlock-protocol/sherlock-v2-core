@@ -2,7 +2,7 @@ const { expect } = require('chai');
 const { parseEther, parseUnits } = require('ethers/lib/utils');
 
 const { prepare, deploy, solution, timestamp, Uint16Max, meta } = require('./utilities');
-const { constants } = require('ethers');
+const { constants, BigNumber } = require('ethers');
 const { TimeTraveler } = require('./utilities/snapshot');
 const { id } = require('ethers/lib/utils');
 
@@ -520,11 +520,362 @@ describe('SherlockProtocolManager ─ Functional', function () {
       );
     });
   });
-  describe('protocolRemove()', function () {
-    // could have premium + balance=0 <-- in case remove incentives have failed
-    // could have balance + premium=0 <-- in case premium was set by 0 by gov first
-    // could have balance + premium <-- in case active
+  describe('protocolRemove() b0,p0', function () {
     // could have balance=0 + premium=0 <-- in case never been active (or made to this state)
+    before(async function () {
+      await timeTraveler.revertSnapshot();
+
+      this.t0 = await meta(
+        this.spm.protocolAdd(this.protocolX, this.alice.address, id('t'), parseEther('0.1'), 500),
+      );
+    });
+    it('Initial state', async function () {
+      expect(await this.spm.viewBalancesInternal(this.protocolX)).to.eq(0);
+      expect(await this.spm.viewLastAccountedProtocol(this.protocolX)).to.eq(this.t0.time);
+      expect(await this.spm.viewNonStakersPerBlock(this.protocolX)).to.eq(0);
+      expect(await this.spm.viewNonStakersClaimableStored(this.protocolX)).to.eq(0);
+      expect(await this.spm.viewNonStakersShares(this.protocolX)).to.eq(parseEther('0.1'));
+      expect(await this.spm.viewCurrentCoverage(this.protocolX)).to.eq(500);
+      expect(await this.spm.viewPreviousCoverage(this.protocolX)).to.eq(0);
+
+      expect(await this.spm.viewTotalPremiumPerBlock()).to.eq(0);
+      expect(await this.spm.viewLastAccounted()).to.eq(this.t0.time);
+      expect(await this.spm.viewClaimablePremiumsStored()).to.eq(0);
+
+      expect(await this.spm.protocolAgent(this.protocolX)).to.eq(this.alice.address);
+      expect(await this.spm.balances(this.protocolX)).to.eq(0);
+      expect(await this.spm.nonStakersClaimable(this.protocolX)).to.eq(0);
+      expect(await this.spm.secondsOfCoverageLeft(this.protocolX)).to.eq(0);
+      expect(await this.spm.premiums(this.protocolX)).to.eq(0);
+      const coverageAmounts = await this.spm.coverageAmounts(this.protocolX);
+      expect(coverageAmounts[0]).to.eq(500);
+      expect(coverageAmounts[1]).to.eq(0);
+
+      expect(await this.spm.claimablePremiums()).to.eq(0);
+    });
+    it('Do', async function () {
+      this.t1 = await meta(this.spm.protocolRemove(this.protocolX));
+
+      // events
+      expect(this.t1.events.length).to.eq(3);
+      expect(this.t1.events[0].event).to.eq('ProtocolAgentTransfer');
+      expect(this.t1.events[0].args.protocol).to.eq(this.protocolX);
+      expect(this.t1.events[0].args.from).to.eq(this.alice.address);
+      expect(this.t1.events[0].args.to).to.eq(constants.AddressZero);
+      expect(this.t1.events[1].event).to.eq('ProtocolUpdated');
+      expect(this.t1.events[1].args.protocol).to.eq(this.protocolX);
+      expect(this.t1.events[1].args.coverage).to.eq(constants.HashZero);
+      expect(this.t1.events[1].args.nonStakers).to.eq(0);
+      expect(this.t1.events[1].args.coverageAmount).to.eq(0);
+      expect(this.t1.events[2].event).to.eq('ProtocolRemoved');
+      expect(this.t1.events[2].args.protocol).to.eq(this.protocolX);
+
+      expect(await this.spm.viewBalancesInternal(this.protocolX)).to.eq(0);
+      expect(await this.spm.viewLastAccountedProtocol(this.protocolX)).to.eq(0);
+      expect(await this.spm.viewNonStakersPerBlock(this.protocolX)).to.eq(0);
+      expect(await this.spm.viewNonStakersClaimableStored(this.protocolX)).to.eq(0);
+      expect(await this.spm.viewNonStakersShares(this.protocolX)).to.eq(0);
+      expect(await this.spm.viewCurrentCoverage(this.protocolX)).to.eq(0);
+      expect(await this.spm.viewPreviousCoverage(this.protocolX)).to.eq(0);
+
+      expect(await this.spm.viewTotalPremiumPerBlock()).to.eq(0);
+      expect(await this.spm.viewLastAccounted()).to.eq(this.t1.time);
+      expect(await this.spm.viewClaimablePremiumsStored()).to.eq(0);
+
+      await expect(this.spm.protocolAgent(this.protocolX)).to.be.reverted;
+      await expect(this.spm.balances(this.protocolX)).to.be.reverted;
+      expect(await this.spm.nonStakersClaimable(this.protocolX)).to.eq(0);
+      await expect(this.spm.secondsOfCoverageLeft(this.protocolX)).to.be.reverted;
+      await expect(this.spm.premiums(this.protocolX)).to.be.reverted;
+      await expect(this.spm.coverageAmounts(this.protocolX)).to.be.reverted;
+
+      expect(await this.spm.claimablePremiums()).to.eq(0);
+    });
+  });
+  describe('protocolRemove() b!0,p0', function () {
+    // could have balance + premium=0 <-- in case premium was set by 0 by gov first (or never set)
+    before(async function () {
+      await timeTraveler.revertSnapshot();
+
+      this.t0 = await meta(
+        this.spm.protocolAdd(this.protocolX, this.alice.address, id('t'), parseEther('0.1'), 500),
+      );
+      await this.spm.depositProtocolBalance(this.protocolX, maxTokens);
+    });
+    it('Initial state', async function () {
+      expect(await this.spm.viewBalancesInternal(this.protocolX)).to.eq(maxTokens);
+      expect(await this.spm.viewLastAccountedProtocol(this.protocolX)).to.eq(this.t0.time);
+      expect(await this.spm.viewNonStakersPerBlock(this.protocolX)).to.eq(0);
+      expect(await this.spm.viewNonStakersClaimableStored(this.protocolX)).to.eq(0);
+      expect(await this.spm.viewNonStakersShares(this.protocolX)).to.eq(parseEther('0.1'));
+      expect(await this.spm.viewCurrentCoverage(this.protocolX)).to.eq(500);
+      expect(await this.spm.viewPreviousCoverage(this.protocolX)).to.eq(0);
+
+      expect(await this.spm.viewTotalPremiumPerBlock()).to.eq(0);
+      expect(await this.spm.viewLastAccounted()).to.eq(this.t0.time);
+      expect(await this.spm.viewClaimablePremiumsStored()).to.eq(0);
+
+      expect(await this.spm.protocolAgent(this.protocolX)).to.eq(this.alice.address);
+      expect(await this.spm.balances(this.protocolX)).to.eq(maxTokens);
+      expect(await this.spm.nonStakersClaimable(this.protocolX)).to.eq(0);
+      expect(await this.spm.secondsOfCoverageLeft(this.protocolX)).to.eq(0);
+      expect(await this.spm.premiums(this.protocolX)).to.eq(0);
+      const coverageAmounts = await this.spm.coverageAmounts(this.protocolX);
+      expect(coverageAmounts[0]).to.eq(500);
+      expect(coverageAmounts[1]).to.eq(0);
+
+      expect(await this.spm.claimablePremiums()).to.eq(0);
+
+      expect(await this.ERC20Mock6d.balanceOf(this.alice.address)).to.eq(0);
+    });
+    it('Do', async function () {
+      this.t1 = await meta(this.spm.protocolRemove(this.protocolX));
+
+      // events
+      expect(this.t1.events.length).to.eq(5);
+      expect(this.t1.events[1].event).to.eq('ProtocolBalanceWithdrawn');
+      expect(this.t1.events[1].args.protocol).to.eq(this.protocolX);
+      expect(this.t1.events[1].args.amount).to.eq(maxTokens);
+      expect(this.t1.events[2].event).to.eq('ProtocolAgentTransfer');
+      expect(this.t1.events[2].args.protocol).to.eq(this.protocolX);
+      expect(this.t1.events[2].args.from).to.eq(this.alice.address);
+      expect(this.t1.events[2].args.to).to.eq(constants.AddressZero);
+      expect(this.t1.events[3].event).to.eq('ProtocolUpdated');
+      expect(this.t1.events[3].args.protocol).to.eq(this.protocolX);
+      expect(this.t1.events[3].args.coverage).to.eq(constants.HashZero);
+      expect(this.t1.events[3].args.nonStakers).to.eq(0);
+      expect(this.t1.events[3].args.coverageAmount).to.eq(0);
+      expect(this.t1.events[4].event).to.eq('ProtocolRemoved');
+      expect(this.t1.events[4].args.protocol).to.eq(this.protocolX);
+
+      expect(await this.spm.viewBalancesInternal(this.protocolX)).to.eq(0);
+      expect(await this.spm.viewLastAccountedProtocol(this.protocolX)).to.eq(0);
+      expect(await this.spm.viewNonStakersPerBlock(this.protocolX)).to.eq(0);
+      expect(await this.spm.viewNonStakersClaimableStored(this.protocolX)).to.eq(0);
+      expect(await this.spm.viewNonStakersShares(this.protocolX)).to.eq(0);
+      expect(await this.spm.viewCurrentCoverage(this.protocolX)).to.eq(0);
+      expect(await this.spm.viewPreviousCoverage(this.protocolX)).to.eq(0);
+
+      expect(await this.spm.viewTotalPremiumPerBlock()).to.eq(0);
+      expect(await this.spm.viewLastAccounted()).to.eq(this.t1.time);
+      expect(await this.spm.viewClaimablePremiumsStored()).to.eq(0);
+
+      await expect(this.spm.protocolAgent(this.protocolX)).to.be.reverted;
+      await expect(this.spm.balances(this.protocolX)).to.be.reverted;
+      expect(await this.spm.nonStakersClaimable(this.protocolX)).to.eq(0);
+      await expect(this.spm.secondsOfCoverageLeft(this.protocolX)).to.be.reverted;
+      await expect(this.spm.premiums(this.protocolX)).to.be.reverted;
+      await expect(this.spm.coverageAmounts(this.protocolX)).to.be.reverted;
+
+      expect(await this.spm.claimablePremiums()).to.eq(0);
+
+      expect(await this.ERC20Mock6d.balanceOf(this.alice.address)).to.eq(maxTokens);
+    });
+  });
+  describe('protocolRemove() b!0,p!0', function () {
+    // could have balance + premium <-- in case active
+    before(async function () {
+      this.premium = parseUnits('10', 6);
+      this.premiumStakers = parseUnits('9', 6);
+      this.premiumNonStakers = parseUnits('1', 6);
+
+      await timeTraveler.revertSnapshot();
+
+      this.t0 = await meta(
+        this.spm.protocolAdd(this.protocolX, this.alice.address, id('t'), parseEther('0.1'), 500),
+      );
+      await this.spm.depositProtocolBalance(this.protocolX, maxTokens);
+
+      this.t1 = await meta(this.spm.setProtocolPremium(this.protocolX, this.premium));
+    });
+    it('Initial state', async function () {
+      expect(await this.spm.viewBalancesInternal(this.protocolX)).to.eq(maxTokens);
+      expect(await this.spm.viewLastAccountedProtocol(this.protocolX)).to.eq(this.t1.time);
+      expect(await this.spm.viewNonStakersPerBlock(this.protocolX)).to.eq(this.premiumNonStakers);
+      expect(await this.spm.viewNonStakersClaimableStored(this.protocolX)).to.eq(0);
+      expect(await this.spm.viewNonStakersShares(this.protocolX)).to.eq(parseEther('0.1'));
+      expect(await this.spm.viewCurrentCoverage(this.protocolX)).to.eq(500);
+      expect(await this.spm.viewPreviousCoverage(this.protocolX)).to.eq(0);
+
+      expect(await this.spm.viewTotalPremiumPerBlock()).to.eq(this.premiumStakers);
+      expect(await this.spm.viewLastAccounted()).to.eq(this.t1.time);
+      expect(await this.spm.viewClaimablePremiumsStored()).to.eq(0);
+
+      expect(await this.spm.protocolAgent(this.protocolX)).to.eq(this.alice.address);
+      expect(await this.spm.balances(this.protocolX)).to.eq(maxTokens);
+      expect(await this.spm.nonStakersClaimable(this.protocolX)).to.eq(0);
+      expect(await this.spm.secondsOfCoverageLeft(this.protocolX)).to.eq(
+        maxTokens.div(this.premium),
+      );
+      expect(await this.spm.premiums(this.protocolX)).to.eq(this.premium);
+      const coverageAmounts = await this.spm.coverageAmounts(this.protocolX);
+      expect(coverageAmounts[0]).to.eq(500);
+      expect(coverageAmounts[1]).to.eq(0);
+
+      expect(await this.spm.claimablePremiums()).to.eq(0);
+
+      expect(await this.ERC20Mock6d.balanceOf(this.alice.address)).to.eq(0);
+    });
+    it('Do', async function () {
+      this.t2 = await meta(this.spm.protocolRemove(this.protocolX));
+
+      // events
+      expect(this.t2.events.length).to.eq(6);
+      expect(this.t2.events[0].event).to.eq('ProtocolPremiumChanged');
+      expect(this.t2.events[0].args.oldPremium).to.eq(this.premium);
+      expect(this.t2.events[0].args.newPremium).to.eq(0);
+      expect(this.t2.events[0].args.protocol).to.eq(this.protocolX);
+      expect(this.t2.events[2].event).to.eq('ProtocolBalanceWithdrawn');
+      expect(this.t2.events[2].args.protocol).to.eq(this.protocolX);
+      expect(this.t2.events[2].args.amount).to.eq(maxTokens.sub(this.premium));
+      expect(this.t2.events[3].event).to.eq('ProtocolAgentTransfer');
+      expect(this.t2.events[3].args.protocol).to.eq(this.protocolX);
+      expect(this.t2.events[3].args.from).to.eq(this.alice.address);
+      expect(this.t2.events[3].args.to).to.eq(constants.AddressZero);
+      expect(this.t2.events[4].event).to.eq('ProtocolUpdated');
+      expect(this.t2.events[4].args.protocol).to.eq(this.protocolX);
+      expect(this.t2.events[4].args.coverage).to.eq(constants.HashZero);
+      expect(this.t2.events[4].args.nonStakers).to.eq(0);
+      expect(this.t2.events[4].args.coverageAmount).to.eq(0);
+      expect(this.t2.events[5].event).to.eq('ProtocolRemoved');
+      expect(this.t2.events[5].args.protocol).to.eq(this.protocolX);
+
+      expect(await this.spm.viewBalancesInternal(this.protocolX)).to.eq(0);
+      expect(await this.spm.viewLastAccountedProtocol(this.protocolX)).to.eq(0);
+      expect(await this.spm.viewNonStakersPerBlock(this.protocolX)).to.eq(0);
+      expect(await this.spm.viewNonStakersClaimableStored(this.protocolX)).to.eq(
+        this.premiumNonStakers,
+      );
+      expect(await this.spm.viewNonStakersShares(this.protocolX)).to.eq(0);
+      expect(await this.spm.viewCurrentCoverage(this.protocolX)).to.eq(0);
+      expect(await this.spm.viewPreviousCoverage(this.protocolX)).to.eq(0);
+
+      expect(await this.spm.viewTotalPremiumPerBlock()).to.eq(0);
+      expect(await this.spm.viewLastAccounted()).to.eq(this.t2.time);
+      expect(await this.spm.viewClaimablePremiumsStored()).to.eq(this.premiumStakers);
+
+      await expect(this.spm.protocolAgent(this.protocolX)).to.be.reverted;
+      await expect(this.spm.balances(this.protocolX)).to.be.reverted;
+      expect(await this.spm.nonStakersClaimable(this.protocolX)).to.eq(this.premiumNonStakers);
+      await expect(this.spm.secondsOfCoverageLeft(this.protocolX)).to.be.reverted;
+      await expect(this.spm.premiums(this.protocolX)).to.be.reverted;
+      await expect(this.spm.coverageAmounts(this.protocolX)).to.be.reverted;
+
+      expect(await this.spm.claimablePremiums()).to.eq(this.premiumStakers);
+
+      expect(await this.ERC20Mock6d.balanceOf(this.alice.address)).to.eq(
+        maxTokens.sub(this.premium),
+      );
+    });
+  });
+  describe.only('protocolRemove() b0,p!0', function () {
+    // could have premium + balance=0 <-- in case remove incentives have failed
+    before(async function () {
+      this.premium = parseUnits('10', 6);
+      this.premiumStakers = parseUnits('9', 6);
+      this.premiumNonStakers = parseUnits('1', 6);
+
+      await timeTraveler.revertSnapshot();
+
+      this.t0 = await meta(
+        this.spm.protocolAdd(this.protocolX, this.alice.address, id('t'), parseEther('0.1'), 500),
+      );
+
+      this.balance = this.premium.mul(1000000);
+      this.time = 30000000000000;
+      await this.spm.depositProtocolBalance(this.protocolX, this.balance);
+
+      this.t1 = await meta(this.spm.setProtocolPremium(this.protocolX, this.premium));
+      await hre.network.provider.request({
+        method: 'evm_increaseTime',
+        params: [this.time],
+      });
+      await timeTraveler.mine(1);
+    });
+    it('Initial state', async function () {
+      expect(await this.spm.viewBalancesInternal(this.protocolX)).to.eq(this.balance);
+      expect(await this.spm.viewLastAccountedProtocol(this.protocolX)).to.eq(this.t1.time);
+      expect(await this.spm.viewNonStakersPerBlock(this.protocolX)).to.eq(this.premiumNonStakers);
+      expect(await this.spm.viewNonStakersClaimableStored(this.protocolX)).to.eq(0);
+      expect(await this.spm.viewNonStakersShares(this.protocolX)).to.eq(parseEther('0.1'));
+      expect(await this.spm.viewCurrentCoverage(this.protocolX)).to.eq(500);
+      expect(await this.spm.viewPreviousCoverage(this.protocolX)).to.eq(0);
+
+      expect(await this.spm.viewTotalPremiumPerBlock()).to.eq(this.premiumStakers);
+      expect(await this.spm.viewLastAccounted()).to.eq(this.t1.time);
+      expect(await this.spm.viewClaimablePremiumsStored()).to.eq(0);
+
+      expect(await this.spm.protocolAgent(this.protocolX)).to.eq(this.alice.address);
+      expect(await this.spm.balances(this.protocolX)).to.eq(0);
+      expect(await this.spm.nonStakersClaimable(this.protocolX)).to.eq(this.balance.div(10));
+      expect(await this.spm.secondsOfCoverageLeft(this.protocolX)).to.eq(0);
+      expect(await this.spm.premiums(this.protocolX)).to.eq(this.premium);
+      const coverageAmounts = await this.spm.coverageAmounts(this.protocolX);
+      expect(coverageAmounts[0]).to.eq(500);
+      expect(coverageAmounts[1]).to.eq(0);
+
+      // NOTE this is unwanted side effect
+      // Hence the reason for the incentivized removal of protocols
+      expect(await this.spm.claimablePremiums()).to.eq(
+        BigNumber.from(this.time).mul(this.premiumStakers),
+      );
+
+      expect(await this.ERC20Mock6d.balanceOf(this.alice.address)).to.eq(
+        maxTokens.sub(this.balance),
+      );
+    });
+    it('Do', async function () {
+      this.t2 = await meta(this.spm.protocolRemove(this.protocolX));
+
+      // events
+      expect(this.t2.events.length).to.eq(5);
+      expect(this.t2.events[0].event).to.eq('AccountingError');
+      expect(this.t2.events[0].args.protocol).to.eq(this.protocolX);
+      const accountedAmount = BigNumber.from(this.time + 1).mul(this.premium);
+      expect(this.t2.events[0].args.amount).to.eq(accountedAmount.sub(this.balance));
+      expect(this.t2.events[1].event).to.eq('ProtocolPremiumChanged');
+      expect(this.t2.events[1].args.oldPremium).to.eq(this.premium);
+      expect(this.t2.events[1].args.newPremium).to.eq(0);
+      expect(this.t2.events[1].args.protocol).to.eq(this.protocolX);
+      expect(this.t2.events[2].event).to.eq('ProtocolAgentTransfer');
+      expect(this.t2.events[2].args.protocol).to.eq(this.protocolX);
+      expect(this.t2.events[2].args.from).to.eq(this.alice.address);
+      expect(this.t2.events[2].args.to).to.eq(constants.AddressZero);
+      expect(this.t2.events[3].event).to.eq('ProtocolUpdated');
+      expect(this.t2.events[3].args.protocol).to.eq(this.protocolX);
+      expect(this.t2.events[3].args.coverage).to.eq(constants.HashZero);
+      expect(this.t2.events[3].args.nonStakers).to.eq(0);
+      expect(this.t2.events[3].args.coverageAmount).to.eq(0);
+      expect(this.t2.events[4].event).to.eq('ProtocolRemoved');
+      expect(this.t2.events[4].args.protocol).to.eq(this.protocolX);
+
+      expect(await this.spm.viewBalancesInternal(this.protocolX)).to.eq(0);
+      expect(await this.spm.viewLastAccountedProtocol(this.protocolX)).to.eq(0);
+      expect(await this.spm.viewNonStakersPerBlock(this.protocolX)).to.eq(0);
+      expect(await this.spm.viewNonStakersClaimableStored(this.protocolX)).to.eq(
+        this.balance.div(10),
+      );
+      expect(await this.spm.viewNonStakersShares(this.protocolX)).to.eq(0);
+      expect(await this.spm.viewCurrentCoverage(this.protocolX)).to.eq(0);
+      expect(await this.spm.viewPreviousCoverage(this.protocolX)).to.eq(0);
+
+      expect(await this.spm.viewTotalPremiumPerBlock()).to.eq(0);
+      expect(await this.spm.viewLastAccounted()).to.eq(this.t2.time);
+      expect(await this.spm.viewClaimablePremiumsStored()).to.eq(this.balance.div(10).mul(9));
+
+      await expect(this.spm.protocolAgent(this.protocolX)).to.be.reverted;
+      await expect(this.spm.balances(this.protocolX)).to.be.reverted;
+      expect(await this.spm.nonStakersClaimable(this.protocolX)).to.eq(this.balance.div(10));
+      await expect(this.spm.secondsOfCoverageLeft(this.protocolX)).to.be.reverted;
+      await expect(this.spm.premiums(this.protocolX)).to.be.reverted;
+      await expect(this.spm.coverageAmounts(this.protocolX)).to.be.reverted;
+
+      expect(await this.spm.claimablePremiums()).to.eq(this.balance.div(10).mul(9));
+
+      expect(await this.ERC20Mock6d.balanceOf(this.alice.address)).to.eq(
+        maxTokens.sub(this.balance),
+      );
+    });
   });
   describe('forceRemoveByBalance()', function () {});
   describe('forceRemoveByRemainingCoverage()', function () {});

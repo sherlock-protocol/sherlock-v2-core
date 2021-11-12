@@ -83,11 +83,12 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
 
   function nonStakersClaimable(bytes32 _protocol) external view override returns (uint256) {
     // non stakers can claim rewards after protocol is removed
+    uint256 debt = _calcProtocolDebt(_protocol);
+    uint256 balance = balancesInternal[_protocol];
+    if (debt > balance) debt = balance;
 
     return
-      nonStakersClaimableStored[_protocol] +
-      (block.timestamp - lastAccountedProtocol[_protocol]) *
-      _nonStakersPerblock(_protocol);
+      nonStakersClaimableStored[_protocol] + (nonStakersShares[_protocol] * debt) / HUNDRED_PERCENT;
   }
 
   function claimablePremiums() public view override returns (uint256) {
@@ -179,7 +180,12 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
         // using forceRemoveByBalance and forceRemoveByRemainingCoverage
         // premium should be set to 0 as soon as possible
         // otherise stakers/nonstakers will be disadvantaged
-        emit AccountingError(_protocol, debt - balance);
+        uint256 error = debt - balance;
+        // premiums were optimistically added, subtract them
+        _settleTotalDebt();
+        claimablePremiumsStored -= ((HUNDRED_PERCENT - _nonStakerShares) * error) / HUNDRED_PERCENT;
+
+        emit AccountingError(_protocol, error);
         debt = balance;
       }
       balancesInternal[_protocol] = balance - debt;
@@ -223,6 +229,7 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
     delete nonStakersShares[_protocol];
     delete currentCoverage[_protocol];
     delete previousCoverage[_protocol];
+    delete lastAccountedProtocol[_protocol];
 
     emit ProtocolUpdated(_protocol, bytes32(0), uint256(0), uint256(0));
     emit ProtocolRemoved(_protocol);
