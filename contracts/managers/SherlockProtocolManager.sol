@@ -95,25 +95,36 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
   }
 
   function secondsOfCoverageLeft(bytes32 _protocol)
-    public
+    external
     view
     override
     protocolExists(_protocol)
     returns (uint256)
   {
+    return _secondsOfCoverageLeft(_protocol);
+  }
+
+  function _secondsOfCoverageLeft(bytes32 _protocol) internal view returns (uint256) {
     uint256 premium = premiums_[_protocol];
     if (premium == 0) return 0;
-    return balances(_protocol) / premiums_[_protocol];
+    return _balances(_protocol) / premiums_[_protocol];
   }
 
   function balances(bytes32 _protocol)
-    public
+    external
     view
     override
     protocolExists(_protocol)
     returns (uint256)
   {
-    return balancesInternal[_protocol] - _calcProtocolDebt(_protocol);
+    return _balances(_protocol);
+  }
+
+  function _balances(bytes32 _protocol) internal view returns (uint256) {
+    uint256 debt = _calcProtocolDebt(_protocol);
+    uint256 balance = balancesInternal[_protocol];
+    if (debt > balance) return 0;
+    return balance - debt;
   }
 
   //
@@ -132,7 +143,7 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
       emit ProtocolPremiumChanged(_protocol, oldPremium, _premium);
     }
 
-    if (_premium != 0 && secondsOfCoverageLeft(_protocol) < MIN_SECONDS_LEFT) {
+    if (_premium != 0 && _secondsOfCoverageLeft(_protocol) < MIN_SECONDS_LEFT) {
       revert InsufficientBalance(_protocol);
     }
   }
@@ -322,7 +333,7 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
   function forceRemoveByBalance(bytes32 _protocol) external override {
     address agent = _verifyProtocolExists(_protocol);
 
-    uint256 remainingBalance = balances(_protocol);
+    uint256 remainingBalance = _balances(_protocol);
     if (remainingBalance >= minBalance) revert InvalidConditions();
     if (remainingBalance != 0) {
       token.safeTransfer(msg.sender, remainingBalance);
@@ -335,11 +346,11 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
   function forceRemoveByRemainingCoverage(bytes32 _protocol) external override {
     address agent = _verifyProtocolExists(_protocol);
 
-    uint256 percentageScaled = (secondsOfCoverageLeft(_protocol) * HUNDRED_PERCENT) /
+    uint256 percentageScaled = (_secondsOfCoverageLeft(_protocol) * HUNDRED_PERCENT) /
       minSecondsOfCoverage;
     if (percentageScaled > HUNDRED_PERCENT) revert InvalidConditions();
 
-    uint256 arbAmount = (balances(_protocol) * percentageScaled) / HUNDRED_PERCENT;
+    uint256 arbAmount = (_balances(_protocol) * percentageScaled) / HUNDRED_PERCENT;
     if (arbAmount > 0) {
       token.safeTransfer(msg.sender, arbAmount);
     }
@@ -402,7 +413,7 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
     if (_amount > currentBalance) revert InsufficientBalance(_protocol);
 
     balancesInternal[_protocol] = currentBalance - _amount;
-    if (secondsOfCoverageLeft(_protocol) < MIN_SECONDS_LEFT) revert InsufficientBalance(_protocol);
+    if (_secondsOfCoverageLeft(_protocol) < MIN_SECONDS_LEFT) revert InsufficientBalance(_protocol);
 
     token.safeTransfer(msg.sender, _amount);
     emit ProtocolBalanceWithdrawn(_protocol, _amount);
