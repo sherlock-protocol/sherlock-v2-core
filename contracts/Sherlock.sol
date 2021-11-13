@@ -159,7 +159,7 @@ contract Sherlock is ISherlock, ERC721, Ownable {
   //
 
   function payout(address _receiver, uint256 _amount) external override {
-    require(msg.sender == address(sherlockProtocolManager), 'manager');
+    require(msg.sender == address(sherlockClaimManager), 'manager');
     _transferOut(_receiver, _amount);
   }
 
