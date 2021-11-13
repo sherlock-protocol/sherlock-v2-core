@@ -7,7 +7,7 @@ const { TimeTraveler } = require('./utilities/snapshot');
 const { id } = require('ethers/lib/utils');
 
 const maxTokens = parseUnits('1000000000000000000', 6);
-
+const days7 = 60 * 60 * 24 * 7;
 describe('SherlockProtocolManager ─ Stateless', function () {
   before(async function () {
     await prepare(this, ['SherlockProtocolManagerTest', 'ERC20Mock6d', 'SherlockMock']);
@@ -328,6 +328,10 @@ describe('SherlockProtocolManager ─ Functional', function () {
       expect(await this.spm.viewLastAccounted()).to.eq(0);
       expect(await this.spm.viewClaimablePremiumsStored()).to.eq(0);
 
+      expect(await this.spm.viewProtocolAgent(this.protocolX)).to.eq(constants.AddressZero);
+      expect(await this.spm.viewRemovedProtocolAgent(this.protocolX)).to.eq(constants.AddressZero);
+      expect(await this.spm.viewRemovedProtocolValidUntil(this.protocolX)).to.eq(0);
+
       await expect(this.spm.protocolAgent(this.protocolX)).to.be.reverted;
       await expect(this.spm.balances(this.protocolX)).to.be.reverted;
       expect(await this.spm.nonStakersClaimable(this.protocolX)).to.eq(0);
@@ -366,6 +370,105 @@ describe('SherlockProtocolManager ─ Functional', function () {
       expect(await this.spm.viewTotalPremiumPerBlock()).to.eq(0);
       expect(await this.spm.viewLastAccounted()).to.eq(this.t0.time);
       expect(await this.spm.viewClaimablePremiumsStored()).to.eq(0);
+
+      expect(await this.spm.viewProtocolAgent(this.protocolX)).to.eq(this.alice.address);
+      expect(await this.spm.viewRemovedProtocolAgent(this.protocolX)).to.eq(constants.AddressZero);
+      expect(await this.spm.viewRemovedProtocolValidUntil(this.protocolX)).to.eq(0);
+
+      expect(await this.spm.protocolAgent(this.protocolX)).to.eq(this.alice.address);
+      expect(await this.spm.balances(this.protocolX)).to.eq(0);
+      expect(await this.spm.nonStakersClaimable(this.protocolX)).to.eq(0);
+      expect(await this.spm.secondsOfCoverageLeft(this.protocolX)).to.eq(0);
+      expect(await this.spm.premiums(this.protocolX)).to.eq(0);
+      const coverageAmounts = await this.spm.coverageAmounts(this.protocolX);
+      expect(coverageAmounts[0]).to.eq(500);
+      expect(coverageAmounts[1]).to.eq(0);
+
+      expect(await this.spm.claimablePremiums()).to.eq(0);
+    });
+    it('Do again', async function () {
+      await expect(
+        this.spm.protocolAdd(this.protocolX, this.alice.address, id('t'), parseEther('0.1'), 500),
+      ).to.be.revertedWith('InvalidConditions()');
+    });
+  });
+  describe('protocolAdd() - readd', function () {
+    before(async function () {
+      await timeTraveler.revertSnapshot();
+
+      await this.spm.protocolAdd(
+        this.protocolX,
+        this.alice.address,
+        id('t'),
+        parseEther('0.1'),
+        500,
+      );
+      await this.spm.protocolUpdate(this.protocolX, id('tx'), parseEther('0.2'), 1500);
+      this.t0 = await meta(this.spm.protocolRemove(this.protocolX));
+    });
+    it('Initial state', async function () {
+      expect(await this.spm.viewBalancesInternal(this.protocolX)).to.eq(0);
+      expect(await this.spm.viewLastAccountedProtocol(this.protocolX)).to.eq(0);
+      expect(await this.spm.viewNonStakersClaimableStored(this.protocolX)).to.eq(0);
+      expect(await this.spm.viewNonStakersShares(this.protocolX)).to.eq(0);
+      expect(await this.spm.viewCurrentCoverage(this.protocolX)).to.eq(1500);
+      expect(await this.spm.viewPreviousCoverage(this.protocolX)).to.eq(500);
+
+      expect(await this.spm.viewTotalPremiumPerBlock()).to.eq(0);
+      expect(await this.spm.viewLastAccounted()).to.eq(this.t0.time);
+      expect(await this.spm.viewClaimablePremiumsStored()).to.eq(0);
+
+      expect(await this.spm.viewProtocolAgent(this.protocolX)).to.eq(constants.AddressZero);
+      expect(await this.spm.viewRemovedProtocolAgent(this.protocolX)).to.eq(this.alice.address);
+      expect(await this.spm.viewRemovedProtocolValidUntil(this.protocolX)).to.eq(
+        this.t0.time.add(days7),
+      );
+
+      expect(await this.spm.protocolAgent(this.protocolX)).to.eq(this.alice.address);
+      await expect(this.spm.balances(this.protocolX)).to.be.reverted;
+      expect(await this.spm.nonStakersClaimable(this.protocolX)).to.eq(0);
+      await expect(this.spm.secondsOfCoverageLeft(this.protocolX)).to.be.reverted;
+      await expect(this.spm.premiums(this.protocolX)).to.be.reverted;
+      const coverageAmounts = await this.spm.coverageAmounts(this.protocolX);
+      expect(coverageAmounts[0]).to.eq(1500);
+      expect(coverageAmounts[1]).to.eq(500);
+
+      expect(await this.spm.claimablePremiums()).to.eq(0);
+    });
+    it('Do', async function () {
+      // same as normal add, removed variables are gone
+      this.t0 = await meta(
+        this.spm.protocolAdd(this.protocolX, this.alice.address, id('t'), parseEther('0.1'), 500),
+      );
+
+      // events
+      expect(this.t0.events.length).to.eq(3);
+      expect(this.t0.events[0].event).to.eq('ProtocolAgentTransfer');
+      expect(this.t0.events[0].args.protocol).to.eq(this.protocolX);
+      expect(this.t0.events[0].args.from).to.eq(constants.AddressZero);
+      expect(this.t0.events[0].args.to).to.eq(this.alice.address);
+      expect(this.t0.events[1].event).to.eq('ProtocolAdded');
+      expect(this.t0.events[1].args.protocol).to.eq(this.protocolX);
+      expect(this.t0.events[2].event).to.eq('ProtocolUpdated');
+      expect(this.t0.events[2].args.protocol).to.eq(this.protocolX);
+      expect(this.t0.events[2].args.coverage).to.eq(id('t'));
+      expect(this.t0.events[2].args.nonStakers).to.eq(parseEther('0.1'));
+      expect(this.t0.events[2].args.coverageAmount).to.eq(500);
+
+      expect(await this.spm.viewBalancesInternal(this.protocolX)).to.eq(0);
+      expect(await this.spm.viewLastAccountedProtocol(this.protocolX)).to.eq(this.t0.time);
+      expect(await this.spm.viewNonStakersClaimableStored(this.protocolX)).to.eq(0);
+      expect(await this.spm.viewNonStakersShares(this.protocolX)).to.eq(parseEther('0.1'));
+      expect(await this.spm.viewCurrentCoverage(this.protocolX)).to.eq(500);
+      expect(await this.spm.viewPreviousCoverage(this.protocolX)).to.eq(0);
+
+      expect(await this.spm.viewTotalPremiumPerBlock()).to.eq(0);
+      expect(await this.spm.viewLastAccounted()).to.eq(this.t0.time);
+      expect(await this.spm.viewClaimablePremiumsStored()).to.eq(0);
+
+      expect(await this.spm.viewProtocolAgent(this.protocolX)).to.eq(this.alice.address);
+      expect(await this.spm.viewRemovedProtocolAgent(this.protocolX)).to.eq(constants.AddressZero);
+      expect(await this.spm.viewRemovedProtocolValidUntil(this.protocolX)).to.eq(0);
 
       expect(await this.spm.protocolAgent(this.protocolX)).to.eq(this.alice.address);
       expect(await this.spm.balances(this.protocolX)).to.eq(0);
@@ -410,6 +513,10 @@ describe('SherlockProtocolManager ─ Functional', function () {
       expect(await this.spm.viewTotalPremiumPerBlock()).to.eq(this.premiumStakers);
       expect(await this.spm.viewLastAccounted()).to.eq(this.t1.time);
       expect(await this.spm.viewClaimablePremiumsStored()).to.eq(0);
+
+      expect(await this.spm.viewProtocolAgent(this.protocolX)).to.eq(this.alice.address);
+      expect(await this.spm.viewRemovedProtocolAgent(this.protocolX)).to.eq(constants.AddressZero);
+      expect(await this.spm.viewRemovedProtocolValidUntil(this.protocolX)).to.eq(0);
 
       expect(await this.spm.protocolAgent(this.protocolX)).to.eq(this.alice.address);
       expect(await this.spm.balances(this.protocolX)).to.eq(maxTokens.sub(this.premium.mul(10)));
@@ -458,6 +565,10 @@ describe('SherlockProtocolManager ─ Functional', function () {
       expect(await this.spm.viewLastAccounted()).to.eq(this.t2.time);
       expect(await this.spm.viewClaimablePremiumsStored()).to.eq(this.premiumStakers.mul(11));
 
+      expect(await this.spm.viewProtocolAgent(this.protocolX)).to.eq(this.alice.address);
+      expect(await this.spm.viewRemovedProtocolAgent(this.protocolX)).to.eq(constants.AddressZero);
+      expect(await this.spm.viewRemovedProtocolValidUntil(this.protocolX)).to.eq(0);
+
       expect(await this.spm.protocolAgent(this.protocolX)).to.eq(this.alice.address);
       expect(await this.spm.balances(this.protocolX)).to.eq(maxTokens.sub(this.premium.mul(11)));
       expect(await this.spm.nonStakersClaimable(this.protocolX)).to.eq(
@@ -490,6 +601,10 @@ describe('SherlockProtocolManager ─ Functional', function () {
       expect(await this.spm.viewTotalPremiumPerBlock()).to.eq(this.newPremiumStakers);
       expect(await this.spm.viewLastAccounted()).to.eq(this.t2.time);
       expect(await this.spm.viewClaimablePremiumsStored()).to.eq(this.premiumStakers.mul(11));
+
+      expect(await this.spm.viewProtocolAgent(this.protocolX)).to.eq(this.alice.address);
+      expect(await this.spm.viewRemovedProtocolAgent(this.protocolX)).to.eq(constants.AddressZero);
+      expect(await this.spm.viewRemovedProtocolValidUntil(this.protocolX)).to.eq(0);
 
       expect(await this.spm.protocolAgent(this.protocolX)).to.eq(this.alice.address);
       expect(await this.spm.balances(this.protocolX)).to.eq(
@@ -532,6 +647,10 @@ describe('SherlockProtocolManager ─ Functional', function () {
       expect(await this.spm.viewLastAccounted()).to.eq(this.t0.time);
       expect(await this.spm.viewClaimablePremiumsStored()).to.eq(0);
 
+      expect(await this.spm.viewProtocolAgent(this.protocolX)).to.eq(this.alice.address);
+      expect(await this.spm.viewRemovedProtocolAgent(this.protocolX)).to.eq(constants.AddressZero);
+      expect(await this.spm.viewRemovedProtocolValidUntil(this.protocolX)).to.eq(0);
+
       expect(await this.spm.protocolAgent(this.protocolX)).to.eq(this.alice.address);
       expect(await this.spm.balances(this.protocolX)).to.eq(0);
       expect(await this.spm.nonStakersClaimable(this.protocolX)).to.eq(0);
@@ -564,12 +683,53 @@ describe('SherlockProtocolManager ─ Functional', function () {
       expect(await this.spm.viewLastAccountedProtocol(this.protocolX)).to.eq(0);
       expect(await this.spm.viewNonStakersClaimableStored(this.protocolX)).to.eq(0);
       expect(await this.spm.viewNonStakersShares(this.protocolX)).to.eq(0);
-      expect(await this.spm.viewCurrentCoverage(this.protocolX)).to.eq(0);
+      expect(await this.spm.viewCurrentCoverage(this.protocolX)).to.eq(500);
       expect(await this.spm.viewPreviousCoverage(this.protocolX)).to.eq(0);
 
       expect(await this.spm.viewTotalPremiumPerBlock()).to.eq(0);
       expect(await this.spm.viewLastAccounted()).to.eq(this.t1.time);
       expect(await this.spm.viewClaimablePremiumsStored()).to.eq(0);
+
+      expect(await this.spm.viewProtocolAgent(this.protocolX)).to.eq(constants.AddressZero);
+      expect(await this.spm.viewRemovedProtocolAgent(this.protocolX)).to.eq(this.alice.address);
+      expect(await this.spm.viewRemovedProtocolValidUntil(this.protocolX)).to.eq(
+        this.t1.time.add(days7),
+      );
+
+      expect(await this.spm.protocolAgent(this.protocolX)).to.eq(this.alice.address);
+      await expect(this.spm.balances(this.protocolX)).to.be.reverted;
+      expect(await this.spm.nonStakersClaimable(this.protocolX)).to.eq(0);
+      await expect(this.spm.secondsOfCoverageLeft(this.protocolX)).to.be.reverted;
+      await expect(this.spm.premiums(this.protocolX)).to.be.reverted;
+      const coverageAmounts = await this.spm.coverageAmounts(this.protocolX);
+      expect(coverageAmounts[0]).to.eq(500);
+      expect(coverageAmounts[1]).to.eq(0);
+
+      expect(await this.spm.claimablePremiums()).to.eq(0);
+    });
+    it('After 7 days', async function () {
+      await hre.network.provider.request({
+        method: 'evm_increaseTime',
+        params: [days7],
+      });
+      await timeTraveler.mine(2);
+
+      expect(await this.spm.viewBalancesInternal(this.protocolX)).to.eq(0);
+      expect(await this.spm.viewLastAccountedProtocol(this.protocolX)).to.eq(0);
+      expect(await this.spm.viewNonStakersClaimableStored(this.protocolX)).to.eq(0);
+      expect(await this.spm.viewNonStakersShares(this.protocolX)).to.eq(0);
+      expect(await this.spm.viewCurrentCoverage(this.protocolX)).to.eq(500);
+      expect(await this.spm.viewPreviousCoverage(this.protocolX)).to.eq(0);
+
+      expect(await this.spm.viewTotalPremiumPerBlock()).to.eq(0);
+      expect(await this.spm.viewLastAccounted()).to.eq(this.t1.time);
+      expect(await this.spm.viewClaimablePremiumsStored()).to.eq(0);
+
+      expect(await this.spm.viewProtocolAgent(this.protocolX)).to.eq(constants.AddressZero);
+      expect(await this.spm.viewRemovedProtocolAgent(this.protocolX)).to.eq(this.alice.address);
+      expect(await this.spm.viewRemovedProtocolValidUntil(this.protocolX)).to.eq(
+        this.t1.time.add(days7),
+      );
 
       await expect(this.spm.protocolAgent(this.protocolX)).to.be.reverted;
       await expect(this.spm.balances(this.protocolX)).to.be.reverted;
@@ -602,6 +762,10 @@ describe('SherlockProtocolManager ─ Functional', function () {
       expect(await this.spm.viewTotalPremiumPerBlock()).to.eq(0);
       expect(await this.spm.viewLastAccounted()).to.eq(this.t0.time);
       expect(await this.spm.viewClaimablePremiumsStored()).to.eq(0);
+
+      expect(await this.spm.viewProtocolAgent(this.protocolX)).to.eq(this.alice.address);
+      expect(await this.spm.viewRemovedProtocolAgent(this.protocolX)).to.eq(constants.AddressZero);
+      expect(await this.spm.viewRemovedProtocolValidUntil(this.protocolX)).to.eq(0);
 
       expect(await this.spm.protocolAgent(this.protocolX)).to.eq(this.alice.address);
       expect(await this.spm.balances(this.protocolX)).to.eq(maxTokens);
@@ -640,19 +804,27 @@ describe('SherlockProtocolManager ─ Functional', function () {
       expect(await this.spm.viewLastAccountedProtocol(this.protocolX)).to.eq(0);
       expect(await this.spm.viewNonStakersClaimableStored(this.protocolX)).to.eq(0);
       expect(await this.spm.viewNonStakersShares(this.protocolX)).to.eq(0);
-      expect(await this.spm.viewCurrentCoverage(this.protocolX)).to.eq(0);
+      expect(await this.spm.viewCurrentCoverage(this.protocolX)).to.eq(500);
       expect(await this.spm.viewPreviousCoverage(this.protocolX)).to.eq(0);
 
       expect(await this.spm.viewTotalPremiumPerBlock()).to.eq(0);
       expect(await this.spm.viewLastAccounted()).to.eq(this.t1.time);
       expect(await this.spm.viewClaimablePremiumsStored()).to.eq(0);
 
-      await expect(this.spm.protocolAgent(this.protocolX)).to.be.reverted;
+      expect(await this.spm.viewProtocolAgent(this.protocolX)).to.eq(constants.AddressZero);
+      expect(await this.spm.viewRemovedProtocolAgent(this.protocolX)).to.eq(this.alice.address);
+      expect(await this.spm.viewRemovedProtocolValidUntil(this.protocolX)).to.eq(
+        this.t1.time.add(days7),
+      );
+
+      expect(await this.spm.protocolAgent(this.protocolX)).to.eq(this.alice.address);
       await expect(this.spm.balances(this.protocolX)).to.be.reverted;
       expect(await this.spm.nonStakersClaimable(this.protocolX)).to.eq(0);
       await expect(this.spm.secondsOfCoverageLeft(this.protocolX)).to.be.reverted;
       await expect(this.spm.premiums(this.protocolX)).to.be.reverted;
-      await expect(this.spm.coverageAmounts(this.protocolX)).to.be.reverted;
+      const coverageAmounts = await this.spm.coverageAmounts(this.protocolX);
+      expect(coverageAmounts[0]).to.eq(500);
+      expect(coverageAmounts[1]).to.eq(0);
 
       expect(await this.spm.claimablePremiums()).to.eq(0);
 
@@ -686,6 +858,10 @@ describe('SherlockProtocolManager ─ Functional', function () {
       expect(await this.spm.viewTotalPremiumPerBlock()).to.eq(this.premiumStakers);
       expect(await this.spm.viewLastAccounted()).to.eq(this.t1.time);
       expect(await this.spm.viewClaimablePremiumsStored()).to.eq(0);
+
+      expect(await this.spm.viewProtocolAgent(this.protocolX)).to.eq(this.alice.address);
+      expect(await this.spm.viewRemovedProtocolAgent(this.protocolX)).to.eq(constants.AddressZero);
+      expect(await this.spm.viewRemovedProtocolValidUntil(this.protocolX)).to.eq(0);
 
       expect(await this.spm.protocolAgent(this.protocolX)).to.eq(this.alice.address);
       expect(await this.spm.balances(this.protocolX)).to.eq(maxTokens);
@@ -732,19 +908,27 @@ describe('SherlockProtocolManager ─ Functional', function () {
         this.premiumNonStakers,
       );
       expect(await this.spm.viewNonStakersShares(this.protocolX)).to.eq(0);
-      expect(await this.spm.viewCurrentCoverage(this.protocolX)).to.eq(0);
+      expect(await this.spm.viewCurrentCoverage(this.protocolX)).to.eq(500);
       expect(await this.spm.viewPreviousCoverage(this.protocolX)).to.eq(0);
 
       expect(await this.spm.viewTotalPremiumPerBlock()).to.eq(0);
       expect(await this.spm.viewLastAccounted()).to.eq(this.t2.time);
       expect(await this.spm.viewClaimablePremiumsStored()).to.eq(this.premiumStakers);
 
-      await expect(this.spm.protocolAgent(this.protocolX)).to.be.reverted;
+      expect(await this.spm.viewProtocolAgent(this.protocolX)).to.eq(constants.AddressZero);
+      expect(await this.spm.viewRemovedProtocolAgent(this.protocolX)).to.eq(this.alice.address);
+      expect(await this.spm.viewRemovedProtocolValidUntil(this.protocolX)).to.eq(
+        this.t2.time.add(days7),
+      );
+
+      expect(await this.spm.protocolAgent(this.protocolX)).to.eq(this.alice.address);
       await expect(this.spm.balances(this.protocolX)).to.be.reverted;
       expect(await this.spm.nonStakersClaimable(this.protocolX)).to.eq(this.premiumNonStakers);
       await expect(this.spm.secondsOfCoverageLeft(this.protocolX)).to.be.reverted;
       await expect(this.spm.premiums(this.protocolX)).to.be.reverted;
-      await expect(this.spm.coverageAmounts(this.protocolX)).to.be.reverted;
+      const coverageAmounts = await this.spm.coverageAmounts(this.protocolX);
+      expect(coverageAmounts[0]).to.eq(500);
+      expect(coverageAmounts[1]).to.eq(0);
 
       expect(await this.spm.claimablePremiums()).to.eq(this.premiumStakers);
 
@@ -788,6 +972,10 @@ describe('SherlockProtocolManager ─ Functional', function () {
       expect(await this.spm.viewTotalPremiumPerBlock()).to.eq(this.premiumStakers);
       expect(await this.spm.viewLastAccounted()).to.eq(this.t1.time);
       expect(await this.spm.viewClaimablePremiumsStored()).to.eq(0);
+
+      expect(await this.spm.viewProtocolAgent(this.protocolX)).to.eq(this.alice.address);
+      expect(await this.spm.viewRemovedProtocolAgent(this.protocolX)).to.eq(constants.AddressZero);
+      expect(await this.spm.viewRemovedProtocolValidUntil(this.protocolX)).to.eq(0);
 
       expect(await this.spm.protocolAgent(this.protocolX)).to.eq(this.alice.address);
       expect(await this.spm.balances(this.protocolX)).to.eq(0);
@@ -839,19 +1027,27 @@ describe('SherlockProtocolManager ─ Functional', function () {
         this.balance.div(10),
       );
       expect(await this.spm.viewNonStakersShares(this.protocolX)).to.eq(0);
-      expect(await this.spm.viewCurrentCoverage(this.protocolX)).to.eq(0);
+      expect(await this.spm.viewCurrentCoverage(this.protocolX)).to.eq(500);
       expect(await this.spm.viewPreviousCoverage(this.protocolX)).to.eq(0);
 
       expect(await this.spm.viewTotalPremiumPerBlock()).to.eq(0);
       expect(await this.spm.viewLastAccounted()).to.eq(this.t2.time);
       expect(await this.spm.viewClaimablePremiumsStored()).to.eq(this.balance.div(10).mul(9));
 
-      await expect(this.spm.protocolAgent(this.protocolX)).to.be.reverted;
+      expect(await this.spm.viewProtocolAgent(this.protocolX)).to.eq(constants.AddressZero);
+      expect(await this.spm.viewRemovedProtocolAgent(this.protocolX)).to.eq(this.alice.address);
+      expect(await this.spm.viewRemovedProtocolValidUntil(this.protocolX)).to.eq(
+        this.t2.time.add(days7),
+      );
+
+      expect(await this.spm.protocolAgent(this.protocolX)).to.eq(this.alice.address);
       await expect(this.spm.balances(this.protocolX)).to.be.reverted;
       expect(await this.spm.nonStakersClaimable(this.protocolX)).to.eq(this.balance.div(10));
       await expect(this.spm.secondsOfCoverageLeft(this.protocolX)).to.be.reverted;
       await expect(this.spm.premiums(this.protocolX)).to.be.reverted;
-      await expect(this.spm.coverageAmounts(this.protocolX)).to.be.reverted;
+      const coverageAmounts = await this.spm.coverageAmounts(this.protocolX);
+      expect(coverageAmounts[0]).to.eq(500);
+      expect(coverageAmounts[1]).to.eq(0);
 
       expect(await this.spm.claimablePremiums()).to.eq(this.balance.div(10).mul(9));
 

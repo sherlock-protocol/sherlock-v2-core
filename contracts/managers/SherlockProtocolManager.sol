@@ -15,6 +15,7 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
   using SafeERC20 for IERC20;
   IERC20 immutable token;
 
+  uint256 constant PROTOCOL_CLAIM_DEADLINE = 7 days;
   uint256 constant MIN_SECONDS_LEFT = 3 days;
   uint256 constant HUNDRED_PERCENT = 10**18;
 
@@ -33,6 +34,8 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
   uint256 public override minBalance; // @todo make constant?
   uint256 public override minSecondsOfCoverage; // @todo make constant?
 
+  mapping(bytes32 => uint256) removedProtocolValidUntil;
+  mapping(bytes32 => address) removedProtocolAgent;
   mapping(bytes32 => uint256) currentCoverage;
   mapping(bytes32 => uint256) previousCoverage;
 
@@ -45,14 +48,16 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
     _;
   }
 
-  function protocolAgent(bytes32 _protocol)
-    external
-    view
-    override
-    protocolExists(_protocol)
-    returns (address)
-  {
-    return protocolAgent_[_protocol];
+  function protocolAgent(bytes32 _protocol) external view override returns (address) {
+    address agent = protocolAgent_[_protocol];
+    if (agent != address(0)) return agent;
+
+    // Note old protocol agent will never be address(0)
+    if (block.timestamp <= removedProtocolValidUntil[_protocol]) {
+      return removedProtocolAgent[_protocol];
+    }
+
+    revert ProtocolNotExists(_protocol);
   }
 
   function premiums(bytes32 _protocol)
@@ -223,9 +228,9 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
 
     _setProtocolAgent(_protocol, _agent, address(0));
     delete nonStakersShares[_protocol];
-    delete currentCoverage[_protocol];
-    delete previousCoverage[_protocol];
     delete lastAccountedProtocol[_protocol];
+    removedProtocolValidUntil[_protocol] = block.timestamp + PROTOCOL_CLAIM_DEADLINE;
+    removedProtocolAgent[_protocol] = _agent;
 
     emit ProtocolUpdated(_protocol, bytes32(0), uint256(0), uint256(0));
     emit ProtocolRemoved(_protocol);
@@ -275,10 +280,16 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
     external
     view
     override
-    protocolExists(_protocol)
     returns (uint256 current, uint256 previous)
   {
-    return (currentCoverage[_protocol], previousCoverage[_protocol]);
+    if (
+      protocolAgent_[_protocol] != address(0) ||
+      block.timestamp <= removedProtocolValidUntil[_protocol]
+    ) {
+      return (currentCoverage[_protocol], previousCoverage[_protocol]);
+    }
+
+    revert ProtocolNotExists(_protocol);
   }
 
   function protocolAdd(
@@ -290,8 +301,16 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
   ) external override onlyOwner {
     if (_protocol == bytes32(0)) revert ZeroArgument();
     if (_protocolAgent == address(0)) revert ZeroArgument();
+    if (protocolAgent_[_protocol] != address(0)) revert InvalidConditions();
 
     _setProtocolAgent(_protocol, address(0), _protocolAgent);
+
+    // Delete mappings that are potentially non default values
+    // From previous time protocol was added/removed
+    delete removedProtocolValidUntil[_protocol];
+    delete removedProtocolAgent[_protocol];
+    delete currentCoverage[_protocol];
+    delete previousCoverage[_protocol];
 
     emit ProtocolAdded(_protocol);
     protocolUpdate(_protocol, _coverage, _nonStakers, _coverageAmount);
