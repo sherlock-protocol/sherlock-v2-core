@@ -184,6 +184,12 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
         uint256 error = debt - balance;
         // premiums were optimistically added, subtract them
         _settleTotalDebt();
+        // @todo this subtraction can fail in the case the except premium is already claimed
+        // try to subtract or set variable to 0
+        // have extra value in accountingerror (USDC missing), with USDC that needs to be deposited to make accountin work again
+        // @note to production, set premium first to zero before solving accounting issue.
+        // otherwise the accounting error keeps increasing
+        // @todo write test for this case
         claimablePremiumsStored -= ((HUNDRED_PERCENT - _nonStakerShares) * error) / HUNDRED_PERCENT;
 
         emit AccountingError(_protocol, error);
@@ -237,10 +243,12 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
   }
 
   function setMinBalance(uint256 _minBalance) external override onlyOwner {
+    // @todo emit event
     minBalance = _minBalance;
   }
 
   function setMinSecondsOfCoverage(uint256 _minSeconds) external override onlyOwner {
+    // @todo emit event
     minSecondsOfCoverage = _minSeconds;
   }
 
@@ -355,10 +363,13 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
   function forceRemoveByBalance(bytes32 _protocol) external override {
     address agent = _verifyProtocolExists(_protocol);
 
-    uint256 remainingBalance = _balances(_protocol);
+    _settleProtocolDebt(_protocol);
+    uint256 remainingBalance = balancesInternal[_protocol];
+
     if (remainingBalance >= minBalance) revert InvalidConditions();
     if (remainingBalance != 0) {
       token.safeTransfer(msg.sender, remainingBalance);
+      balancesInternal[_protocol] = 0;
     }
 
     _forceRemoveProtocol(_protocol, agent);
@@ -372,9 +383,13 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
       minSecondsOfCoverage;
     if (percentageScaled > HUNDRED_PERCENT) revert InvalidConditions();
 
-    uint256 arbAmount = (_balances(_protocol) * percentageScaled) / HUNDRED_PERCENT;
-    if (arbAmount > 0) {
+    _settleProtocolDebt(_protocol);
+    uint256 remainingBalance = balancesInternal[_protocol];
+
+    uint256 arbAmount = (remainingBalance * percentageScaled) / HUNDRED_PERCENT;
+    if (arbAmount != 0) {
       token.safeTransfer(msg.sender, arbAmount);
+      balancesInternal[_protocol] -= arbAmount;
     }
 
     _forceRemoveProtocol(_protocol, agent);

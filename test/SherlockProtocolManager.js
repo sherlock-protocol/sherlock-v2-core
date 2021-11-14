@@ -1056,7 +1056,323 @@ describe('SherlockProtocolManager ─ Functional', function () {
       );
     });
   });
-  describe('forceRemoveByBalance()', function () {});
+  describe('forceRemoveByBalance()', function () {
+    before(async function () {
+      this.premium = parseUnits('10', 6);
+      this.premiumStakers = parseUnits('9', 6);
+      this.premiumNonStakers = parseUnits('1', 6);
+      this.balanceMultiplier = BigNumber.from(100000);
+
+      this.minBalance = this.premium.mul(this.balanceMultiplier);
+
+      await timeTraveler.revertSnapshot();
+
+      await this.spm.setMinBalance(this.minBalance);
+
+      this.t0 = await meta(
+        this.spm.protocolAdd(this.protocolX, this.alice.address, id('t'), parseEther('0.1'), 500),
+      );
+      await this.spm.depositProtocolBalance(this.protocolX, this.minBalance.mul(11));
+
+      this.t1 = await meta(this.spm.setProtocolPremium(this.protocolX, this.premium));
+    });
+    it('Initial state', async function () {
+      expect(await this.spm.viewBalancesInternal(this.protocolX)).to.eq(this.minBalance.mul(11));
+      expect(await this.spm.viewLastAccountedProtocol(this.protocolX)).to.eq(this.t1.time);
+      expect(await this.spm.viewNonStakersClaimableStored(this.protocolX)).to.eq(0);
+      expect(await this.spm.viewNonStakersShares(this.protocolX)).to.eq(parseEther('0.1'));
+      expect(await this.spm.viewCurrentCoverage(this.protocolX)).to.eq(500);
+      expect(await this.spm.viewPreviousCoverage(this.protocolX)).to.eq(0);
+
+      expect(await this.spm.viewTotalPremiumPerBlock()).to.eq(this.premiumStakers);
+      expect(await this.spm.viewLastAccounted()).to.eq(this.t1.time);
+      expect(await this.spm.viewClaimablePremiumsStored()).to.eq(0);
+
+      expect(await this.spm.viewProtocolAgent(this.protocolX)).to.eq(this.alice.address);
+      expect(await this.spm.viewRemovedProtocolAgent(this.protocolX)).to.eq(constants.AddressZero);
+      expect(await this.spm.viewRemovedProtocolValidUntil(this.protocolX)).to.eq(0);
+
+      expect(await this.spm.protocolAgent(this.protocolX)).to.eq(this.alice.address);
+      expect(await this.spm.balances(this.protocolX)).to.eq(this.minBalance.mul(11));
+      expect(await this.spm.nonStakersClaimable(this.protocolX)).to.eq(0);
+      expect(await this.spm.secondsOfCoverageLeft(this.protocolX)).to.eq(
+        this.minBalance.mul(11).div(this.premium),
+      );
+      expect(await this.spm.premiums(this.protocolX)).to.eq(this.premium);
+      const coverageAmounts = await this.spm.coverageAmounts(this.protocolX);
+      expect(coverageAmounts[0]).to.eq(500);
+      expect(coverageAmounts[1]).to.eq(0);
+
+      expect(await this.spm.claimablePremiums()).to.eq(0);
+
+      expect(await this.ERC20Mock6d.balanceOf(this.alice.address)).to.eq(
+        maxTokens.sub(this.minBalance.mul(11)),
+      );
+      expect(await this.ERC20Mock6d.balanceOf(this.bob.address)).to.eq(0);
+    });
+    it('Fail', async function () {
+      await expect(this.spm.forceRemoveByBalance(this.protocolX)).to.be.revertedWith(
+        'InvalidConditions()',
+      );
+
+      this.skippedSeconds = this.minBalance.mul(10).div(this.premium).add(1);
+      await hre.network.provider.request({
+        method: 'evm_increaseTime',
+        params: [Number(this.skippedSeconds - 2)], // minus two because of 2 blocks mined
+      });
+      await timeTraveler.mine(1);
+    });
+    it('Do', async function () {
+      this.t2 = await meta(this.spm.connect(this.bob).forceRemoveByBalance(this.protocolX));
+
+      // events
+      expect(this.t2.events.length).to.eq(6);
+      expect(this.t2.events[1].event).to.eq('ProtocolPremiumChanged');
+      expect(this.t2.events[1].args.oldPremium).to.eq(this.premium);
+      expect(this.t2.events[1].args.newPremium).to.eq(0);
+      expect(this.t2.events[1].args.protocol).to.eq(this.protocolX);
+      expect(this.t2.events[2].event).to.eq('ProtocolAgentTransfer');
+      expect(this.t2.events[2].args.protocol).to.eq(this.protocolX);
+      expect(this.t2.events[2].args.from).to.eq(this.alice.address);
+      expect(this.t2.events[2].args.to).to.eq(constants.AddressZero);
+      expect(this.t2.events[3].event).to.eq('ProtocolUpdated');
+      expect(this.t2.events[3].args.protocol).to.eq(this.protocolX);
+      expect(this.t2.events[3].args.coverage).to.eq(constants.HashZero);
+      expect(this.t2.events[3].args.nonStakers).to.eq(0);
+      expect(this.t2.events[3].args.coverageAmount).to.eq(0);
+      expect(this.t2.events[4].event).to.eq('ProtocolRemoved');
+      expect(this.t2.events[4].args.protocol).to.eq(this.protocolX);
+      expect(this.t2.events[5].event).to.eq('ProtocolRemovedByArb');
+      expect(this.t2.events[5].args.protocol).to.eq(this.protocolX);
+      expect(this.t2.events[5].args.arb).to.eq(this.bob.address);
+      expect(this.t2.events[5].args.profit).to.eq(this.minBalance.sub(this.premium));
+
+      expect(await this.spm.viewBalancesInternal(this.protocolX)).to.eq(0);
+      expect(await this.spm.viewLastAccountedProtocol(this.protocolX)).to.eq(0);
+      expect(await this.spm.viewNonStakersClaimableStored(this.protocolX)).to.eq(
+        this.premiumNonStakers.mul(this.skippedSeconds),
+      );
+      expect(await this.spm.viewNonStakersShares(this.protocolX)).to.eq(0);
+      expect(await this.spm.viewCurrentCoverage(this.protocolX)).to.eq(500);
+      expect(await this.spm.viewPreviousCoverage(this.protocolX)).to.eq(0);
+
+      expect(await this.spm.viewTotalPremiumPerBlock()).to.eq(0);
+      expect(await this.spm.viewLastAccounted()).to.eq(this.t2.time);
+      expect(await this.spm.viewClaimablePremiumsStored()).to.eq(
+        this.premiumStakers.mul(this.skippedSeconds),
+      );
+
+      expect(await this.spm.viewProtocolAgent(this.protocolX)).to.eq(constants.AddressZero);
+      expect(await this.spm.viewRemovedProtocolAgent(this.protocolX)).to.eq(this.alice.address);
+      expect(await this.spm.viewRemovedProtocolValidUntil(this.protocolX)).to.eq(
+        this.t2.time.add(days7),
+      );
+
+      expect(await this.spm.protocolAgent(this.protocolX)).to.eq(this.alice.address);
+      await expect(this.spm.balances(this.protocolX)).to.be.reverted;
+      expect(await this.spm.nonStakersClaimable(this.protocolX)).to.eq(
+        this.premiumNonStakers.mul(this.skippedSeconds),
+      );
+      await expect(this.spm.secondsOfCoverageLeft(this.protocolX)).to.be.reverted;
+      await expect(this.spm.premiums(this.protocolX)).to.be.reverted;
+      const coverageAmounts = await this.spm.coverageAmounts(this.protocolX);
+      expect(coverageAmounts[0]).to.eq(500);
+      expect(coverageAmounts[1]).to.eq(0);
+
+      expect(await this.spm.claimablePremiums()).to.eq(
+        this.premiumStakers.mul(this.skippedSeconds),
+      );
+
+      expect(await this.ERC20Mock6d.balanceOf(this.alice.address)).to.eq(
+        maxTokens.sub(this.minBalance.mul(11)),
+      );
+
+      // because of extra block mined, it is < minBalance (instead of equal)
+      expect(await this.ERC20Mock6d.balanceOf(this.bob.address)).to.eq(
+        this.minBalance.sub(this.premium),
+      );
+    });
+    it('After 7 days', async function () {
+      await hre.network.provider.request({
+        method: 'evm_increaseTime',
+        params: [days7],
+      });
+      await timeTraveler.mine(2);
+
+      expect(await this.spm.viewBalancesInternal(this.protocolX)).to.eq(0);
+      expect(await this.spm.viewLastAccountedProtocol(this.protocolX)).to.eq(0);
+      expect(await this.spm.viewNonStakersClaimableStored(this.protocolX)).to.eq(
+        this.premiumNonStakers.mul(this.skippedSeconds),
+      );
+      expect(await this.spm.viewNonStakersShares(this.protocolX)).to.eq(0);
+      expect(await this.spm.viewCurrentCoverage(this.protocolX)).to.eq(500);
+      expect(await this.spm.viewPreviousCoverage(this.protocolX)).to.eq(0);
+
+      expect(await this.spm.viewTotalPremiumPerBlock()).to.eq(0);
+      expect(await this.spm.viewLastAccounted()).to.eq(this.t2.time);
+      expect(await this.spm.viewClaimablePremiumsStored()).to.eq(
+        this.premiumStakers.mul(this.skippedSeconds),
+      );
+
+      expect(await this.spm.viewProtocolAgent(this.protocolX)).to.eq(constants.AddressZero);
+      expect(await this.spm.viewRemovedProtocolAgent(this.protocolX)).to.eq(this.alice.address);
+      expect(await this.spm.viewRemovedProtocolValidUntil(this.protocolX)).to.eq(
+        this.t2.time.add(days7),
+      );
+
+      await expect(this.spm.protocolAgent(this.protocolX)).to.be.reverted;
+      await expect(this.spm.balances(this.protocolX)).to.be.reverted;
+      expect(await this.spm.nonStakersClaimable(this.protocolX)).to.eq(
+        this.premiumNonStakers.mul(this.skippedSeconds),
+      );
+      await expect(this.spm.secondsOfCoverageLeft(this.protocolX)).to.be.reverted;
+      await expect(this.spm.premiums(this.protocolX)).to.be.reverted;
+      await expect(this.spm.coverageAmounts(this.protocolX)).to.be.reverted;
+
+      expect(await this.spm.claimablePremiums()).to.eq(
+        this.premiumStakers.mul(this.skippedSeconds),
+      );
+
+      expect(await this.ERC20Mock6d.balanceOf(this.alice.address)).to.eq(
+        maxTokens.sub(this.minBalance.mul(11)),
+      );
+
+      // because of extra block mined, it is < minBalance (instead of equal)
+      expect(await this.ERC20Mock6d.balanceOf(this.bob.address)).to.eq(
+        this.minBalance.sub(this.premium),
+      );
+    });
+  });
+  describe('forceRemoveByBalance(), no remaining', function () {
+    before(async function () {
+      this.premium = parseUnits('10', 6);
+      this.premiumStakers = parseUnits('9', 6);
+      this.premiumNonStakers = parseUnits('1', 6);
+      this.balanceMultiplier = BigNumber.from(100000);
+
+      this.minBalance = this.premium.mul(this.balanceMultiplier);
+
+      await timeTraveler.revertSnapshot();
+
+      await this.spm.setMinBalance(this.minBalance);
+
+      this.t0 = await meta(
+        this.spm.protocolAdd(this.protocolX, this.alice.address, id('t'), parseEther('0.1'), 500),
+      );
+      await this.spm.depositProtocolBalance(this.protocolX, this.minBalance.mul(11));
+
+      this.t1 = await meta(this.spm.setProtocolPremium(this.protocolX, this.premium));
+    });
+    it('Initial state', async function () {
+      expect(await this.spm.viewBalancesInternal(this.protocolX)).to.eq(this.minBalance.mul(11));
+      expect(await this.spm.viewLastAccountedProtocol(this.protocolX)).to.eq(this.t1.time);
+      expect(await this.spm.viewNonStakersClaimableStored(this.protocolX)).to.eq(0);
+      expect(await this.spm.viewNonStakersShares(this.protocolX)).to.eq(parseEther('0.1'));
+      expect(await this.spm.viewCurrentCoverage(this.protocolX)).to.eq(500);
+      expect(await this.spm.viewPreviousCoverage(this.protocolX)).to.eq(0);
+
+      expect(await this.spm.viewTotalPremiumPerBlock()).to.eq(this.premiumStakers);
+      expect(await this.spm.viewLastAccounted()).to.eq(this.t1.time);
+      expect(await this.spm.viewClaimablePremiumsStored()).to.eq(0);
+
+      expect(await this.spm.viewProtocolAgent(this.protocolX)).to.eq(this.alice.address);
+      expect(await this.spm.viewRemovedProtocolAgent(this.protocolX)).to.eq(constants.AddressZero);
+      expect(await this.spm.viewRemovedProtocolValidUntil(this.protocolX)).to.eq(0);
+
+      expect(await this.spm.protocolAgent(this.protocolX)).to.eq(this.alice.address);
+      expect(await this.spm.balances(this.protocolX)).to.eq(this.minBalance.mul(11));
+      expect(await this.spm.nonStakersClaimable(this.protocolX)).to.eq(0);
+      expect(await this.spm.secondsOfCoverageLeft(this.protocolX)).to.eq(
+        this.minBalance.mul(11).div(this.premium),
+      );
+      expect(await this.spm.premiums(this.protocolX)).to.eq(this.premium);
+      const coverageAmounts = await this.spm.coverageAmounts(this.protocolX);
+      expect(coverageAmounts[0]).to.eq(500);
+      expect(coverageAmounts[1]).to.eq(0);
+
+      expect(await this.spm.claimablePremiums()).to.eq(0);
+
+      expect(await this.ERC20Mock6d.balanceOf(this.alice.address)).to.eq(
+        maxTokens.sub(this.minBalance.mul(11)),
+      );
+      expect(await this.ERC20Mock6d.balanceOf(this.bob.address)).to.eq(0);
+    });
+    it('Do', async function () {
+      this.skippedSeconds = this.minBalance.mul(11).div(this.premium).add(1);
+      await hre.network.provider.request({
+        method: 'evm_increaseTime',
+        params: [Number(this.skippedSeconds - 2)], // minus two because of 2 blocks mined
+      });
+      await timeTraveler.mine(1);
+
+      this.t2 = await meta(this.spm.connect(this.bob).forceRemoveByBalance(this.protocolX));
+
+      // events
+      expect(this.t2.events.length).to.eq(5);
+      expect(this.t2.events[0].event).to.eq('ProtocolPremiumChanged');
+      expect(this.t2.events[0].args.oldPremium).to.eq(this.premium);
+      expect(this.t2.events[0].args.newPremium).to.eq(0);
+      expect(this.t2.events[0].args.protocol).to.eq(this.protocolX);
+      expect(this.t2.events[1].event).to.eq('ProtocolAgentTransfer');
+      expect(this.t2.events[1].args.protocol).to.eq(this.protocolX);
+      expect(this.t2.events[1].args.from).to.eq(this.alice.address);
+      expect(this.t2.events[1].args.to).to.eq(constants.AddressZero);
+      expect(this.t2.events[2].event).to.eq('ProtocolUpdated');
+      expect(this.t2.events[2].args.protocol).to.eq(this.protocolX);
+      expect(this.t2.events[2].args.coverage).to.eq(constants.HashZero);
+      expect(this.t2.events[2].args.nonStakers).to.eq(0);
+      expect(this.t2.events[2].args.coverageAmount).to.eq(0);
+      expect(this.t2.events[3].event).to.eq('ProtocolRemoved');
+      expect(this.t2.events[3].args.protocol).to.eq(this.protocolX);
+      expect(this.t2.events[4].event).to.eq('ProtocolRemovedByArb');
+      expect(this.t2.events[4].args.protocol).to.eq(this.protocolX);
+      expect(this.t2.events[4].args.arb).to.eq(this.bob.address);
+      expect(this.t2.events[4].args.profit).to.eq(0);
+
+      expect(await this.spm.viewBalancesInternal(this.protocolX)).to.eq(0);
+      expect(await this.spm.viewLastAccountedProtocol(this.protocolX)).to.eq(0);
+      expect(await this.spm.viewNonStakersClaimableStored(this.protocolX)).to.eq(
+        this.premiumNonStakers.mul(this.skippedSeconds - 1),
+      );
+      expect(await this.spm.viewNonStakersShares(this.protocolX)).to.eq(0);
+      expect(await this.spm.viewCurrentCoverage(this.protocolX)).to.eq(500);
+      expect(await this.spm.viewPreviousCoverage(this.protocolX)).to.eq(0);
+
+      expect(await this.spm.viewTotalPremiumPerBlock()).to.eq(0);
+      expect(await this.spm.viewLastAccounted()).to.eq(this.t2.time);
+      expect(await this.spm.viewClaimablePremiumsStored()).to.eq(
+        this.premiumStakers.mul(this.skippedSeconds - 1),
+      );
+
+      expect(await this.spm.viewProtocolAgent(this.protocolX)).to.eq(constants.AddressZero);
+      expect(await this.spm.viewRemovedProtocolAgent(this.protocolX)).to.eq(this.alice.address);
+      expect(await this.spm.viewRemovedProtocolValidUntil(this.protocolX)).to.eq(
+        this.t2.time.add(days7),
+      );
+
+      expect(await this.spm.protocolAgent(this.protocolX)).to.eq(this.alice.address);
+      await expect(this.spm.balances(this.protocolX)).to.be.reverted;
+      expect(await this.spm.nonStakersClaimable(this.protocolX)).to.eq(
+        this.premiumNonStakers.mul(this.skippedSeconds - 1),
+      );
+      await expect(this.spm.secondsOfCoverageLeft(this.protocolX)).to.be.reverted;
+      await expect(this.spm.premiums(this.protocolX)).to.be.reverted;
+      const coverageAmounts = await this.spm.coverageAmounts(this.protocolX);
+      expect(coverageAmounts[0]).to.eq(500);
+      expect(coverageAmounts[1]).to.eq(0);
+
+      expect(await this.spm.claimablePremiums()).to.eq(
+        this.premiumStakers.mul(this.skippedSeconds - 1),
+      );
+
+      expect(await this.ERC20Mock6d.balanceOf(this.alice.address)).to.eq(
+        maxTokens.sub(this.minBalance.mul(11)),
+      );
+
+      // because of extra block mined, it is < minBalance (instead of equal)
+      expect(await this.ERC20Mock6d.balanceOf(this.bob.address)).to.eq(0);
+    });
+  });
   describe('forceRemoveByRemainingCoverage()', function () {});
   describe('claimPremiums()', function () {});
   describe('setMinBalance()', function () {});
