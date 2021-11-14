@@ -184,15 +184,23 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
         uint256 error = debt - balance;
         // premiums were optimistically added, subtract them
         _settleTotalDebt();
-        // @todo this subtraction can fail in the case the except premium is already claimed
-        // try to subtract or set variable to 0
-        // have extra value in accountingerror (USDC missing), with USDC that needs to be deposited to make accountin work again
         // @note to production, set premium first to zero before solving accounting issue.
         // otherwise the accounting error keeps increasing
-        // @todo write test for this case
-        claimablePremiumsStored -= ((HUNDRED_PERCENT - _nonStakerShares) * error) / HUNDRED_PERCENT;
+        uint256 claimablePremiumsStored_ = claimablePremiumsStored;
 
-        emit AccountingError(_protocol, error);
+        uint256 claimablePremiumError = ((HUNDRED_PERCENT - _nonStakerShares) * error) /
+          HUNDRED_PERCENT;
+
+        uint256 insufficientTokens;
+        if (claimablePremiumError > claimablePremiumsStored_) {
+          insufficientTokens = claimablePremiumError - claimablePremiumsStored_;
+          claimablePremiumsStored = 0;
+        } else {
+          // insufficientTokens = 0
+          claimablePremiumsStored = claimablePremiumsStored_ - claimablePremiumError;
+        }
+
+        emit AccountingError(_protocol, claimablePremiumError, insufficientTokens);
         debt = balance;
       }
       balancesInternal[_protocol] = balance - debt;

@@ -304,10 +304,11 @@ describe('SherlockProtocolManager ─ Stateless', function () {
 describe('SherlockProtocolManager ─ Functional', function () {
   before(async function () {
     timeTraveler = new TimeTraveler(network.provider);
-    await prepare(this, ['SherlockProtocolManagerTest', 'ERC20Mock6d']);
+    await prepare(this, ['SherlockProtocolManagerTest', 'ERC20Mock6d', 'SherlockMock']);
 
     await deploy(this, [['ERC20Mock6d', this.ERC20Mock6d, ['USDC Token', 'USDC', maxTokens]]]);
     await deploy(this, [['spm', this.SherlockProtocolManagerTest, [this.ERC20Mock6d.address]]]);
+    await deploy(this, [['sherlock', this.SherlockMock, []]]);
 
     await this.ERC20Mock6d.approve(this.spm.address, maxTokens);
     await timeTraveler.snapshot();
@@ -1003,8 +1004,9 @@ describe('SherlockProtocolManager ─ Functional', function () {
       expect(this.t2.events.length).to.eq(5);
       expect(this.t2.events[0].event).to.eq('AccountingError');
       expect(this.t2.events[0].args.protocol).to.eq(this.protocolX);
-      const accountedAmount = BigNumber.from(this.time + 1).mul(this.premium);
-      expect(this.t2.events[0].args.amount).to.eq(accountedAmount.sub(this.balance));
+      const accountedAmount = BigNumber.from(this.time + 1).mul(this.premiumStakers);
+      expect(this.t2.events[0].args.amount).to.eq(accountedAmount.sub(this.balance.div(10).mul(9)));
+      expect(this.t2.events[0].args.insufficientTokens).to.eq(0);
       expect(this.t2.events[1].event).to.eq('ProtocolPremiumChanged');
       expect(this.t2.events[1].args.oldPremium).to.eq(this.premium);
       expect(this.t2.events[1].args.newPremium).to.eq(0);
@@ -1539,4 +1541,74 @@ describe('SherlockProtocolManager ─ Functional', function () {
   describe('withdrawProtocolBalance()', function () {});
   describe('transferProtocolAgent()', function () {});
   describe('nonStakersClaim()', function () {});
+  describe('illiquid edge case', function () {
+    // create protocol1 with higher debt then balance
+    // create protocol2 with sufficient balance, so contract holds enough tokens
+    // call global claim, moving more then wanted tokens
+    // update premium of protocol1
+
+    before(async function () {
+      this.premium = parseUnits('10', 6);
+      this.premiumStakers = parseUnits('9', 6);
+      this.premiumNonStakers = parseUnits('1', 6);
+      this.balance = this.premium.mul(1000000);
+      this.time = 1000000 * 1.5;
+
+      await timeTraveler.revertSnapshot();
+
+      //await this.sherlock.updateNonStakersAddress(this.bob.address);
+      await this.spm.setSherlockCoreAddress(this.sherlock.address);
+
+      await this.spm.protocolAdd(
+        this.protocolX,
+        this.alice.address,
+        id('t'),
+        parseEther('0.1'),
+        500,
+      );
+
+      await this.spm.protocolAdd(
+        this.protocolY,
+        this.alice.address,
+        id('t'),
+        parseEther('0.1'),
+        500,
+      );
+
+      await this.spm.depositProtocolBalance(this.protocolX, this.balance);
+      await this.spm.depositProtocolBalance(this.protocolY, this.balance.mul(10));
+
+      this.t1 = await meta(this.spm.setProtocolPremium(this.protocolX, this.premium));
+      await hre.network.provider.request({
+        method: 'evm_increaseTime',
+        params: [this.time],
+      });
+      await timeTraveler.mine(1);
+    });
+    it('Initial state', async function () {
+      expect(await this.ERC20Mock6d.balanceOf(this.sherlock.address)).to.eq(0);
+    });
+    it('Do claim', async function () {
+      await this.spm.claimPremiums();
+
+      this.stakerAmount = this.premiumStakers.mul(this.time + 1);
+      expect(await this.ERC20Mock6d.balanceOf(this.sherlock.address)).to.eq(this.stakerAmount);
+    });
+    it('Do update', async function () {
+      this.t2 = await meta(this.spm.protocolUpdate(this.protocolX, id('xa'), 500, 1500));
+
+      expect(this.t2.events[0].event).to.eq('AccountingError');
+      expect(this.t2.events[0].args.protocol).to.eq(this.protocolX);
+
+      const balanceMeantForStakers = this.balance.div(10).mul(9);
+      const accountedAmount = this.premiumStakers.mul(this.time + 2); // 1 epoch more than accounted amount
+
+      // subtract balance destined for stakers from accounted amount
+      expect(this.t2.events[0].args.amount).to.eq(accountedAmount.sub(balanceMeantForStakers));
+      // substract balance destined for stakers from actual amout sent
+      expect(this.t2.events[0].args.insufficientTokens).to.eq(
+        this.stakerAmount.sub(balanceMeantForStakers),
+      );
+    });
+  });
 });

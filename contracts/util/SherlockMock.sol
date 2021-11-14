@@ -56,7 +56,9 @@ contract SherlockMock is ISherlock, ERC721, Ownable {
 
   function removeSherDistributionManager() external override onlyOwner {}
 
-  function updateNonStakersAddress(address _nonStakers) external override onlyOwner {}
+  function updateNonStakersAddress(address _nonStakers) external override onlyOwner {
+    nonStakersAddress = _nonStakers;
+  }
 
   function updateSherlockProtocolManager(ISherlockProtocolManager _protocolManager)
     external

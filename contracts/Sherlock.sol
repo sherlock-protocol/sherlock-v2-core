@@ -251,6 +251,7 @@ contract Sherlock is ISherlock, ERC721, Ownable {
     totalShares += shares_;
 
     _sher = _stake(_amount, _period, _id);
+    // todo use safemint
     _mint(_receiver, _id);
   }
 
