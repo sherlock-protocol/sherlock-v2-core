@@ -1069,7 +1069,7 @@ describe('SherlockProtocolManager ─ Functional', function () {
 
       await timeTraveler.revertSnapshot();
 
-      await this.spm.setMinBalance(this.minBalance);
+      await this.spm.privateSetMinBalance(this.minBalance);
 
       this.t0 = await meta(
         this.spm.protocolAdd(this.protocolX, this.alice.address, id('t'), parseEther('0.1'), 500),
@@ -1256,7 +1256,7 @@ describe('SherlockProtocolManager ─ Functional', function () {
 
       await timeTraveler.revertSnapshot();
 
-      await this.spm.setMinBalance(this.minBalance);
+      await this.spm.privateSetMinBalance(this.minBalance);
 
       this.t0 = await meta(
         this.spm.protocolAdd(this.protocolX, this.alice.address, id('t'), parseEther('0.1'), 500),
@@ -1385,7 +1385,7 @@ describe('SherlockProtocolManager ─ Functional', function () {
       await timeTraveler.revertSnapshot();
 
       this.minCoverageSeconds = this.balance.div(this.premium) - 1;
-      await this.spm.setMinSecondsOfCoverage(this.minCoverageSeconds);
+      await this.spm.privateSetMinSecondsOfCoverage(this.minCoverageSeconds);
 
       this.t0 = await meta(
         this.spm.protocolAdd(this.protocolX, this.alice.address, id('t'), parseEther('0.1'), 500),
@@ -1571,7 +1571,7 @@ describe('SherlockProtocolManager ─ Functional', function () {
       await timeTraveler.revertSnapshot();
 
       this.minCoverageSeconds = this.balance.div(this.premium) - 1;
-      await this.spm.setMinSecondsOfCoverage(this.minCoverageSeconds);
+      await this.spm.privateSetMinSecondsOfCoverage(this.minCoverageSeconds);
 
       this.t0 = await meta(
         this.spm.protocolAdd(this.protocolX, this.alice.address, id('t'), parseEther('0.1'), 500),
@@ -1699,9 +1699,159 @@ describe('SherlockProtocolManager ─ Functional', function () {
       expect(await this.ERC20Mock6d.balanceOf(this.spm.address)).to.eq(prems.add(prems2));
     });
   });
-  describe('claimPremiums()', function () {});
-  describe('setMinBalance()', function () {});
-  describe('setMinSecondsOfCoverage()', function () {});
+  describe('claimPremiums()', function () {
+    before(async function () {
+      await timeTraveler.revertSnapshot();
+
+      await this.spm.setSherlockCoreAddress(this.bob.address);
+    });
+    it('initial state', async function () {
+      expect(await this.spm.claimablePremiums()).to.eq(0);
+      expect(await this.spm.viewClaimablePremiumsStored()).to.eq(0);
+      expect(await this.spm.viewLastAccounted()).to.eq(0);
+      expect(await this.spm.viewTotalPremiumPerBlock()).to.eq(0);
+
+      expect(await this.ERC20Mock6d.balanceOf(this.bob.address)).to.eq(0);
+    });
+    it('do', async function () {
+      this.t1 = await meta(this.spm.claimPremiums());
+      expect(this.t1.events.length).to.eq(0);
+
+      expect(await this.spm.claimablePremiums()).to.eq(0);
+      expect(await this.spm.viewClaimablePremiumsStored()).to.eq(0);
+      expect(await this.spm.viewLastAccounted()).to.eq(this.t1.time);
+      expect(await this.spm.viewTotalPremiumPerBlock()).to.eq(0);
+
+      expect(await this.ERC20Mock6d.balanceOf(this.bob.address)).to.eq(0);
+    });
+    it('add protocol', async function () {
+      this.premium = parseUnits('10', 6);
+      this.balance = this.premium.mul(1000000);
+
+      this.t2 = await meta(
+        this.spm.protocolAdd(this.protocolX, this.alice.address, id('t'), 0, 500),
+      );
+      await this.spm.depositProtocolBalance(this.protocolX, this.balance);
+
+      this.t3 = await meta(this.spm.setProtocolPremium(this.protocolX, this.premium));
+
+      // verify state
+      expect(await this.spm.claimablePremiums()).to.eq(0);
+      expect(await this.spm.viewClaimablePremiumsStored()).to.eq(0);
+      expect(await this.spm.viewLastAccounted()).to.eq(this.t3.time);
+      expect(await this.spm.viewTotalPremiumPerBlock()).to.eq(this.premium);
+
+      expect(await this.ERC20Mock6d.balanceOf(this.bob.address)).to.eq(0);
+    });
+    it('do again', async function () {
+      this.t1 = await meta(this.spm.claimPremiums());
+      expect(this.t1.events.length).to.eq(1);
+
+      expect(await this.spm.claimablePremiums()).to.eq(0);
+      expect(await this.spm.viewClaimablePremiumsStored()).to.eq(0);
+      expect(await this.spm.viewLastAccounted()).to.eq(this.t1.time);
+      expect(await this.spm.viewTotalPremiumPerBlock()).to.eq(this.premium);
+
+      expect(await this.ERC20Mock6d.balanceOf(this.bob.address)).to.eq(this.premium);
+    });
+    it('skip', async function () {
+      await timeTraveler.mine(2);
+
+      expect(await this.spm.claimablePremiums()).to.eq(this.premium.mul(2));
+      expect(await this.spm.viewClaimablePremiumsStored()).to.eq(0);
+      expect(await this.spm.viewLastAccounted()).to.eq(this.t1.time);
+      expect(await this.spm.viewTotalPremiumPerBlock()).to.eq(this.premium);
+
+      expect(await this.ERC20Mock6d.balanceOf(this.bob.address)).to.eq(this.premium);
+    });
+    it('settle debt', async function () {
+      this.t2 = await meta(this.spm.privateSettleTotalDebt());
+
+      expect(await this.spm.claimablePremiums()).to.eq(this.premium.mul(3));
+      expect(await this.spm.viewClaimablePremiumsStored()).to.eq(this.premium.mul(3));
+      expect(await this.spm.viewLastAccounted()).to.eq(this.t2.time);
+      expect(await this.spm.viewTotalPremiumPerBlock()).to.eq(this.premium);
+
+      expect(await this.ERC20Mock6d.balanceOf(this.bob.address)).to.eq(this.premium);
+    });
+    it('do again', async function () {
+      this.t3 = await meta(this.spm.claimPremiums());
+      expect(this.t1.events.length).to.eq(1);
+
+      expect(await this.spm.claimablePremiums()).to.eq(0);
+      expect(await this.spm.viewClaimablePremiumsStored()).to.eq(0);
+      expect(await this.spm.viewLastAccounted()).to.eq(this.t3.time);
+      expect(await this.spm.viewTotalPremiumPerBlock()).to.eq(this.premium);
+
+      expect(await this.ERC20Mock6d.balanceOf(this.bob.address)).to.eq(this.premium.mul(5));
+    });
+  });
+  describe('setMinBalance()', function () {
+    before(async function () {
+      await timeTraveler.revertSnapshot();
+    });
+    it('initial state', async function () {
+      expect(await this.spm.minBalance()).to.eq(0);
+    });
+    it('do fail', async function () {
+      await expect(this.spm.setMinBalance(parseUnits('20001', 6))).to.be.revertedWith('INSANE');
+    });
+    it('do', async function () {
+      this.b1 = parseUnits('300', 6);
+      this.t1 = await meta(this.spm.setMinBalance(this.b1));
+
+      expect(this.t1.events.length).to.eq(1);
+      expect(this.t1.events[0].event).to.eq('MinBalance');
+      expect(this.t1.events[0].args.previous).to.eq(0);
+      expect(this.t1.events[0].args.current).to.eq(this.b1);
+
+      expect(await this.spm.minBalance()).to.eq(this.b1);
+    });
+    it('do again', async function () {
+      this.b2 = parseUnits('500', 6);
+      this.t2 = await meta(this.spm.setMinBalance(this.b2));
+
+      expect(this.t2.events.length).to.eq(1);
+      expect(this.t2.events[0].event).to.eq('MinBalance');
+      expect(this.t2.events[0].args.previous).to.eq(this.b1);
+      expect(this.t2.events[0].args.current).to.eq(this.b2);
+
+      expect(await this.spm.minBalance()).to.eq(this.b2);
+    });
+  });
+  describe('setMinSecondsOfCoverage()', function () {
+    before(async function () {
+      await timeTraveler.revertSnapshot();
+    });
+    it('initial state', async function () {
+      expect(await this.spm.minSecondsOfCoverage()).to.eq(0);
+    });
+    it('do fail', async function () {
+      await expect(this.spm.setMinSecondsOfCoverage(days7)).to.be.revertedWith('INSANE');
+    });
+    it('do', async function () {
+      this.b1 = 60 * 60 * 24;
+      this.t1 = await meta(this.spm.setMinSecondsOfCoverage(this.b1));
+
+      expect(this.t1.events.length).to.eq(1);
+      expect(this.t1.events[0].event).to.eq('MinSecondsOfCoverage');
+      expect(this.t1.events[0].args.previous).to.eq(0);
+      expect(this.t1.events[0].args.current).to.eq(this.b1);
+
+      expect(await this.spm.minSecondsOfCoverage()).to.eq(this.b1);
+    });
+    it('do again', async function () {
+      this.b2 = 60 * 60 * 48;
+      this.t2 = await meta(this.spm.setMinSecondsOfCoverage(this.b2));
+
+      expect(this.t2.events.length).to.eq(1);
+      expect(this.t2.events[0].event).to.eq('MinSecondsOfCoverage');
+      expect(this.t2.events[0].args.previous).to.eq(this.b1);
+      expect(this.t2.events[0].args.current).to.eq(this.b2);
+
+      expect(await this.spm.minSecondsOfCoverage()).to.eq(this.b2);
+    });
+  });
   describe('setProtocolPremium()', function () {
     before(async function () {
       await timeTraveler.revertSnapshot();

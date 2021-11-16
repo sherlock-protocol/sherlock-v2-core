@@ -54,7 +54,6 @@ module.exports = {
     const events = data.events;
 
     data = await ethers.provider.getBlock(block);
-
     return {
       time: BigNumber.from(data.timestamp),
       block: BigNumber.from(block),

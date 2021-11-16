@@ -28,6 +28,10 @@ interface ISherlockProtocolManager is IManager {
 
   error InsufficientBalance(bytes32 protocol);
 
+  event MinBalance(uint256 previous, uint256 current);
+
+  event MinSecondsOfCoverage(uint256 previous, uint256 current);
+
   event AccountingError(bytes32 protocol, uint256 amount, uint256 insufficientTokens);
 
   event ProtocolAdded(bytes32 protocol);

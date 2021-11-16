@@ -15,6 +15,9 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
   using SafeERC20 for IERC20;
   IERC20 immutable token;
 
+  uint256 constant MIN_BALANCE_SANITY_MAX = 20_000 * 10**6; // 20k usdc
+  uint256 constant MIN_SOC_SANITY_MAX = 7 days;
+
   uint256 constant PROTOCOL_CLAIM_DEADLINE = 7 days;
   uint256 constant MIN_SECONDS_LEFT = 3 days;
   uint256 constant HUNDRED_PERCENT = 10**18;
@@ -31,8 +34,10 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
   uint256 totalPremiumPerBlock;
   uint256 claimablePremiumsStored;
 
-  uint256 public override minBalance; // @todo make constant?
-  uint256 public override minSecondsOfCoverage; // @todo make constant?
+  // the absolute minimal balane a protocol can hold
+  uint256 public override minBalance;
+  // the absolute minimal remaining coverage a protocol can hold
+  uint256 public override minSecondsOfCoverage;
 
   mapping(bytes32 => uint256) removedProtocolValidUntil;
   mapping(bytes32 => address) removedProtocolAgent;
@@ -251,12 +256,16 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
   }
 
   function setMinBalance(uint256 _minBalance) external override onlyOwner {
-    // @todo emit event
+    require(_minBalance < MIN_BALANCE_SANITY_MAX, 'INSANE');
+
+    emit MinBalance(minBalance, _minBalance);
     minBalance = _minBalance;
   }
 
   function setMinSecondsOfCoverage(uint256 _minSeconds) external override onlyOwner {
-    // @todo emit event
+    require(_minSeconds < MIN_SOC_SANITY_MAX, 'INSANE');
+
+    emit MinSecondsOfCoverage(minSecondsOfCoverage, _minSeconds);
     minSecondsOfCoverage = _minSeconds;
   }
 
@@ -286,7 +295,10 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
     address sherlock = address(sherlockCore);
     if (sherlock == address(0)) revert InvalidConditions();
 
-    token.safeTransfer(sherlock, claimablePremiums());
+    uint256 amount = claimablePremiums();
+    if (amount != 0) {
+      token.safeTransfer(sherlock, claimablePremiums());
+    }
 
     claimablePremiumsStored = 0;
     lastAccounted = block.timestamp;
