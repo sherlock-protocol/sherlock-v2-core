@@ -12,6 +12,14 @@ import '../managers/SherlockProtocolManager.sol';
 contract SherlockProtocolManagerTest is SherlockProtocolManager {
   constructor(IERC20 _token) SherlockProtocolManager(_token) {}
 
+  function viewMinSecondsOfCoverage() external view returns (uint256) {
+    return minSecondsOfCoverage;
+  }
+
+  function viewMinBalance() external view returns (uint256) {
+    return minBalance;
+  }
+
   function viewProtocolAgent(bytes32 _protocol) external view returns (address) {
     return protocolAgent_[_protocol];
   }

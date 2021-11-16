@@ -389,7 +389,9 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
 
     uint256 percentageScaled = (_secondsOfCoverageLeft(_protocol) * HUNDRED_PERCENT) /
       minSecondsOfCoverage;
-    if (percentageScaled > HUNDRED_PERCENT) revert InvalidConditions();
+
+    // the first epoch you'll get the minimal reward
+    if (percentageScaled >= HUNDRED_PERCENT) revert InvalidConditions();
 
     _settleProtocolDebt(_protocol);
     uint256 remainingBalance = balancesInternal[_protocol];
