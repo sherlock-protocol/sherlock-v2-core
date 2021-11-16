@@ -1483,24 +1483,24 @@ describe('SherlockProtocolManager ─ Functional', function () {
       );
 
       expect(this.t2.events.length).to.eq(8);
-      expect(this.t2.events[1].event).to.eq('ProtocolPremiumChanged');
-      expect(this.t2.events[1].args.oldPremium).to.eq(this.premium);
-      expect(this.t2.events[1].args.newPremium).to.eq(0);
-      expect(this.t2.events[1].args.protocol).to.eq(this.protocolX);
-      expect(this.t2.events[3].event).to.eq('ProtocolBalanceWithdrawn');
+      expect(this.t2.events[0].event).to.eq('ProtocolPremiumChanged');
+      expect(this.t2.events[0].args.oldPremium).to.eq(this.premium);
+      expect(this.t2.events[0].args.newPremium).to.eq(0);
+      expect(this.t2.events[0].args.protocol).to.eq(this.protocolX);
+      expect(this.t2.events[2].event).to.eq('ProtocolBalanceWithdrawn');
+      expect(this.t2.events[2].args.protocol).to.eq(this.protocolX);
+      expect(this.t2.events[2].args.amount).to.be.closeTo(this.balance.div(4), parseUnits('20', 6));
+      expect(this.t2.events[3].event).to.eq('ProtocolAgentTransfer');
       expect(this.t2.events[3].args.protocol).to.eq(this.protocolX);
-      expect(this.t2.events[3].args.amount).to.be.closeTo(this.balance.div(4), parseUnits('20', 6));
-      expect(this.t2.events[4].event).to.eq('ProtocolAgentTransfer');
+      expect(this.t2.events[3].args.from).to.eq(this.alice.address);
+      expect(this.t2.events[3].args.to).to.eq(constants.AddressZero);
+      expect(this.t2.events[4].event).to.eq('ProtocolUpdated');
       expect(this.t2.events[4].args.protocol).to.eq(this.protocolX);
-      expect(this.t2.events[4].args.from).to.eq(this.alice.address);
-      expect(this.t2.events[4].args.to).to.eq(constants.AddressZero);
-      expect(this.t2.events[5].event).to.eq('ProtocolUpdated');
+      expect(this.t2.events[4].args.coverage).to.eq(constants.HashZero);
+      expect(this.t2.events[4].args.nonStakers).to.eq(0);
+      expect(this.t2.events[4].args.coverageAmount).to.eq(0);
+      expect(this.t2.events[5].event).to.eq('ProtocolRemoved');
       expect(this.t2.events[5].args.protocol).to.eq(this.protocolX);
-      expect(this.t2.events[5].args.coverage).to.eq(constants.HashZero);
-      expect(this.t2.events[5].args.nonStakers).to.eq(0);
-      expect(this.t2.events[5].args.coverageAmount).to.eq(0);
-      expect(this.t2.events[6].event).to.eq('ProtocolRemoved');
-      expect(this.t2.events[6].args.protocol).to.eq(this.protocolX);
       expect(this.t2.events[7].event).to.eq('ProtocolRemovedByArb');
       expect(this.t2.events[7].args.protocol).to.eq(this.protocolX);
       expect(this.t2.events[7].args.arb).to.eq(this.bob.address);
@@ -2144,7 +2144,7 @@ describe('SherlockProtocolManager ─ Functional', function () {
   describe('withdrawProtocolBalance()', function () {});
   describe('transferProtocolAgent()', function () {});
   describe('nonStakersClaim()', function () {});
-  describe.only('illiquid edge case', function () {
+  describe('illiquid edge case', function () {
     // create protocol1 with higher debt then balance
     // create protocol2 with sufficient balance, so contract holds enough tokens
     // call global claim, moving more then wanted tokens

@@ -247,8 +247,8 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
 
     uint256 balance = balancesInternal[_protocol];
     if (balance != 0) {
-      token.safeTransfer(_agent, balance);
       delete balancesInternal[_protocol];
+      token.safeTransfer(_agent, balance);
 
       emit ProtocolBalanceWithdrawn(_protocol, balance);
     }
@@ -304,12 +304,12 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
     if (sherlock == address(0)) revert InvalidConditions();
 
     uint256 amount = claimablePremiums();
-    if (amount != 0) {
-      token.safeTransfer(sherlock, claimablePremiums());
-    }
-
     claimablePremiumsStored = 0;
     lastAccounted = block.timestamp;
+
+    if (amount != 0) {
+      token.safeTransfer(sherlock, amount);
+    }
   }
 
   function coverageAmounts(bytes32 _protocol)
@@ -396,8 +396,8 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
 
     if (remainingBalance >= minBalance) revert InvalidConditions();
     if (remainingBalance != 0) {
-      token.safeTransfer(msg.sender, remainingBalance);
       balancesInternal[_protocol] = 0;
+      token.safeTransfer(msg.sender, remainingBalance);
     }
 
     _forceRemoveProtocol(_protocol, agent);
@@ -418,11 +418,16 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
 
     uint256 arbAmount = (remainingBalance * percentageScaled) / HUNDRED_PERCENT;
     if (arbAmount != 0) {
-      token.safeTransfer(msg.sender, arbAmount);
       balancesInternal[_protocol] -= arbAmount;
     }
 
     _forceRemoveProtocol(_protocol, agent);
+
+    // done after removing protocol to mitigate reentrency pattern
+    // (in case token allows callback)
+    if (arbAmount != 0) {
+      token.safeTransfer(msg.sender, arbAmount);
+    }
     emit ProtocolRemovedByArb(_protocol, msg.sender, arbAmount);
   }
 
