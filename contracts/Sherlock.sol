@@ -242,10 +242,12 @@ contract Sherlock is ISherlock, ERC721, Ownable {
 
     token.safeTransferFrom(msg.sender, address(this), _amount);
 
+    // @note looks like the staker doesn't get sufficient amount of shares
+
     uint256 shares_;
     uint256 totalShares_ = totalShares;
     if (totalShares_ != 0) shares_ = (_amount * totalShares_) / balanceOf();
-    else shares_ = _amount * 10**18;
+    else shares_ = _amount * 10**6;
 
     shares[_id] = shares_;
     totalShares += shares_;

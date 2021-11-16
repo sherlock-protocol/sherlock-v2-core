@@ -15,7 +15,7 @@ import '../interfaces/aaveV2/IAaveIncentivesController.sol';
 import '../interfaces/aaveV2/IStakeAave.sol';
 import '../interfaces/aaveV2/IAToken.sol';
 
-contract AaveV2StrategyManager is IStrategyManager, Manager {
+contract AaveV2Strategy is IStrategyManager, Manager {
   using SafeERC20 for IERC20;
 
   ILendingPoolAddressesProvider public constant lpAddressProvider =
