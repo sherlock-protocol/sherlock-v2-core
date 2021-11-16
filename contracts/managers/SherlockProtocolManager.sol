@@ -193,6 +193,13 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
         // otherwise the accounting error keeps increasing
         uint256 claimablePremiumsStored_ = claimablePremiumsStored;
 
+        // The debt is higher then balance, this means tokens are missing to make the accounting work
+        // We probably are not going to see these tokens being transferred (no incentives)
+        // We try to mitigate the accounting error by subtracting it from the staker pool
+        // If that doesn't work (completely), we signal the missing tokens
+        // The missing tokens will only be the staker part, the non stakers are disadvantaged
+        // Non-stakers get the leftovers and they will not receive part of transferred missing tokens
+        // As lastAccountedProtocol is set at the end of this function which is used for nonstaker debt
         uint256 claimablePremiumError = ((HUNDRED_PERCENT - _nonStakerShares) * error) /
           HUNDRED_PERCENT;
 
@@ -205,6 +212,7 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
           claimablePremiumsStored = claimablePremiumsStored_ - claimablePremiumError;
         }
 
+        // If two events are thrown, the values need to be summed up for the actual state.
         emit AccountingError(_protocol, claimablePremiumError, insufficientTokens);
         debt = balance;
       }
