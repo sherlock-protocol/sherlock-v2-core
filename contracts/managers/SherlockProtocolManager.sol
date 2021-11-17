@@ -9,8 +9,6 @@ pragma solidity 0.8.9;
 import './Manager.sol';
 import '../interfaces/managers/ISherlockProtocolManager.sol';
 
-import 'hardhat/console.sol';
-
 contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
   using SafeERC20 for IERC20;
   IERC20 immutable token;
@@ -35,8 +33,10 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
   uint256 claimablePremiumsStored;
 
   // the absolute minimal balane a protocol can hold
+  /// @inheritdoc ISherlockProtocolManager
   uint256 public override minBalance;
   // the absolute minimal remaining coverage a protocol can hold
+  /// @inheritdoc ISherlockProtocolManager
   uint256 public override minSecondsOfCoverage;
 
   mapping(bytes32 => uint256) removedProtocolValidUntil;
@@ -53,6 +53,7 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
     _;
   }
 
+  /// @inheritdoc ISherlockProtocolManager
   function protocolAgent(bytes32 _protocol) external view override returns (address) {
     address agent = protocolAgent_[_protocol];
     if (agent != address(0)) return agent;
@@ -65,6 +66,7 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
     revert ProtocolNotExists(_protocol);
   }
 
+  /// @inheritdoc ISherlockProtocolManager
   function premiums(bytes32 _protocol)
     external
     view
@@ -87,6 +89,7 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
     return (block.timestamp - lastAccountedProtocol[_protocol]) * premiums_[_protocol];
   }
 
+  /// @inheritdoc ISherlockProtocolManager
   function nonStakersClaimable(bytes32 _protocol) external view override returns (uint256) {
     // non stakers can claim rewards after protocol is removed
     uint256 debt = _calcProtocolDebt(_protocol);
@@ -97,10 +100,12 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
       nonStakersClaimableStored[_protocol] + (nonStakersShares[_protocol] * debt) / HUNDRED_PERCENT;
   }
 
+  /// @inheritdoc ISherlockProtocolManager
   function claimablePremiums() public view override returns (uint256) {
     return claimablePremiumsStored + (block.timestamp - lastAccounted) * totalPremiumPerBlock;
   }
 
+  /// @inheritdoc ISherlockProtocolManager
   function secondsOfCoverageLeft(bytes32 _protocol)
     external
     view
@@ -117,6 +122,7 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
     return _balances(_protocol) / premiums_[_protocol];
   }
 
+  /// @inheritdoc ISherlockProtocolManager
   function balances(bytes32 _protocol)
     external
     view
@@ -263,6 +269,7 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
     emit ProtocolRemoved(_protocol);
   }
 
+  /// @inheritdoc ISherlockProtocolManager
   function setMinBalance(uint256 _minBalance) external override onlyOwner {
     require(_minBalance < MIN_BALANCE_SANITY_MAX, 'INSANE');
 
@@ -270,6 +277,7 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
     minBalance = _minBalance;
   }
 
+  /// @inheritdoc ISherlockProtocolManager
   function setMinSecondsOfCoverage(uint256 _minSeconds) external override onlyOwner {
     require(_minSeconds < MIN_SOC_SANITY_MAX, 'INSANE');
 
@@ -277,6 +285,7 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
     minSecondsOfCoverage = _minSeconds;
   }
 
+  /// @inheritdoc ISherlockProtocolManager
   function nonStakersClaim(
     bytes32 _protocol,
     uint256 _amount,
@@ -299,6 +308,7 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
     token.safeTransfer(_receiver, _amount);
   }
 
+  /// @inheritdoc ISherlockProtocolManager
   function claimPremiums() external override {
     address sherlock = address(sherlockCore);
     if (sherlock == address(0)) revert InvalidConditions();
@@ -312,6 +322,7 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
     }
   }
 
+  /// @inheritdoc ISherlockProtocolManager
   function coverageAmounts(bytes32 _protocol)
     external
     view
@@ -328,6 +339,7 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
     revert ProtocolNotExists(_protocol);
   }
 
+  /// @inheritdoc ISherlockProtocolManager
   function protocolAdd(
     bytes32 _protocol,
     address _protocolAgent,
@@ -352,6 +364,7 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
     protocolUpdate(_protocol, _coverage, _nonStakers, _coverageAmount);
   }
 
+  /// @inheritdoc ISherlockProtocolManager
   function protocolUpdate(
     bytes32 _protocol,
     bytes32 _coverage,
@@ -382,12 +395,14 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
     emit ProtocolUpdated(_protocol, _coverage, _nonStakers, _coverageAmount);
   }
 
+  /// @inheritdoc ISherlockProtocolManager
   function protocolRemove(bytes32 _protocol) external override onlyOwner {
     address agent = _verifyProtocolExists(_protocol);
 
     _forceRemoveProtocol(_protocol, agent);
   }
 
+  /// @inheritdoc ISherlockProtocolManager
   function forceRemoveByBalance(bytes32 _protocol) external override {
     address agent = _verifyProtocolExists(_protocol);
 
@@ -404,6 +419,7 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
     emit ProtocolRemovedByArb(_protocol, msg.sender, remainingBalance);
   }
 
+  /// @inheritdoc ISherlockProtocolManager
   function forceRemoveByRemainingCoverage(bytes32 _protocol) external override {
     address agent = _verifyProtocolExists(_protocol);
 
@@ -431,12 +447,14 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
     emit ProtocolRemovedByArb(_protocol, msg.sender, arbAmount);
   }
 
+  /// @inheritdoc ISherlockProtocolManager
   function setProtocolPremium(bytes32 _protocol, uint256 _premium) external override onlyOwner {
     _verifyProtocolExists(_protocol);
 
     _setSingleProtocolPremium(_protocol, _premium);
   }
 
+  /// @inheritdoc ISherlockProtocolManager
   function setProtocolPremiums(bytes32[] calldata _protocol, uint256[] calldata _premium)
     external
     override
@@ -468,6 +486,7 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
     totalPremiumPerBlock = totalPremiumPerBlock_;
   }
 
+  /// @inheritdoc ISherlockProtocolManager
   function depositProtocolBalance(bytes32 _protocol, uint256 _amount) external override {
     if (_amount == uint256(0)) revert ZeroArgument();
     _verifyProtocolExists(_protocol);
@@ -478,6 +497,7 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
     emit ProtocolBalanceDeposited(_protocol, _amount);
   }
 
+  /// @inheritdoc ISherlockProtocolManager
   function withdrawProtocolBalance(bytes32 _protocol, uint256 _amount) external override {
     if (_amount == uint256(0)) revert ZeroArgument();
     if (msg.sender != _verifyProtocolExists(_protocol)) revert Unauthorized();
@@ -495,6 +515,7 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
     emit ProtocolBalanceWithdrawn(_protocol, _amount);
   }
 
+  /// @inheritdoc ISherlockProtocolManager
   function transferProtocolAgent(bytes32 _protocol, address _protocolAgent) external override {
     if (_protocolAgent == address(0)) revert ZeroArgument();
     if (msg.sender == _protocolAgent) revert InvalidArgument();
