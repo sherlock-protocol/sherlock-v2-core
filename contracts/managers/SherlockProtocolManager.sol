@@ -482,6 +482,9 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
     if (_amount == uint256(0)) revert ZeroArgument();
     if (msg.sender != _verifyProtocolExists(_protocol)) revert Unauthorized();
 
+    // settle debt first just to make absolutely sure no extra tokens can be withdrawn
+    _settleProtocolDebt(_protocol);
+
     uint256 currentBalance = balancesInternal[_protocol];
     if (_amount > currentBalance) revert InsufficientBalance(_protocol);
 
@@ -500,5 +503,12 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
     _setProtocolAgent(_protocol, msg.sender, _protocolAgent);
   }
 
-  // @todo implement sweep function
+  function isActive() public view returns (bool) {
+    return address(sherlockCore.sherlockProtocolManager()) == address(this);
+  }
+
+  function sweep(address _receiver, IERC20[] memory _extraTokens) external onlyOwner {
+    require(!isActive());
+    _sweep(_receiver, _extraTokens);
+  }
 }

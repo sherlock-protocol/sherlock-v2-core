@@ -2583,10 +2583,157 @@ describe('SherlockProtocolManager ─ Functional', function () {
       );
     });
   });
+  describe('depositProtocolBalance()', function () {
+    before(async function () {
+      await timeTraveler.revertSnapshot();
 
-  describe('depositProtocolBalance()', function () {});
-  describe('withdrawProtocolBalance()', function () {});
-  describe('transferProtocolAgent()', function () {});
+      this.t0 = await meta(
+        this.spm.protocolAdd(this.protocolX, this.alice.address, id('t'), parseEther('0.1'), 500),
+      );
+    });
+    it('Verify state', async function () {
+      expect(await this.spm.viewBalancesInternal(this.protocolX)).to.eq(0);
+      expect(await this.spm.balances(this.protocolX)).to.eq(0);
+
+      expect(await this.ERC20Mock6d.balanceOf(this.alice.address)).to.eq(maxTokens);
+      expect(await this.ERC20Mock6d.balanceOf(this.spm.address)).to.eq(0);
+    });
+    it('Do', async function () {
+      this.amount = parseUnits('100', 6);
+      this.t1 = await meta(this.spm.depositProtocolBalance(this.protocolX, this.amount));
+
+      expect(this.t1.events.length).to.eq(3);
+      expect(this.t1.events[2].event).to.eq('ProtocolBalanceDeposited');
+      expect(this.t1.events[2].args.protocol).to.eq(this.protocolX);
+      expect(this.t1.events[2].args.amount).to.eq(this.amount);
+
+      expect(await this.spm.viewBalancesInternal(this.protocolX)).to.eq(this.amount);
+      expect(await this.spm.balances(this.protocolX)).to.eq(this.amount);
+
+      expect(await this.ERC20Mock6d.balanceOf(this.alice.address)).to.eq(
+        maxTokens.sub(this.amount),
+      );
+      expect(await this.ERC20Mock6d.balanceOf(this.spm.address)).to.eq(this.amount);
+    });
+    it('Do again', async function () {
+      this.amount2 = parseUnits('200', 6);
+      this.t2 = await meta(this.spm.depositProtocolBalance(this.protocolX, this.amount2));
+
+      expect(this.t2.events.length).to.eq(3);
+      expect(this.t2.events[2].event).to.eq('ProtocolBalanceDeposited');
+      expect(this.t2.events[2].args.protocol).to.eq(this.protocolX);
+      expect(this.t2.events[2].args.amount).to.eq(this.amount2);
+
+      expect(await this.spm.viewBalancesInternal(this.protocolX)).to.eq(
+        this.amount.add(this.amount2),
+      );
+      expect(await this.spm.balances(this.protocolX)).to.eq(this.amount.add(this.amount2));
+
+      expect(await this.ERC20Mock6d.balanceOf(this.alice.address)).to.eq(
+        maxTokens.sub(this.amount.add(this.amount2)),
+      );
+      expect(await this.ERC20Mock6d.balanceOf(this.spm.address)).to.eq(
+        this.amount.add(this.amount2),
+      );
+    });
+  });
+  describe.only('withdrawProtocolBalance()', function () {
+    before(async function () {
+      await timeTraveler.revertSnapshot();
+
+      this.t0 = await meta(
+        this.spm.protocolAdd(this.protocolX, this.alice.address, id('t'), parseEther('0.1'), 500),
+      );
+    });
+    it('Verify state', async function () {
+      expect(await this.spm.viewBalancesInternal(this.protocolX)).to.eq(0);
+      expect(await this.spm.balances(this.protocolX)).to.eq(0);
+
+      expect(await this.ERC20Mock6d.balanceOf(this.alice.address)).to.eq(maxTokens);
+      expect(await this.ERC20Mock6d.balanceOf(this.spm.address)).to.eq(0);
+    });
+    it('Do insufficient', async function () {
+      await expect(this.spm.withdrawProtocolBalance(this.protocolX, 1)).to.be.revertedWith(
+        'InsufficientBalance("' + this.protocolX + '")',
+      );
+
+      this.amount = 60 * 60 * 24 * 4;
+      this.t1 = await meta(this.spm.depositProtocolBalance(this.protocolX, this.amount));
+      await this.spm.setProtocolPremium(this.protocolX, 1);
+
+      expect(await this.spm.viewBalancesInternal(this.protocolX)).to.eq(this.amount);
+      expect(await this.spm.balances(this.protocolX)).to.eq(this.amount);
+
+      expect(await this.ERC20Mock6d.balanceOf(this.alice.address)).to.eq(
+        maxTokens.sub(this.amount),
+      );
+      expect(await this.ERC20Mock6d.balanceOf(this.spm.address)).to.eq(this.amount);
+    });
+    it('Do insufficient time', async function () {
+      await expect(
+        this.spm.withdrawProtocolBalance(this.protocolX, 60 * 60 * 25),
+      ).to.be.revertedWith('InsufficientBalance("' + this.protocolX + '")');
+    });
+    it('Do', async function () {
+      this.withdraw = 60 * 60 * 23;
+      this.t1 = await meta(this.spm.withdrawProtocolBalance(this.protocolX, this.withdraw));
+
+      expect(this.t1.events.length).to.eq(2);
+      expect(this.t1.events[1].event).to.eq('ProtocolBalanceWithdrawn');
+      expect(this.t1.events[1].args.protocol).to.eq(this.protocolX);
+      expect(this.t1.events[1].args.amount).to.eq(this.withdraw);
+
+      expect(await this.spm.viewBalancesInternal(this.protocolX)).to.eq(
+        this.amount - this.withdraw - 2,
+      );
+      expect(await this.spm.balances(this.protocolX)).to.eq(this.amount - this.withdraw - 2);
+
+      expect(await this.ERC20Mock6d.balanceOf(this.alice.address)).to.eq(
+        maxTokens.sub(this.amount - this.withdraw),
+      );
+      expect(await this.ERC20Mock6d.balanceOf(this.spm.address)).to.eq(this.amount - this.withdraw);
+    });
+  });
+  describe('transferProtocolAgent()', function () {
+    before(async function () {
+      await timeTraveler.revertSnapshot();
+
+      this.t0 = await meta(
+        this.spm.protocolAdd(this.protocolX, this.alice.address, id('t'), parseEther('0.1'), 500),
+      );
+    });
+    it('Verify state', async function () {
+      expect(await this.spm.viewProtocolAgent(this.protocolX)).to.eq(this.alice.address);
+      expect(await this.spm.viewRemovedProtocolAgent(this.protocolX)).to.eq(constants.AddressZero);
+
+      expect(await this.spm.protocolAgent(this.protocolX)).to.eq(this.alice.address);
+    });
+    it('Do', async function () {
+      this.t1 = await meta(this.spm.transferProtocolAgent(this.protocolX, this.bob.address));
+
+      expect(this.t1.events.length).to.eq(1);
+      expect(this.t1.events[0].event).to.eq('ProtocolAgentTransfer');
+      expect(this.t1.events[0].args.from).to.eq(this.alice.address);
+      expect(this.t1.events[0].args.to).to.eq(this.bob.address);
+
+      expect(await this.spm.viewProtocolAgent(this.protocolX)).to.eq(this.bob.address);
+      expect(await this.spm.viewRemovedProtocolAgent(this.protocolX)).to.eq(constants.AddressZero);
+
+      expect(await this.spm.protocolAgent(this.protocolX)).to.eq(this.bob.address);
+    });
+    it('Remove', async function () {
+      await this.spm.protocolRemove(this.protocolX);
+
+      expect(await this.spm.viewProtocolAgent(this.protocolX)).to.eq(constants.AddressZero);
+      expect(await this.spm.viewRemovedProtocolAgent(this.protocolX)).to.eq(this.bob.address);
+
+      expect(await this.spm.protocolAgent(this.protocolX)).to.eq(this.bob.address);
+
+      await expect(
+        this.spm.transferProtocolAgent(this.protocolX, this.bob.address),
+      ).to.be.revertedWith('ProtocolNotExists');
+    });
+  });
   describe('nonStakersClaim()', function () {});
   describe('illiquid edge case', function () {
     // create protocol1 with higher debt then balance
