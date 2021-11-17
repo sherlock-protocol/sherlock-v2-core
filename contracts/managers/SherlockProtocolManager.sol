@@ -443,6 +443,7 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
     onlyOwner
   {
     if (_protocol.length != _premium.length) revert UnequalArrayLength();
+    if (_protocol.length == 0) revert InvalidArgument();
 
     _settleTotalDebt();
 
