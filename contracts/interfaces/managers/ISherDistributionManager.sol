@@ -10,8 +10,9 @@ import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import './IManager.sol';
 
 interface ISherDistributionManager is IManager {
-  // constructor: all variables for curve + sherlock address + owner + SHER token contract
   // anyone can just send token to this contract to fund rewards
+
+  event Initialized(uint256 maxRewardsTVL, uint256 zeroRewardsTVL, uint256 maxRewardRate);
 
   /// @notice Caller will receive `_sher` SHER tokens based on `_amount` and `_period`
   /// @param _amount Amount of tokens

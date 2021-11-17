@@ -20,10 +20,6 @@ interface ISherlockProtocolManager is IManager {
 
   error InvalidConditions();
 
-  error ZeroArgument();
-
-  error InvalidArgument();
-
   error UnequalArrayLength();
 
   error InsufficientBalance(bytes32 protocol);

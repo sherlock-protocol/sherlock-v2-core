@@ -25,6 +25,8 @@ contract SherlockMock is ISherlock, ERC721, Ownable {
   ISherlockProtocolManager public override sherlockProtocolManager;
   ISherlockClaimManager public override sherlockClaimManager;
 
+  IERC20 token;
+
   constructor() ERC721('mock', 'm') {}
 
   function setNonStakersAddress(address _a) external {
@@ -36,7 +38,13 @@ contract SherlockMock is ISherlock, ERC721, Ownable {
   //
   function balanceOf(uint256 _tokenID) public view override returns (uint256) {}
 
-  function balanceOf() public view override returns (uint256) {}
+  function setToken(IERC20 _token) external {
+    token = _token;
+  }
+
+  function balanceOf() public view override returns (uint256) {
+    return token.balanceOf(address(this));
+  }
 
   //
   // Gov functions
@@ -48,11 +56,17 @@ contract SherlockMock is ISherlock, ERC721, Ownable {
 
   function disablePeriod(uint256 _period) external override onlyOwner {}
 
+  function pullSherReward(uint256 _amount, uint256 _period) external {
+    sherDistributionManager.pullReward(_amount, _period);
+  }
+
   function updateSherDistributionManager(ISherDistributionManager _manager)
     external
     override
     onlyOwner
-  {}
+  {
+    sherDistributionManager = _manager;
+  }
 
   function removeSherDistributionManager() external override onlyOwner {}
 
@@ -72,7 +86,9 @@ contract SherlockMock is ISherlock, ERC721, Ownable {
     external
     override
     onlyOwner
-  {}
+  {
+    sherlockClaimManager = _sherlockClaimManager;
+  }
 
   function updateStrategy(IStrategyManager _strategy) external override onlyOwner {}
 

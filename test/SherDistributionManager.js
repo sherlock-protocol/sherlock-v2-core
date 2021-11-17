@@ -5,52 +5,145 @@ const { prepare, deploy, solution, blockNumber, Uint16Max, Uint32Max } = require
 const { constants } = require('ethers');
 const { TimeTraveler } = require('./utilities/snapshot');
 
-describe('SherDistributionManager, 6 dec', function () {
-  before(async function () {
-    await prepare(this, ['SherDistributionManager']);
+const maxTokens = parseUnits('100000000000', 6);
+describe.only('SherDistributionManager, 6 dec', function () {
+  timeTraveler = new TimeTraveler(network.provider);
 
+  before(async function () {
+    await prepare(this, ['SherDistributionManager', 'ERC20Mock6d', 'SherlockMock']);
+
+    await deploy(this, [['erc20', this.ERC20Mock6d, ['USDC Token', 'USDC', maxTokens]]]);
+    await deploy(this, [
+      ['sher', this.ERC20Mock6d, ['USDC Token', 'USDC', parseEther('100000000')]],
+    ]);
     await deploy(this, [
       [
-        'SherDistributionManager',
+        'sdm',
         this.SherDistributionManager,
-        [parseUnits('100', 6), parseUnits('600', 6), parseUnits('5', 6), constants.AddressZero],
+        [parseUnits('100', 6), parseUnits('600', 6), parseUnits('5', 6), this.sher.address],
       ],
     ]);
+    await deploy(this, [['sherlock', this.SherlockMock, []]]);
+
+    await timeTraveler.snapshot();
   });
-  describe('calc()', function () {
-    before(async function () {});
+  describe('constructor', async function () {
+    before(async function () {
+      await timeTraveler.revertSnapshot();
+    });
+    it('Success', async function () {
+      await this.SherDistributionManager.deploy(100, 1000, 1, this.sher.address);
+    });
+    it('Invalid argument', async function () {
+      await expect(
+        this.SherDistributionManager.deploy(1000, 1000, 1, this.sher.address),
+      ).to.be.revertedWith('InvalidArgument()');
+    });
+    it('Zero rate', async function () {
+      await expect(
+        this.SherDistributionManager.deploy(100, 1000, 0, this.sher.address),
+      ).to.be.revertedWith('ZeroArgument()');
+    });
+    it('Zero sher', async function () {
+      await expect(
+        this.SherDistributionManager.deploy(100, 1000, 1, constants.AddressZero),
+      ).to.be.revertedWith('ZeroArgument()');
+    });
+  });
+  describe('calcReward()', function () {
+    before(async function () {
+      await timeTraveler.revertSnapshot();
+    });
     it('Initial state', async function () {
-      expect(
-        await this.SherDistributionManager.calcReward(parseUnits('0', 6), parseUnits('50', 6), 1),
-      ).to.eq(parseUnits('250', 18));
+      expect(await this.sdm.calcReward(parseUnits('0', 6), parseUnits('50', 6), 1)).to.eq(
+        parseUnits('250', 18),
+      );
 
-      expect(
-        await this.SherDistributionManager.calcReward(parseUnits('0', 6), parseUnits('50', 6), 2),
-      ).to.eq(parseUnits('500', 18));
+      expect(await this.sdm.calcReward(parseUnits('0', 6), parseUnits('50', 6), 2)).to.eq(
+        parseUnits('500', 18),
+      );
 
-      expect(
-        await this.SherDistributionManager.calcReward(parseUnits('0', 6), parseUnits('100', 6), 1),
-      ).to.eq(parseUnits('500', 18));
+      expect(await this.sdm.calcReward(parseUnits('0', 6), parseUnits('100', 6), 1)).to.eq(
+        parseUnits('500', 18),
+      );
 
-      expect(
-        await this.SherDistributionManager.calcReward(parseUnits('0', 6), parseUnits('200', 6), 1),
-      ).to.eq(parseUnits('950', 18));
+      expect(await this.sdm.calcReward(parseUnits('0', 6), parseUnits('200', 6), 1)).to.eq(
+        parseUnits('950', 18),
+      );
 
-      expect(
-        await this.SherDistributionManager.calcReward(
-          parseUnits('100', 6),
-          parseUnits('100', 6),
-          1,
-        ),
-      ).to.eq(parseUnits('450', 18));
+      expect(await this.sdm.calcReward(parseUnits('100', 6), parseUnits('100', 6), 1)).to.eq(
+        parseUnits('450', 18),
+      );
 
-      expect(
-        await this.SherDistributionManager.calcReward(
-          parseUnits('0', 6),
-          parseUnits('10000', 6),
-          1,
-        ),
-      ).to.eq(parseUnits('1700', 18));
+      expect(await this.sdm.calcReward(parseUnits('0', 6), parseUnits('10000', 6), 1)).to.eq(
+        parseUnits('1700', 18),
+      );
+    });
+  });
+  describe('pullReward()', function () {
+    before(async function () {
+      await timeTraveler.revertSnapshot();
+
+      await this.sherlock.setToken(this.erc20.address);
+    });
+    it('Initial', async function () {
+      await expect(this.sdm.pullReward(parseUnits('100', 6), 1)).to.be.revertedWith('CORE');
+    });
+    it('Set', async function () {
+      await this.sherlock.updateSherDistributionManager(this.sdm.address);
+      await this.sdm.setSherlockCoreAddress(this.sherlock.address);
+
+      await expect(this.sdm.pullReward(parseUnits('100', 6), 1)).to.be.revertedWith('CORE');
+    });
+    it('Set', async function () {
+      this.amount = parseUnits('100', 6);
+
+      // deposit into sherlock
+      await this.erc20.transfer(this.sherlock.address, this.amount);
+      // deposit into sher distribution manager
+      await this.sher.transfer(this.sdm.address, parseEther('500'));
+      // calc reward
+      expect(await this.sdm.calcReward(0, this.amount, 1)).to.eq(parseEther('500'));
+
+      expect(await this.sher.balanceOf(this.sherlock.address)).to.eq(0);
+      await this.sherlock.pullSherReward(this.amount, 1);
+      expect(await this.sher.balanceOf(this.sherlock.address)).to.eq(parseEther('500'));
+    });
+    it('Do illuiqid', async function () {
+      await expect(this.sherlock.pullSherReward(1, 1)).to.be.reverted;
+    });
+  });
+  describe('sweep, eol', function () {
+    before(async function () {
+      await timeTraveler.revertSnapshot();
+    });
+    it('Initial state', async function () {
+      this.balance = parseUnits('10000', 6);
+      this.erc20.transfer(this.sdm.address, this.balance);
+
+      await expect(this.sdm.isActive()).to.be.revertedWith(
+        'Transaction reverted: function call to a non-contract account',
+      );
+      await expect(this.sdm.sweep(this.bob.address, [this.erc20.address])).to.be.revertedWith(
+        'Transaction reverted: function call to a non-contract account',
+      );
+
+      expect(await this.erc20.balanceOf(this.bob.address)).to.eq(0);
+    });
+    it('Set core', async function () {
+      await this.sherlock.updateSherDistributionManager(this.sdm.address);
+      await this.sdm.setSherlockCoreAddress(this.sherlock.address);
+
+      expect(await this.sdm.isActive()).to.eq(true);
+      await expect(this.sdm.sweep(this.bob.address, [this.erc20.address])).to.be.reverted;
+    });
+    it('Do', async function () {
+      await this.sherlock.updateSherDistributionManager(constants.AddressZero);
+
+      expect(await this.sdm.isActive()).to.eq(false);
+      await this.sdm.sweep(this.bob.address, [this.erc20.address]);
+
+      expect(await this.erc20.balanceOf(this.bob.address)).to.eq(this.balance);
     });
   });
 });

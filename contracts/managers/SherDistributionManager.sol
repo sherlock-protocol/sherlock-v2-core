@@ -29,13 +29,16 @@ contract SherDistributionManager is ISherDistributionManager, Manager {
     uint256 _maxRewardsRate,
     IERC20 _sher
   ) {
+    if (_maxRewardsTVL >= _zeroRewardsTVL) revert InvalidArgument();
+    if (_maxRewardsRate == 0) revert ZeroArgument();
+    if (address(_sher) == address(0)) revert ZeroArgument();
+
     maxRewardsTVL = _maxRewardsTVL;
     zeroRewardsTVL = _zeroRewardsTVL;
     maxRewardsRate = _maxRewardsRate;
     sher = _sher;
 
-    // @TODO, emit event to show constructor parmas
-    // @todo sanity check params
+    emit Initialized(_maxRewardsTVL, _zeroRewardsTVL, _maxRewardsRate);
   }
 
   function pullReward(uint256 _amount, uint256 _period)
@@ -57,7 +60,7 @@ contract SherDistributionManager is ISherDistributionManager, Manager {
     uint256 slopeRewardsAvailable = zeroRewardsTVL - _tvl;
 
     if (maxRewardsAvailable != 0) {
-      if (_amount < maxRewardsAvailable) {
+      if (_amount <= maxRewardsAvailable) {
         // enough liquidity available for max rate
         return (_amount * maxRewardsRate * _period) * multiplier;
       } else {
@@ -78,7 +81,7 @@ contract SherDistributionManager is ISherDistributionManager, Manager {
       uint256 position = _tvl + (_amount / 2);
 
       // calc SHER rewards based on position on the curve
-      // @TODO, when overflow?
+      // @todo , when overflow?
       _sher +=
         (((zeroRewardsTVL - position) * _amount * maxRewardsRate * _period) /
           (zeroRewardsTVL - maxRewardsTVL)) *

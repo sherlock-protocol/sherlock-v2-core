@@ -11,6 +11,10 @@ import '../ISherlock.sol';
 import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 
 interface IManager {
+  error ZeroArgument();
+
+  error InvalidArgument();
+
   event SherlockCoreSet(ISherlock sherlock);
 
   /// @notice Set sherlock core address where premiums should be send too

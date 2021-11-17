@@ -174,10 +174,17 @@ contract Sherlock is ISherlock, ERC721, Ownable {
   ) internal returns (uint256 _sher) {
     deadlines[_id] = block.timestamp + _period;
 
-    uint256 before = sher.balanceOf(address(this));
-    _sher = sherDistributionManager.pullReward(_amount, _period);
-    require(sher.balanceOf(address(this)) - before == _sher, 'calc');
+    if (address(sherDistributionManager) == address(0)) return 0;
 
+    uint256 before = sher.balanceOf(address(this));
+
+    try sherDistributionManager.pullReward(_amount, _period) returns (uint256 amount) {
+      _sher = amount;
+    } catch (bytes memory reason) {
+      return 0;
+    }
+
+    require(sher.balanceOf(address(this)) - before == _sher, 'calc');
     sherRewards[_id] = _sher;
   }
 
