@@ -6,6 +6,7 @@ const { constants } = require('ethers');
 const { TimeTraveler } = require('./utilities/snapshot');
 
 const maxTokens = parseUnits('100000000000', 6);
+const billie = parseUnits('1000000000', 6);
 describe.only('SherDistributionManager, 6 dec', function () {
   timeTraveler = new TimeTraveler(network.provider);
 
@@ -21,6 +22,13 @@ describe.only('SherDistributionManager, 6 dec', function () {
         'sdm',
         this.SherDistributionManager,
         [parseUnits('100', 6), parseUnits('600', 6), parseUnits('5', 6), this.sher.address],
+      ],
+    ]);
+    await deploy(this, [
+      [
+        'sdmMAX',
+        this.SherDistributionManager,
+        [billie.mul(100), billie.mul(10000), parseUnits('500', 6), this.sher.address],
       ],
     ]);
     await deploy(this, [['sherlock', this.SherlockMock, []]]);
@@ -55,6 +63,9 @@ describe.only('SherDistributionManager, 6 dec', function () {
       await timeTraveler.revertSnapshot();
     });
     it('Initial state', async function () {
+      // @note in production _amount will be super small and period way larger
+      expect(await this.sdm.calcReward(0, 0, 1)).to.eq(0);
+
       expect(await this.sdm.calcReward(parseUnits('0', 6), parseUnits('50', 6), 1)).to.eq(
         parseUnits('250', 18),
       );
@@ -77,6 +88,19 @@ describe.only('SherDistributionManager, 6 dec', function () {
 
       expect(await this.sdm.calcReward(parseUnits('0', 6), parseUnits('10000', 6), 1)).to.eq(
         parseUnits('1700', 18),
+      );
+
+      expect(await this.sdm.calcReward(parseUnits('0', 6), parseUnits('10000', 6), 2)).to.eq(
+        parseUnits('3400', 18),
+      );
+
+      expect(await this.sdm.calcReward(parseUnits('0', 6), parseUnits('10000', 6), 20)).to.eq(
+        parseUnits('34000', 18),
+      );
+
+      // nowwhere near overflow
+      expect(await this.sdmMAX.calcReward(parseUnits('0', 6), billie.mul(10000), 1)).to.eq(
+        parseUnits('2525000000000000', 18),
       );
     });
   });

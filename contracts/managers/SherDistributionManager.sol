@@ -15,7 +15,7 @@ import 'hardhat/console.sol';
 contract SherDistributionManager is ISherDistributionManager, Manager {
   using SafeERC20 for IERC20;
 
-  uint256 constant multiplier = 10**6;
+  uint256 constant DECIMALS = 10**6;
 
   uint256 immutable maxRewardsTVL;
   uint256 immutable zeroRewardsTVL;
@@ -56,23 +56,25 @@ contract SherDistributionManager is ISherDistributionManager, Manager {
     uint256 _amount,
     uint256 _period
   ) public view override returns (uint256 _sher) {
+    if (_amount == 0) return 0;
+
     uint256 maxRewardsAvailable = maxRewardsTVL - _tvl;
     uint256 slopeRewardsAvailable = zeroRewardsTVL - _tvl;
 
     if (maxRewardsAvailable != 0) {
       if (_amount <= maxRewardsAvailable) {
         // enough liquidity available for max rate
-        return (_amount * maxRewardsRate * _period) * multiplier;
+        return (_amount * maxRewardsRate * _period) * DECIMALS;
       } else {
         // take the remaining liquidity for max rate + calc rest on the slope
         _tvl += maxRewardsAvailable;
         _amount -= maxRewardsAvailable;
 
-        _sher += (maxRewardsAvailable * maxRewardsRate * _period) * multiplier;
+        _sher += (maxRewardsAvailable * maxRewardsRate * _period) * DECIMALS;
       }
     }
 
-    if (_amount != 0 && slopeRewardsAvailable != 0) {
+    if (slopeRewardsAvailable != 0) {
       // take all remaining liquidity on the slope
       if (_amount > slopeRewardsAvailable) _amount = slopeRewardsAvailable;
 
@@ -81,11 +83,10 @@ contract SherDistributionManager is ISherDistributionManager, Manager {
       uint256 position = _tvl + (_amount / 2);
 
       // calc SHER rewards based on position on the curve
-      // @todo , when overflow?
       _sher +=
         (((zeroRewardsTVL - position) * _amount * maxRewardsRate * _period) /
           (zeroRewardsTVL - maxRewardsTVL)) *
-        multiplier;
+        DECIMALS;
     }
   }
 
