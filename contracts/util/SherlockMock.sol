@@ -64,7 +64,9 @@ contract SherlockMock is ISherlock, ERC721, Ownable {
     external
     override
     onlyOwner
-  {}
+  {
+    sherlockProtocolManager = _protocolManager;
+  }
 
   function updateSherlockClaimManager(ISherlockClaimManager _sherlockClaimManager)
     external

@@ -2971,4 +2971,37 @@ describe('SherlockProtocolManager ─ Functional', function () {
       expect(await this.ERC20Mock6d.balanceOf(this.spm.address)).to.eq(this.b);
     });
   });
+  describe('sweep, eol', function () {
+    before(async function () {
+      this.balance = parseUnits('10000', 6);
+
+      await timeTraveler.revertSnapshot();
+
+      // await this.sherlock.setNonStakersAddress(this.alice.address);
+
+      // deposit active balance
+      this.t0 = await meta(
+        this.spm.protocolAdd(this.protocolX, this.alice.address, id('t'), parseEther('0.1'), 500),
+      );
+      await this.spm.depositProtocolBalance(this.protocolX, this.balance);
+
+      // transfer random token
+      this.ERC20Mock6d2.transfer(this.spm.address, maxTokens);
+    });
+    it('Initial state', async function () {
+      await expect(this.spm.isActive()).to.be.revertedWith(
+        'Transaction reverted: function call to a non-contract account',
+      );
+      await expect(this.spm.sweep(this.bob.address, [this.ERC20Mock6d.address])).to.be.revertedWith(
+        'Transaction reverted: function call to a non-contract account',
+      );
+    });
+    it('Set core', async function () {
+      await this.sherlock.updateSherlockProtocolManager(this.spm.address);
+      await this.spm.setSherlockCoreAddress(this.sherlock.address);
+
+      expect(await this.spm.isActive()).to.eq(true);
+      await expect(this.spm.sweep(this.bob.address, [this.ERC20Mock6d.address])).to.be.reverted;
+    });
+  });
 });
