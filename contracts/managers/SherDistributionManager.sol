@@ -58,8 +58,11 @@ contract SherDistributionManager is ISherDistributionManager, Manager {
   ) public view override returns (uint256 _sher) {
     if (_amount == 0) return 0;
 
-    uint256 maxRewardsAvailable = maxRewardsTVL - _tvl;
-    uint256 slopeRewardsAvailable = zeroRewardsTVL - _tvl;
+    uint256 maxRewardsTVL_ = maxRewardsTVL;
+    uint256 maxRewardsAvailable = maxRewardsTVL_ > _tvl ? maxRewardsTVL_ - _tvl : 0;
+
+    uint256 zeroRewardsTVL_ = zeroRewardsTVL;
+    uint256 slopeRewardsAvailable = zeroRewardsTVL_ > _tvl ? zeroRewardsTVL_ - _tvl : 0;
 
     if (maxRewardsAvailable != 0) {
       if (_amount <= maxRewardsAvailable) {

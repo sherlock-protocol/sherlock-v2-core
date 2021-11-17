@@ -7,7 +7,7 @@ const { TimeTraveler } = require('./utilities/snapshot');
 
 const maxTokens = parseUnits('100000000000', 6);
 const billie = parseUnits('1000000000', 6);
-describe.only('SherDistributionManager, 6 dec', function () {
+describe('SherDistributionManager, 6 dec', function () {
   timeTraveler = new TimeTraveler(network.provider);
 
   before(async function () {
@@ -65,6 +65,8 @@ describe.only('SherDistributionManager, 6 dec', function () {
     it('Initial state', async function () {
       // @note in production _amount will be super small and period way larger
       expect(await this.sdm.calcReward(0, 0, 1)).to.eq(0);
+      expect(await this.sdm.calcReward(parseUnits('600', 6), parseUnits('50', 6), 1)).to.eq(0);
+      expect(await this.sdm.calcReward(parseUnits('1000', 6), parseUnits('50', 6), 1)).to.eq(0);
 
       expect(await this.sdm.calcReward(parseUnits('0', 6), parseUnits('50', 6), 1)).to.eq(
         parseUnits('250', 18),
@@ -84,6 +86,10 @@ describe.only('SherDistributionManager, 6 dec', function () {
 
       expect(await this.sdm.calcReward(parseUnits('100', 6), parseUnits('100', 6), 1)).to.eq(
         parseUnits('450', 18),
+      );
+
+      expect(await this.sdm.calcReward(parseUnits('500', 6), parseUnits('100', 6), 1)).to.eq(
+        parseUnits('50', 18),
       );
 
       expect(await this.sdm.calcReward(parseUnits('0', 6), parseUnits('10000', 6), 1)).to.eq(
