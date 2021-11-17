@@ -155,8 +155,26 @@ describe('SherlockProtocolManager ─ Stateless', function () {
       await expect(this.spm.claimPremiums()).to.be.revertedWith('InvalidConditions()');
     });
   });
-  describe('setMinBalance()', function () {});
-  describe('setMinSecondsOfCoverage()', function () {});
+  describe('setMinBalance()', function () {
+    it('Invalid sender', async function () {
+      await expect(this.spm.connect(this.bob).setMinBalance(1)).to.be.revertedWith(
+        'Ownable: caller is not the owner',
+      );
+    });
+    it('Insane', async function () {
+      await expect(this.spm.setMinBalance(parseEther('1'))).to.be.revertedWith('INSANE');
+    });
+  });
+  describe('setMinSecondsOfCoverage()', function () {
+    it('Invalid sender', async function () {
+      await expect(this.spm.connect(this.bob).setMinSecondsOfCoverage(1)).to.be.revertedWith(
+        'Ownable: caller is not the owner',
+      );
+    });
+    it('Insane', async function () {
+      await expect(this.spm.setMinSecondsOfCoverage(parseEther('1'))).to.be.revertedWith('INSANE');
+    });
+  });
   describe('setProtocolPremium()', function () {
     it('Invalid sender', async function () {
       await expect(
