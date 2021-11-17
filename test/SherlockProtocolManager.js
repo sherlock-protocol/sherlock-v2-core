@@ -286,16 +286,27 @@ describe('SherlockProtocolManager ─ Stateless', function () {
         this.spm.nonStakersClaim(this.protocolX, 1, constants.AddressZero),
       ).to.be.revertedWith('ZeroArgument()');
     });
-    it('Unauthorized', async function () {
-      this.SherlockMock.setNonStakersAddress(this.bob.address);
-      this.spm.setSherlockCoreAddress(this.SherlockMock.address);
+    it('Unitinitalized', async function () {
+      await expect(
+        this.spm.nonStakersClaim(this.protocolX, 1, this.bob.address),
+      ).to.be.revertedWith('Transaction reverted: function call to a non-contract account');
 
+      await this.spm.setSherlockCoreAddress(this.SherlockMock.address);
+    });
+    it('Zero address', async function () {
+      await expect(
+        this.spm.nonStakersClaim(this.protocolX, 1, this.bob.address),
+      ).to.be.revertedWith('Unauthorized()');
+
+      await this.SherlockMock.setNonStakersAddress(this.bob.address);
+    });
+    it('Unauthorized', async function () {
       await expect(
         this.spm.nonStakersClaim(this.protocolX, 1, this.bob.address),
       ).to.be.revertedWith('Unauthorized()');
     });
     it('Exceed', async function () {
-      this.SherlockMock.setNonStakersAddress(this.alice.address);
+      await this.SherlockMock.setNonStakersAddress(this.alice.address);
 
       await expect(
         this.spm.nonStakersClaim(this.protocolX, 1, this.bob.address),
@@ -2637,7 +2648,7 @@ describe('SherlockProtocolManager ─ Functional', function () {
       );
     });
   });
-  describe.only('withdrawProtocolBalance()', function () {
+  describe('withdrawProtocolBalance()', function () {
     before(async function () {
       await timeTraveler.revertSnapshot();
 
@@ -2734,7 +2745,94 @@ describe('SherlockProtocolManager ─ Functional', function () {
       ).to.be.revertedWith('ProtocolNotExists');
     });
   });
-  describe('nonStakersClaim()', function () {});
+  describe('nonStakersClaim()', function () {
+    before(async function () {
+      this.premium = parseUnits('10', 6);
+      this.premiumStakers = parseUnits('9', 6);
+      this.premiumNonStakers = parseUnits('1', 6);
+      this.balance = this.premium.mul(1000000);
+
+      await timeTraveler.revertSnapshot();
+
+      await this.spm.setSherlockCoreAddress(this.sherlock.address);
+      await this.sherlock.setNonStakersAddress(this.alice.address);
+
+      this.t0 = await meta(
+        this.spm.protocolAdd(this.protocolX, this.alice.address, id('t'), parseEther('0.1'), 500),
+      );
+
+      await this.spm.depositProtocolBalance(this.protocolX, this.balance);
+      this.t1 = await meta(this.spm.setProtocolPremium(this.protocolX, this.premium));
+    });
+    it('Initial state', async function () {
+      await timeTraveler.mine(1);
+
+      expect(await this.spm.nonStakersClaimable(this.protocolX)).to.eq(this.premiumNonStakers);
+      expect(await this.ERC20Mock6d.balanceOf(this.bob.address)).to.eq(0);
+      expect(await this.ERC20Mock6d.balanceOf(this.spm.address)).to.eq(this.balance);
+    });
+    it('Do', async function () {
+      this.t2 = await meta(
+        this.spm.nonStakersClaim(this.protocolX, this.premiumNonStakers.mul(2), this.bob.address),
+      );
+      expect(this.t2.events.length).to.eq(1);
+
+      expect(await this.spm.nonStakersClaimable(this.protocolX)).to.eq(0);
+      expect(await this.ERC20Mock6d.balanceOf(this.bob.address)).to.eq(
+        this.premiumNonStakers.mul(2),
+      );
+      expect(await this.ERC20Mock6d.balanceOf(this.spm.address)).to.eq(
+        this.balance.sub(this.premiumNonStakers.mul(2)),
+      );
+    });
+    it('Do again', async function () {
+      await timeTraveler.mine(2);
+
+      this.t2 = await meta(
+        this.spm.nonStakersClaim(this.protocolX, this.premiumNonStakers.mul(2), this.bob.address),
+      );
+      expect(this.t2.events.length).to.eq(1);
+
+      expect(await this.spm.nonStakersClaimable(this.protocolX)).to.eq(this.premiumNonStakers);
+      expect(await this.ERC20Mock6d.balanceOf(this.bob.address)).to.eq(
+        this.premiumNonStakers.mul(4),
+      );
+      expect(await this.ERC20Mock6d.balanceOf(this.spm.address)).to.eq(
+        this.balance.sub(this.premiumNonStakers.mul(4)),
+      );
+    });
+    it('Remove protocol', async function () {
+      await this.spm.protocolRemove(this.protocolX);
+
+      expect(await this.spm.nonStakersClaimable(this.protocolX)).to.eq(
+        this.premiumNonStakers.mul(2),
+      );
+      expect(await this.ERC20Mock6d.balanceOf(this.bob.address)).to.eq(
+        this.premiumNonStakers.mul(4),
+      );
+    });
+    it('Mine', async function () {
+      await timeTraveler.mine(10);
+
+      expect(await this.spm.nonStakersClaimable(this.protocolX)).to.eq(
+        this.premiumNonStakers.mul(2),
+      );
+      expect(await this.ERC20Mock6d.balanceOf(this.bob.address)).to.eq(
+        this.premiumNonStakers.mul(4),
+      );
+    });
+    it('Do again', async function () {
+      this.t3 = await meta(
+        this.spm.nonStakersClaim(this.protocolX, this.premiumNonStakers.mul(2), this.bob.address),
+      );
+      expect(this.t2.events.length).to.eq(1);
+
+      expect(await this.spm.nonStakersClaimable(this.protocolX)).to.eq(0);
+      expect(await this.ERC20Mock6d.balanceOf(this.bob.address)).to.eq(
+        this.premiumNonStakers.mul(6),
+      );
+    });
+  });
   describe('illiquid edge case', function () {
     // create protocol1 with higher debt then balance
     // create protocol2 with sufficient balance, so contract holds enough tokens
