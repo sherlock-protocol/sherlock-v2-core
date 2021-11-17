@@ -1,7 +1,8 @@
 {
   "name": "hardhat-project",
   "scripts": {
-    "prettier": "prettier --write contracts/*.sol contracts/**/*.sol"
+    "prettier": "prettier --write contracts/*.sol contracts/**/*.sol",
+    "gas": "export REPORT_GAS=1; npx hardhat test; export REPORT_GAS="
   },
   "devDependencies": {
     "@nomiclabs/hardhat-ethers": "^2.0.2",
@@ -22,6 +23,9 @@
   },
   "dependencies": {
     "@openzeppelin/contracts": "^4.3.2",
-    "prettier-plugin-solidity": "^1.0.0-beta.18"
+    "dotenv": "^8.2.0",
+    "hardhat-gas-reporter": "^1.0.4",
+    "prettier-plugin-solidity": "^1.0.0-beta.18",
+    "solidity-coverage": "^0.7.17"
   }
 }
