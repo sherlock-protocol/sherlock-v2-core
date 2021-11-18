@@ -67,7 +67,7 @@ contract Sherlock is ISherlock, ERC721, Ownable {
     sherlockClaimManager = _sherlockClaimManager;
 
     for (uint256 i; i < _initialPeriods.length; i++) {
-      _setPeriod(_initialPeriods[i]);
+      enablePeriod(_initialPeriods[i]);
     }
 
     emit YieldStrategyUpdated(IStrategyManager(address(0)), _strategy);
@@ -98,23 +98,19 @@ contract Sherlock is ISherlock, ERC721, Ownable {
   // Gov functions
   //
 
-  function _setPeriod(uint256 _period) internal {
-    periods[_period] = true;
-
-    emit StakingPeriodEnabled(_period);
-  }
-
-  function enablePeriod(uint256 _period) external override onlyOwner {
+  function enablePeriod(uint256 _period) public override onlyOwner {
     if (_period == 0) revert ZeroArgument();
     if (periods[_period]) revert InvalidArgument();
-    _setPeriod(_period);
+
+    periods[_period] = true;
+    emit StakingPeriodEnabled(_period);
   }
 
   function disablePeriod(uint256 _period) external override onlyOwner {
     if (!periods[_period]) revert InvalidArgument();
     periods[_period] = false;
 
-   emit StakingPeriodDisabled(_period);
+    emit StakingPeriodDisabled(_period);
   }
 
   function updateSherDistributionManager(ISherDistributionManager _manager)
@@ -183,7 +179,7 @@ contract Sherlock is ISherlock, ERC721, Ownable {
     if (_amount == 0) revert ZeroArgument();
 
     sherlockProtocolManager.claimPremiums();
-    token.transfer(address(strategy), _amount);
+    token.safeTransfer(address(strategy), _amount);
     strategy.deposit();
   }
 

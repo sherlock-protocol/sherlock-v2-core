@@ -14,6 +14,8 @@ import '../interfaces/managers/ISherlockProtocolManager.sol';
 contract SherlockProtocolManagerMock is ISherlockProtocolManager, Manager {
   uint256 amount;
 
+  uint256 public claimCalled;
+
   IERC20 token;
 
   constructor(IERC20 _token) {
@@ -28,6 +30,7 @@ contract SherlockProtocolManagerMock is ISherlockProtocolManager, Manager {
 
   function claimPremiums() external override {
     token.transfer(msg.sender, amount);
+    claimCalled++;
   }
 
   function protocolAgent(bytes32 _protocol) external view override returns (address) {}

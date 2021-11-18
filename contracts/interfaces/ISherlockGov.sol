@@ -24,9 +24,9 @@ interface ISherlockGov {
     ISherDistributionManager current
   );
 
-  event StakingPeriodEnabled(uint256 _period);
+  event StakingPeriodEnabled(uint256 period);
 
-  event StakingPeriodDisabled(uint256 _period);
+  event StakingPeriodDisabled(uint256 period);
 
   /// @notice Allows stakers to stake for `_period` of time
   /// @param _period Period of time, in seconds,

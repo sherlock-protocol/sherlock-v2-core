@@ -11,6 +11,9 @@ import '../interfaces/managers/IStrategyManager.sol';
 
 contract StrategyMock is IStrategyManager, Manager {
   IERC20 public override want;
+  uint256 public depositCalled;
+  uint256 public withdrawCalled;
+  uint256 public withdrawAllCalled;
 
   constructor(IERC20 _token) {
     want = _token;
@@ -19,13 +22,17 @@ contract StrategyMock is IStrategyManager, Manager {
   function withdrawAll() external override returns (uint256 b) {
     b = balanceOf();
     want.transfer(msg.sender, b);
+    withdrawAllCalled++;
   }
 
   function withdraw(uint256 _amount) external override {
     want.transfer(msg.sender, _amount);
+    withdrawCalled++;
   }
 
-  function deposit() external override {}
+  function deposit() external override {
+    depositCalled++;
+  }
 
   function balanceOf() public view override returns (uint256) {
     return want.balanceOf(address(this));
