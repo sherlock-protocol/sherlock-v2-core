@@ -21,3 +21,17 @@ contract ERC20Mock6d is ERC20 {
     return 6;
   }
 }
+
+contract ERC20Mock18d is ERC20 {
+  constructor(
+    string memory _name,
+    string memory _symbol,
+    uint256 _amount
+  ) ERC20(_name, _symbol) {
+    _mint(msg.sender, _amount);
+  }
+
+  function decimals() public view virtual override returns (uint8) {
+    return 18;
+  }
+}

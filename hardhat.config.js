@@ -1,12 +1,21 @@
 require('@nomiclabs/hardhat-waffle');
 require('solidity-coverage');
 require('hardhat-gas-reporter');
+require('hardhat-contract-sizer');
 require('dotenv').config();
 /**
  * @type import('hardhat/config').HardhatUserConfig
  */
 module.exports = {
-  solidity: '0.8.9',
+  solidity: {
+    version: '0.8.9',
+    settings: {
+      optimizer: {
+        enabled: true,
+        runs: 20000,
+      },
+    },
+  },
   gasReporter: {
     enabled: process.env.REPORT_GAS ? true : false,
     currency: 'USD',

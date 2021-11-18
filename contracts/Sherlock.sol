@@ -51,6 +51,13 @@ contract Sherlock is ISherlock, ERC721, Ownable {
     ISherlockClaimManager _sherlockClaimManager,
     uint256[] memory _initialPeriods
   ) ERC721(_name, _symbol) {
+    if (address(_token) == address(0)) revert ZeroArgument();
+    if (address(_sher) == address(0)) revert ZeroArgument();
+    if (address(_strategy) == address(0)) revert ZeroArgument();
+    if (_nonStakersAddress == address(0)) revert ZeroArgument();
+    if (address(_sherlockProtocolManager) == address(0)) revert ZeroArgument();
+    if (address(_sherlockClaimManager) == address(0)) revert ZeroArgument();
+
     token = _token;
     sher = _sher;
     strategy = _strategy;
@@ -62,6 +69,15 @@ contract Sherlock is ISherlock, ERC721, Ownable {
     for (uint256 i; i < _initialPeriods.length; i++) {
       _setPeriod(_initialPeriods[i]);
     }
+
+    emit YieldStrategyUpdated(IStrategyManager(address(0)), _strategy);
+    emit SherDistributionManagerUpdated(
+      ISherDistributionManager(address(0)),
+      _sherDistributionManager
+    );
+    emit NonStakerAddressUpdated(address(0), _nonStakersAddress);
+    emit ProtocolManagerUpdated(ISherlockProtocolManager(address(0)), _sherlockProtocolManager);
+    emit ClaimManagerUpdated(ISherlockClaimManager(address(0)), _sherlockClaimManager);
   }
 
   //
@@ -84,17 +100,21 @@ contract Sherlock is ISherlock, ERC721, Ownable {
 
   function _setPeriod(uint256 _period) internal {
     periods[_period] = true;
-    // todo emit event
+
+    emit StakingPeriodEnabled(_period);
   }
 
   function enablePeriod(uint256 _period) external override onlyOwner {
-    require(!periods[_period], 'active');
+    if (_period == 0) revert ZeroArgument();
+    if (periods[_period]) revert InvalidArgument();
     _setPeriod(_period);
   }
 
   function disablePeriod(uint256 _period) external override onlyOwner {
-    require(periods[_period], 'inactive');
+    if (!periods[_period]) revert InvalidArgument();
     periods[_period] = false;
+
+   emit StakingPeriodDisabled(_period);
   }
 
   function updateSherDistributionManager(ISherDistributionManager _manager)
@@ -102,16 +122,28 @@ contract Sherlock is ISherlock, ERC721, Ownable {
     override
     onlyOwner
   {
-    require(address(_manager) != address(0), 'ZERO');
+    if (address(_manager) == address(0)) revert ZeroArgument();
+    if (sherDistributionManager == _manager) revert InvalidArgument();
+
+    emit SherDistributionManagerUpdated(sherDistributionManager, _manager);
     sherDistributionManager = _manager;
   }
 
   function removeSherDistributionManager() external override onlyOwner {
+    if (address(sherDistributionManager) == address(0)) revert InvalidConditions();
+
+    emit SherDistributionManagerUpdated(
+      sherDistributionManager,
+      ISherDistributionManager(address(0))
+    );
     delete sherDistributionManager;
   }
 
   function updateNonStakersAddress(address _nonStakers) external override onlyOwner {
-    require(address(_nonStakers) != address(0), 'ZERO');
+    if (address(_nonStakers) == address(0)) revert ZeroArgument();
+    if (nonStakersAddress == _nonStakers) revert InvalidArgument();
+
+    emit NonStakerAddressUpdated(nonStakersAddress, _nonStakers);
     nonStakersAddress = _nonStakers;
   }
 
@@ -120,7 +152,10 @@ contract Sherlock is ISherlock, ERC721, Ownable {
     override
     onlyOwner
   {
-    require(address(_protocolManager) != address(0), 'ZERO');
+    if (address(_protocolManager) == address(0)) revert ZeroArgument();
+    if (sherlockProtocolManager == _protocolManager) revert InvalidArgument();
+
+    emit ProtocolManagerUpdated(sherlockProtocolManager, _protocolManager);
     sherlockProtocolManager = _protocolManager;
   }
 
@@ -129,24 +164,32 @@ contract Sherlock is ISherlock, ERC721, Ownable {
     override
     onlyOwner
   {
-    require(address(_sherlockClaimManager) != address(0), 'ZERO');
+    if (address(_sherlockClaimManager) == address(0)) revert ZeroArgument();
+    if (sherlockClaimManager == _sherlockClaimManager) revert InvalidArgument();
+
+    emit ClaimManagerUpdated(sherlockClaimManager, _sherlockClaimManager);
     sherlockClaimManager = _sherlockClaimManager;
   }
 
   function updateStrategy(IStrategyManager _strategy) external override onlyOwner {
-    require(address(_strategy) != address(0), 'ZERO');
+    if (address(_strategy) == address(0)) revert ZeroArgument();
+    if (strategy == _strategy) revert InvalidArgument();
+
+    emit YieldStrategyUpdated(strategy, _strategy);
     strategy = _strategy;
   }
 
   function strategyDeposit(uint256 _amount) external override onlyOwner {
-    require(_amount != 0, 'amount');
+    if (_amount == 0) revert ZeroArgument();
+
     sherlockProtocolManager.claimPremiums();
     token.transfer(address(strategy), _amount);
     strategy.deposit();
   }
 
   function strategyWithdraw(uint256 _amount) external override onlyOwner {
-    require(_amount != 0, 'amount');
+    if (_amount == 0) revert ZeroArgument();
+
     strategy.withdraw(_amount);
   }
 
@@ -159,8 +202,12 @@ contract Sherlock is ISherlock, ERC721, Ownable {
   //
 
   function payout(address _receiver, uint256 _amount) external override {
-    require(msg.sender == address(sherlockClaimManager), 'manager');
-    _transferOut(_receiver, _amount);
+    if (msg.sender != address(sherlockClaimManager)) revert Unauthorized();
+
+    if (_amount != 0) {
+      _transferOut(_receiver, _amount);
+    }
+    emit ClaimPayout(_receiver, _amount);
   }
 
   //
@@ -184,15 +231,16 @@ contract Sherlock is ISherlock, ERC721, Ownable {
       return 0;
     }
 
-    require(sher.balanceOf(address(this)) - before == _sher, 'calc');
+    uint256 actualAmount = sher.balanceOf(address(this)) - before;
+    if (actualAmount != _sher) revert InvalidSherAmount(_sher, actualAmount);
     sherRewards[_id] = _sher;
   }
 
   function _verifyPositionAccessability(uint256 _id) internal view returns (address _nftOwner) {
     _nftOwner = ownerOf(_id);
 
-    require(_nftOwner == msg.sender, 'owner');
-    require(deadlines[_id] <= block.timestamp, 'time');
+    if (_nftOwner != msg.sender) revert Unauthorized();
+    if (deadlines[_id] > block.timestamp) revert InvalidConditions();
   }
 
   function _sendSherRewardsToOwner(uint256 _id, address _nftOwner) internal {
@@ -242,9 +290,9 @@ contract Sherlock is ISherlock, ERC721, Ownable {
     uint256 _period,
     address _receiver
   ) external override returns (uint256 _id, uint256 _sher) {
-    require(_amount != 0, 'AMOUNT');
-    require(periods[_period], 'PERIOD');
-    require(address(_receiver) != address(0), 'ADDRESS');
+    if (_amount == 0) revert ZeroArgument();
+    if (!periods[_period]) revert InvalidArgument();
+    if (address(_receiver) == address(0)) revert ZeroArgument();
     _id = nftCounter++;
 
     token.safeTransferFrom(msg.sender, address(this), _amount);
@@ -301,8 +349,9 @@ contract Sherlock is ISherlock, ERC721, Ownable {
   }
 
   function holdArb(uint256 _id) external override returns (uint256 _sher, uint256 _arbReward) {
+    // @todo revert explicitly if arb can not be executed
     address nftOwner = ownerOf(_id);
-    require(nftOwner != address(0), 'owner');
+    if (nftOwner == address(0)) revert InvalidArgument();
 
     uint256 arbRewardShares = _holdArbCalcShares(_id);
     _arbReward = _burnShares(_id, arbRewardShares, msg.sender);

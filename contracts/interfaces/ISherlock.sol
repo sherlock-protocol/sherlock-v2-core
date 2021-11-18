@@ -12,4 +12,14 @@ import './ISherlockGov.sol';
 import './ISherlockPayout.sol';
 import './ISherlockStrategy.sol';
 
-interface ISherlock is ISherlockStake, ISherlockGov, ISherlockPayout, ISherlockStrategy, IERC721 {}
+interface ISherlock is ISherlockStake, ISherlockGov, ISherlockPayout, ISherlockStrategy, IERC721 {
+  error Unauthorized();
+
+  error ZeroArgument();
+
+  error InvalidArgument();
+
+  error InvalidConditions();
+
+  error InvalidSherAmount(uint256 expected, uint256 actual);
+}

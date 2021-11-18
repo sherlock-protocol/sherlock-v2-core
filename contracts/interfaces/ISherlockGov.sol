@@ -14,6 +14,20 @@ import './managers/IStrategyManager.sol';
 /// @title Sherlock core interface for governance
 /// @author Evert Kors
 interface ISherlockGov {
+  event ClaimPayout(address receiver, uint256 amount);
+  event YieldStrategyUpdated(IStrategyManager previous, IStrategyManager current);
+  event ProtocolManagerUpdated(ISherlockProtocolManager previous, ISherlockProtocolManager current);
+  event ClaimManagerUpdated(ISherlockClaimManager previous, ISherlockClaimManager current);
+  event NonStakerAddressUpdated(address previous, address current);
+  event SherDistributionManagerUpdated(
+    ISherDistributionManager previous,
+    ISherDistributionManager current
+  );
+
+  event StakingPeriodEnabled(uint256 _period);
+
+  event StakingPeriodDisabled(uint256 _period);
+
   /// @notice Allows stakers to stake for `_period` of time
   /// @param _period Period of time, in seconds,
   /// @dev should revert if already enabled
