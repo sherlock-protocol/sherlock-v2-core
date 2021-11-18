@@ -28,6 +28,8 @@ interface ISherlockGov {
 
   event StakingPeriodDisabled(uint256 period);
 
+  event SherRewardsError(bytes error);
+
   /// @notice Allows stakers to stake for `_period` of time
   /// @param _period Period of time, in seconds,
   /// @dev should revert if already enabled

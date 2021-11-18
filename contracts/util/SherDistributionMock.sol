@@ -12,24 +12,42 @@ import '../interfaces/managers/ISherDistributionManager.sol';
 contract SherDistributionMock is ISherDistributionManager, Manager {
   uint256 reward;
   IERC20 token;
+  IERC20 sher;
 
   uint256 public lastAmount;
   uint256 public lastPeriod;
+  uint256 public value;
 
-  constructor(IERC20 _token) {
+  bool public revertReward;
+
+  constructor(IERC20 _token, IERC20 _sher) {
     token = _token;
+    sher = _sher;
+
+    value = type(uint256).max;
   }
 
   function setReward(uint256 _reward) external {
     reward = _reward;
   }
 
+  function setRewardRevert(bool _revert) external {
+    revertReward = _revert;
+  }
+
+  function setCustomRewardReturnValue(uint256 _value) external {
+    value = _value;
+  }
+
   function pullReward(uint256 _amount, uint256 _period) external override returns (uint256 _sher) {
+    require(!revertReward, 'REV');
     _sher = reward;
-    token.transfer(msg.sender, reward);
+    sher.transfer(msg.sender, reward);
 
     lastAmount = _amount;
     lastPeriod = _period;
+
+    if (value != type(uint256).max) _sher = value;
   }
 
   function calcReward(

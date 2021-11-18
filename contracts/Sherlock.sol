@@ -224,6 +224,7 @@ contract Sherlock is ISherlock, ERC721, Ownable {
     try sherDistributionManager.pullReward(_amount, _period) returns (uint256 amount) {
       _sher = amount;
     } catch (bytes memory reason) {
+      emit SherRewardsError(reason);
       return 0;
     }
 
@@ -289,23 +290,21 @@ contract Sherlock is ISherlock, ERC721, Ownable {
     if (_amount == 0) revert ZeroArgument();
     if (!periods[_period]) revert InvalidArgument();
     if (address(_receiver) == address(0)) revert ZeroArgument();
-    _id = nftCounter++;
+    _id = ++nftCounter;
 
     token.safeTransferFrom(msg.sender, address(this), _amount);
 
-    // @note looks like the staker doesn't get sufficient amount of shares
-
     uint256 shares_;
     uint256 totalShares_ = totalShares;
-    if (totalShares_ != 0) shares_ = (_amount * totalShares_) / balanceOf();
-    else shares_ = _amount * 10**6;
+    if (totalShares_ != 0) shares_ = (_amount * totalShares_) / (balanceOf() - _amount);
+    else shares_ = _amount;
 
     shares[_id] = shares_;
     totalShares += shares_;
 
     _sher = _stake(_amount, _period, _id);
-    // todo use safemint
-    _mint(_receiver, _id);
+
+    _safeMint(_receiver, _id);
   }
 
   function burn(uint256 _id) external override returns (uint256 _amount) {

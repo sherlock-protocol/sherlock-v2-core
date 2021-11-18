@@ -7,6 +7,7 @@ const { TimeTraveler } = require('./utilities/snapshot');
 const { id } = require('ethers/lib/utils');
 
 const maxTokens = parseUnits('100000000000', 6);
+const maxTokens2 = parseEther('100000000000', 18);
 
 describe('Sherlock ─ Stateless', function () {
   before(async function () {
@@ -29,8 +30,12 @@ describe('Sherlock ─ Stateless', function () {
     await deploy(this, [['strategy2', this.StrategyMock, [this.token.address]]]);
     await deploy(this, [['protmanager', this.SherlockProtocolManagerMock, [this.token.address]]]);
     await deploy(this, [['protmanager2', this.SherlockProtocolManagerMock, [this.token.address]]]);
-    await deploy(this, [['sherdist', this.SherDistributionMock, [this.token.address]]]);
-    await deploy(this, [['sherdist2', this.SherDistributionMock, [this.token.address]]]);
+    await deploy(this, [
+      ['sherdist', this.SherDistributionMock, [this.token.address, this.sher.address]],
+    ]);
+    await deploy(this, [
+      ['sherdist2', this.SherDistributionMock, [this.token.address, this.sher.address]],
+    ]);
 
     await deploy(this, [
       [
@@ -351,25 +356,30 @@ describe('Sherlock ─ Functional', function () {
       'ERC20Mock6d',
       'ERC20Mock18d',
       'Sherlock',
+      'SherlockTest',
     ]);
 
     this.claimManager = this.carol;
     this.nonStaker = this.bob;
 
     await deploy(this, [['token', this.ERC20Mock6d, ['USDC Token', 'USDC', maxTokens]]]);
-    await deploy(this, [['sher', this.ERC20Mock18d, ['SHER Token', 'SHER', maxTokens]]]);
+    await deploy(this, [['sher', this.ERC20Mock18d, ['SHER Token', 'SHER', maxTokens2]]]);
 
     await deploy(this, [['strategy', this.StrategyMock, [this.token.address]]]);
     await deploy(this, [['strategy2', this.StrategyMock, [this.token.address]]]);
     await deploy(this, [['protmanager', this.SherlockProtocolManagerMock, [this.token.address]]]);
     await deploy(this, [['protmanager2', this.SherlockProtocolManagerMock, [this.token.address]]]);
-    await deploy(this, [['sherdist', this.SherDistributionMock, [this.token.address]]]);
-    await deploy(this, [['sherdist2', this.SherDistributionMock, [this.token.address]]]);
+    await deploy(this, [
+      ['sherdist', this.SherDistributionMock, [this.token.address, this.sher.address]],
+    ]);
+    await deploy(this, [
+      ['sherdist2', this.SherDistributionMock, [this.token.address, this.sher.address]],
+    ]);
 
     await deploy(this, [
       [
         'sherlock',
-        this.Sherlock,
+        this.SherlockTest,
         [
           this.token.address,
           this.sher.address,
@@ -742,7 +752,145 @@ describe('Sherlock ─ Functional', function () {
       expect(await this.strategy.withdrawCalled()).to.eq(1);
     });
   });
-  describe('mint()', function () {});
+  describe('mint(), _stake() no sher distribution manager', function () {
+    before(async function () {
+      await timeTraveler.revertSnapshot();
+
+      await this.sherlock.removeSherDistributionManager();
+      await this.token.approve(this.sherlock.address, maxTokens);
+    });
+    it('Initial state', async function () {
+      expect(await this.sherlock.deadlines(1)).to.eq(0);
+      expect(await this.sherlock.sherRewards(1)).to.eq(0);
+    });
+    it('Do', async function () {
+      this.amount = parseUnits('100', 6);
+
+      this.t0 = await meta(this.sherlock.mint(this.amount, 10, this.bob.address));
+    });
+    it('Verify state', async function () {
+      expect(await this.sherlock.deadlines(1)).to.eq(this.t0.time.add(10));
+      expect(await this.sherlock.sherRewards(1)).to.eq(0);
+    });
+  });
+  describe('mint(), _stake()', function () {
+    before(async function () {
+      await timeTraveler.revertSnapshot();
+
+      await this.token.approve(this.sherlock.address, maxTokens);
+
+      await this.sher.transfer(this.sherdist.address, parseEther('1000'));
+      this.amount = parseUnits('100', 6);
+    });
+    it('Do zero', async function () {
+      this.t0 = await meta(this.sherlock.mint(this.amount, 10, this.bob.address));
+    });
+    it('Verify state', async function () {
+      expect(await this.sherlock.deadlines(1)).to.eq(this.t0.time.add(10));
+      expect(await this.sherlock.sherRewards(1)).to.eq(0);
+      expect(await this.sher.balanceOf(this.sherlock.address)).to.eq(0);
+    });
+    it('Do one', async function () {
+      await this.sherdist.setReward(parseEther('1'));
+      this.t1 = await meta(this.sherlock.mint(this.amount, 20, this.bob.address));
+    });
+    it('Verify state', async function () {
+      expect(await this.sherlock.deadlines(2)).to.eq(this.t1.time.add(20));
+      expect(await this.sherlock.sherRewards(2)).to.eq(parseEther('1'));
+      expect(await this.sher.balanceOf(this.sherlock.address)).to.eq(parseEther('1'));
+    });
+    it('Do two', async function () {
+      await this.sherdist.setReward(parseEther('2'));
+      this.t2 = await meta(this.sherlock.mint(this.amount, 20, this.bob.address));
+    });
+    it('Verify state', async function () {
+      expect(await this.sherlock.deadlines(3)).to.eq(this.t2.time.add(20));
+      expect(await this.sherlock.sherRewards(3)).to.eq(parseEther('2'));
+      expect(await this.sher.balanceOf(this.sherlock.address)).to.eq(parseEther('3'));
+    });
+    it('Do wrong return value', async function () {
+      await this.sherdist.setReward(parseEther('2'));
+      await this.sherdist.setCustomRewardReturnValue(parseEther('2').sub(1));
+
+      await expect(this.sherlock.mint(this.amount, 20, this.bob.address)).to.be.revertedWith(
+        'InvalidSherAmount(' + parseEther('2').sub(1) + ', ' + parseEther('2') + ')',
+      );
+    });
+    it('Do exception', async function () {
+      await this.sherdist.setCustomRewardReturnValue(constants.MaxUint256);
+      await this.sherdist.setRewardRevert(true);
+
+      this.t3 = await meta(this.sherlock.mint(this.amount, 20, this.bob.address));
+      expect(this.t3.events.length).to.eq(4);
+      expect(this.t3.events[2].event).to.eq('SherRewardsError');
+
+      expect(await this.sherlock.deadlines(4)).to.eq(this.t3.time.add(20));
+      expect(await this.sherlock.sherRewards(4)).to.eq(0);
+    });
+  });
+  describe('mint(), multi', function () {
+    before(async function () {
+      await timeTraveler.revertSnapshot();
+
+      await this.token.approve(this.sherlock.address, maxTokens);
+    });
+    it('Initial state', async function () {
+      expect(await this.sherlock.viewShares(1)).to.eq(0);
+      expect(await this.sherlock.viewShares(2)).to.eq(0);
+      expect(await this.sherlock.viewShares(3)).to.eq(0);
+      expect(await this.sherlock.viewTotalShares()).to.eq(0);
+
+      expect(await this.token.balanceOf(this.sherlock.address)).to.eq(0);
+    });
+    it('Do', async function () {
+      this.amount = parseUnits('100', 6);
+
+      this.t0 = await meta(this.sherlock.mint(this.amount, 10, this.bob.address));
+    });
+    it('Verify state', async function () {
+      expect(await this.sherlock.viewShares(1)).to.eq(this.amount);
+      expect(await this.sherlock.viewShares(2)).to.eq(0);
+      expect(await this.sherlock.viewShares(3)).to.eq(0);
+      expect(await this.sherlock.viewTotalShares()).to.eq(this.amount);
+
+      expect(await this.token.balanceOf(this.sherlock.address)).to.eq(this.amount);
+
+      expect(await this.sherlock.ownerOf(1)).to.eq(this.bob.address);
+    });
+    it('Do again', async function () {
+      this.amount = parseUnits('100', 6);
+
+      this.t0 = await meta(this.sherlock.mint(this.amount, 10, this.bob.address));
+    });
+    it('Verify state', async function () {
+      expect(await this.sherlock.viewShares(1)).to.eq(this.amount);
+      expect(await this.sherlock.viewShares(2)).to.eq(this.amount);
+      expect(await this.sherlock.viewShares(3)).to.eq(0);
+      expect(await this.sherlock.viewTotalShares()).to.eq(this.amount.mul(2));
+
+      expect(await this.token.balanceOf(this.sherlock.address)).to.eq(this.amount.mul(2));
+
+      expect(await this.sherlock.ownerOf(1)).to.eq(this.bob.address);
+      expect(await this.sherlock.ownerOf(2)).to.eq(this.bob.address);
+    });
+    it('Do again', async function () {
+      this.amount = parseUnits('100', 6);
+
+      this.t0 = await meta(this.sherlock.mint(this.amount, 10, this.bob.address));
+    });
+    it('Verify state', async function () {
+      expect(await this.sherlock.viewShares(1)).to.eq(this.amount);
+      expect(await this.sherlock.viewShares(2)).to.eq(this.amount);
+      expect(await this.sherlock.viewShares(3)).to.eq(this.amount);
+      expect(await this.sherlock.viewTotalShares()).to.eq(this.amount.mul(3));
+
+      expect(await this.token.balanceOf(this.sherlock.address)).to.eq(this.amount.mul(3));
+
+      expect(await this.sherlock.ownerOf(1)).to.eq(this.bob.address);
+      expect(await this.sherlock.ownerOf(2)).to.eq(this.bob.address);
+      expect(await this.sherlock.ownerOf(2)).to.eq(this.bob.address);
+    });
+  });
   describe('burn()', function () {});
   describe('hold()', function () {});
   describe('holdArb()', function () {});

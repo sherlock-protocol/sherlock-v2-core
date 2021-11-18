@@ -9,8 +9,6 @@ pragma solidity 0.8.9;
 import './Manager.sol';
 import '../interfaces/managers/ISherDistributionManager.sol';
 
-import 'hardhat/console.sol';
-
 /// @dev expects 6 decimals input tokens
 contract SherDistributionManager is ISherDistributionManager, Manager {
   using SafeERC20 for IERC20;

@@ -11,8 +11,6 @@ import '../interfaces/managers/ISherlockClaimManager.sol';
 import '../interfaces/managers/ISherlockProtocolManager.sol';
 import '../interfaces/UMAprotocol/SkinnyOptimisticOracleInterface.sol';
 
-import 'hardhat/console.sol';
-
 // @todo everyone can escalate and enact?
 
 /// @dev expects 6 decimals input tokens
