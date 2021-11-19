@@ -34,7 +34,7 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
 
   // the absolute minimal balane a protocol can hold
   /// @inheritdoc ISherlockProtocolManager
-  uint256 public override minBalance;
+  uint256 public override minActiveBalance;
   // the absolute minimal remaining coverage a protocol can hold
   /// @inheritdoc ISherlockProtocolManager
   uint256 public override minSecondsOfCoverage;
@@ -270,11 +270,11 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
   }
 
   /// @inheritdoc ISherlockProtocolManager
-  function setMinBalance(uint256 _minBalance) external override onlyOwner {
-    require(_minBalance < MIN_BALANCE_SANITY_CEILING, 'INSANE');
+  function setMinBalance(uint256 _minActiveBalance) external override onlyOwner {
+    require(_minActiveBalance < MIN_BALANCE_SANITY_CEILING, 'INSANE');
 
-    emit MinBalance(minBalance, _minBalance);
-    minBalance = _minBalance;
+    emit MinBalance(minActiveBalance, _minActiveBalance);
+    minActiveBalance = _minActiveBalance;
   }
 
   /// @inheritdoc ISherlockProtocolManager
@@ -409,7 +409,7 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
     _settleProtocolDebt(_protocol);
     uint256 remainingBalance = activeBalances[_protocol];
 
-    if (remainingBalance >= minBalance) revert InvalidConditions();
+    if (remainingBalance >= minActiveBalance) revert InvalidConditions();
     if (remainingBalance != 0) {
       activeBalances[_protocol] = 0;
       token.safeTransfer(msg.sender, remainingBalance);

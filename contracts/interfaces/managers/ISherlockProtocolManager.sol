@@ -24,7 +24,7 @@ interface ISherlockProtocolManager is IManager {
 
   error InsufficientBalance(bytes32 protocol);
 
-  event MinBalance(uint256 previous, uint256 current);
+  event minActiveBalance(uint256 previous, uint256 current);
 
   event MinSecondsOfCoverage(uint256 previous, uint256 current);
 
@@ -134,7 +134,7 @@ interface ISherlockProtocolManager is IManager {
 
   /// @notice View minimal balance needed before liquidation can start
   /// @return Minimal balance needed
-  function minBalance() external view returns (uint256);
+  function minActiveBalance() external view returns (uint256);
 
   /// @notice View minimal seconds of coverage needed before liquidation can start
   /// @return Minimal seconds of coverage needed
