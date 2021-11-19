@@ -232,6 +232,8 @@ contract Sherlock is ISherlock, ERC721, Ownable {
     deadlines_[_id] = block.timestamp + _period;
 
     if (address(sherDistributionManager) == address(0)) return 0;
+    // could be zero on hold() but protocol will be broken as new stakes get infinite shares
+    if (_amount == 0) return 0;
 
     uint256 before = sher.balanceOf(address(this));
 
@@ -333,6 +335,8 @@ contract Sherlock is ISherlock, ERC721, Ownable {
 
   function hold(uint256 _id, uint256 _period) external override returns (uint256 _sher) {
     address nftOwner = _verifyPositionAccessability(_id);
+    if (!periods[_period]) revert InvalidArgument();
+
     _sher = _hold(_id, _period, nftOwner);
   }
 

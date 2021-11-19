@@ -345,7 +345,7 @@ describe('Sherlock ─ Stateless', function () {
   });
 });
 
-describe('Sherlock ─ Functional', function () {
+describe.only('Sherlock ─ Functional', function () {
   before(async function () {
     timeTraveler = new TimeTraveler(network.provider);
 
@@ -784,6 +784,9 @@ describe('Sherlock ─ Functional', function () {
     });
     it('Do zero', async function () {
       this.t0 = await meta(this.sherlock.mint(this.amount, 10, this.bob.address));
+
+      expect(await this.sherdist.lastAmount()).to.eq(this.amount);
+      expect(await this.sherdist.lastPeriod()).to.eq(10);
     });
     it('Verify state', async function () {
       expect(await this.sherlock.deadlines(1)).to.eq(this.t0.time.add(10));
@@ -793,6 +796,9 @@ describe('Sherlock ─ Functional', function () {
     it('Do one', async function () {
       await this.sherdist.setReward(parseEther('1'));
       this.t1 = await meta(this.sherlock.mint(this.amount, 20, this.bob.address));
+
+      expect(await this.sherdist.lastAmount()).to.eq(this.amount);
+      expect(await this.sherdist.lastPeriod()).to.eq(20);
     });
     it('Verify state', async function () {
       expect(await this.sherlock.deadlines(2)).to.eq(this.t1.time.add(20));
@@ -802,6 +808,9 @@ describe('Sherlock ─ Functional', function () {
     it('Do two', async function () {
       await this.sherdist.setReward(parseEther('2'));
       this.t2 = await meta(this.sherlock.mint(this.amount, 20, this.bob.address));
+
+      expect(await this.sherdist.lastAmount()).to.eq(this.amount);
+      expect(await this.sherdist.lastPeriod()).to.eq(20);
     });
     it('Verify state', async function () {
       expect(await this.sherlock.deadlines(3)).to.eq(this.t2.time.add(20));
@@ -977,11 +986,105 @@ describe('Sherlock ─ Functional', function () {
       await expect(this.sherlock.sherRewards(1)).to.be.revertedWith('NonExistent()');
     });
   });
+  describe('hold(), zero rewards', function () {
+    before(async function () {
+      await timeTraveler.revertSnapshot();
+
+      this.amount = parseUnits('100', 6);
+
+      await this.token.approve(this.sherlock.address, maxTokens);
+
+      this.t1 = await meta(this.sherlock.mint(this.amount, 10, this.carol.address));
+    });
+    it('Initial state', async function () {
+      expect(await this.token.balanceOf(this.carol.address)).to.eq(0);
+      expect(await this.sher.balanceOf(this.carol.address)).to.eq(0);
+      expect(await this.token.balanceOf(this.sherlock.address)).to.eq(this.amount);
+
+      expect(await this.sherlock.viewShares(1)).to.eq(this.amount);
+      expect(await this.sherlock.viewTotalShares()).to.eq(this.amount);
+      expect(await this.sherlock.ownerOf(1)).to.eq(this.carol.address);
+      expect(await this.sherlock.deadlines(1)).to.eq(this.t1.time.add(10));
+      expect(await this.sherlock.sherRewards(1)).to.eq(0);
+    });
+    it('Non owner', async function () {
+      await expect(this.sherlock.connect(this.bob).hold(1, 10)).to.be.revertedWith(
+        'Unauthorized()',
+      );
+    });
+    it('invalid conditions', async function () {
+      await expect(this.sherlock.connect(this.carol).hold(1, 10)).to.be.revertedWith(
+        'InvalidConditions()',
+      );
+    });
+    it('Invalid period', async function () {
+      await timeTraveler.mine(10);
+
+      await expect(this.sherlock.connect(this.carol).hold(1, 5)).to.be.revertedWith(
+        'InvalidArgument()',
+      );
+    });
+    it('zero amount hold', async function () {
+      await this.sherlock.transfer(this.alice.address, this.amount);
+      expect(await this.token.balanceOf(this.sherlock.address)).to.eq(0);
+
+      this.t2 = await meta(this.sherlock.connect(this.carol).hold(1, 10));
+    });
+    it('Verify state', async function () {
+      expect(await this.token.balanceOf(this.carol.address)).to.eq(0);
+      expect(await this.sher.balanceOf(this.carol.address)).to.eq(0);
+      expect(await this.token.balanceOf(this.sherlock.address)).to.eq(0);
+
+      expect(await this.sherlock.viewShares(1)).to.eq(this.amount);
+      expect(await this.sherlock.viewTotalShares()).to.eq(this.amount);
+      expect(await this.sherlock.ownerOf(1)).to.eq(this.carol.address);
+      expect(await this.sherlock.deadlines(1)).to.eq(this.t2.time.add(10));
+      expect(await this.sherlock.sherRewards(1)).to.eq(0);
+    });
+  });
   describe('hold()', function () {
-    // do for non owner fail
-    // hold in deadline fail
-    // hold with zero sher rewards
-    // check stake daedline and sher rewards (dont capture exceptions)
+    before(async function () {
+      await timeTraveler.revertSnapshot();
+
+      this.amount = parseUnits('100', 6);
+      this.reward = parseEther('2');
+
+      await this.token.approve(this.sherlock.address, maxTokens);
+      await this.sher.transfer(this.sherdist.address, parseEther('1000'));
+      await this.sherdist.setReward(this.reward);
+
+      this.t1 = await meta(this.sherlock.mint(this.amount, 10, this.carol.address));
+    });
+    it('Initial state', async function () {
+      expect(await this.token.balanceOf(this.carol.address)).to.eq(0);
+      expect(await this.sher.balanceOf(this.carol.address)).to.eq(0);
+      expect(await this.token.balanceOf(this.sherlock.address)).to.eq(this.amount);
+
+      expect(await this.sherlock.viewShares(1)).to.eq(this.amount);
+      expect(await this.sherlock.viewTotalShares()).to.eq(this.amount);
+      expect(await this.sherlock.ownerOf(1)).to.eq(this.carol.address);
+      expect(await this.sherlock.deadlines(1)).to.eq(this.t1.time.add(10));
+      expect(await this.sherlock.sherRewards(1)).to.eq(this.reward);
+    });
+    it('Do', async function () {
+      await timeTraveler.mine(10);
+
+      this.t2 = await meta(this.sherlock.connect(this.carol).hold(1, 20));
+
+      expect(await this.sherdist.lastAmount()).to.eq(this.amount);
+      expect(await this.sherdist.lastPeriod()).to.eq(20);
+    });
+    it('Verify state', async function () {
+      expect(await this.token.balanceOf(this.carol.address)).to.eq(0);
+      expect(await this.sher.balanceOf(this.carol.address)).to.eq(this.reward);
+      expect(await this.token.balanceOf(this.sherlock.address)).to.eq(this.amount);
+
+      expect(await this.sherlock.viewShares(1)).to.eq(this.amount);
+      expect(await this.sherlock.viewTotalShares()).to.eq(this.amount);
+      expect(await this.sherlock.ownerOf(1)).to.eq(this.carol.address);
+      expect(await this.sherlock.deadlines(1)).to.eq(this.t2.time.add(20));
+      expect(await this.sherlock.sherRewards(1)).to.eq(this.reward);
+    });
   });
   describe('holdArb()', function () {
     // test very good

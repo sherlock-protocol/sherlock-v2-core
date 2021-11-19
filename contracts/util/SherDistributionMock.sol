@@ -40,6 +40,7 @@ contract SherDistributionMock is ISherDistributionManager, Manager {
   }
 
   function pullReward(uint256 _amount, uint256 _period) external override returns (uint256 _sher) {
+    require(_amount != 0, 'ZERO');
     require(!revertReward, 'REV');
     _sher = reward;
     sher.transfer(msg.sender, reward);
