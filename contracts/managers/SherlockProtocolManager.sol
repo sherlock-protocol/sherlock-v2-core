@@ -39,7 +39,7 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
   /// @inheritdoc ISherlockProtocolManager
   uint256 public override minSecondsOfCoverage;
 
-  mapping(bytes32 => uint256) removedProtocolValidUntil;
+  mapping(bytes32 => uint256) removedProtocolClaimDeadline;
   mapping(bytes32 => address) removedProtocolAgent;
   mapping(bytes32 => uint256) currentCoverage;
   mapping(bytes32 => uint256) previousCoverage;
@@ -59,7 +59,7 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
     if (agent != address(0)) return agent;
 
     // Note old protocol agent will never be address(0)
-    if (block.timestamp <= removedProtocolValidUntil[_protocol]) {
+    if (block.timestamp <= removedProtocolClaimDeadline[_protocol]) {
       return removedProtocolAgent[_protocol];
     }
 
@@ -262,7 +262,7 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
     _setProtocolAgent(_protocol, _agent, address(0));
     delete nonStakersPercentage[_protocol];
     delete lastAccountedEachProtocol[_protocol];
-    removedProtocolValidUntil[_protocol] = block.timestamp + PROTOCOL_CLAIM_DEADLINE;
+    removedProtocolClaimDeadline[_protocol] = block.timestamp + PROTOCOL_CLAIM_DEADLINE;
     removedProtocolAgent[_protocol] = _agent;
 
     emit ProtocolUpdated(_protocol, bytes32(0), uint256(0), uint256(0));
@@ -331,7 +331,7 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
   {
     if (
       protocolAgent_[_protocol] != address(0) ||
-      block.timestamp <= removedProtocolValidUntil[_protocol]
+      block.timestamp <= removedProtocolClaimDeadline[_protocol]
     ) {
       return (currentCoverage[_protocol], previousCoverage[_protocol]);
     }
@@ -355,7 +355,7 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
 
     // Delete mappings that are potentially non default values
     // From previous time protocol was added/removed
-    delete removedProtocolValidUntil[_protocol];
+    delete removedProtocolClaimDeadline[_protocol];
     delete removedProtocolAgent[_protocol];
     delete currentCoverage[_protocol];
     delete previousCoverage[_protocol];

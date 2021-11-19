@@ -40,11 +40,11 @@ contract SherlockProtocolManagerTest is SherlockProtocolManager {
     return removedProtocolAgent[_protocol];
   }
 
-  function viewRemovedProtocolValidUntil(bytes32 _protocol) external view returns (uint256) {
-    return removedProtocolValidUntil[_protocol];
+  function viewRemovedProtocolClaimDeadline(bytes32 _protocol) external view returns (uint256) {
+    return removedProtocolClaimDeadline[_protocol];
   }
 
-  function viewnonStakersPercentage(bytes32 _protocol) external view returns (uint256) {
+  function viewNonStakersPercentage(bytes32 _protocol) external view returns (uint256) {
     return nonStakersPercentage[_protocol];
   }
 
@@ -56,27 +56,27 @@ contract SherlockProtocolManagerTest is SherlockProtocolManager {
     return previousCoverage[_protocol];
   }
 
-  function viewlastAccountedEachProtocol(bytes32 _protocol) external view returns (uint256) {
+  function viewLastAccountedEachProtocol(bytes32 _protocol) external view returns (uint256) {
     return lastAccountedEachProtocol[_protocol];
   }
 
-  function viewnonStakersClaimableByProtocol(bytes32 _protocol) external view returns (uint256) {
+  function viewNonStakersClaimableByProtocol(bytes32 _protocol) external view returns (uint256) {
     return nonStakersClaimableByProtocol[_protocol];
   }
 
-  function viewlastAccountedGlobal() external view returns (uint256) {
+  function viewLastAccountedGlobal() external view returns (uint256) {
     return lastAccountedGlobal;
   }
 
-  function viewallPremiumsPerSecToStakers() external view returns (uint256) {
+  function viewAllPremiumsPerSecToStakers() external view returns (uint256) {
     return allPremiumsPerSecToStakers;
   }
 
-  function viewlastClaimablePremiumsForStakers() external view returns (uint256) {
+  function viewLastClaimablePremiumsForStakers() external view returns (uint256) {
     return lastClaimablePremiumsForStakers;
   }
 
-  function viewactiveBalances(bytes32 _protocol) external view returns (uint256) {
+  function viewActiveBalances(bytes32 _protocol) external view returns (uint256) {
     return activeBalances[_protocol];
   }
 }
