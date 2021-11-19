@@ -30,8 +30,8 @@ contract Sherlock is ISherlock, ERC721, Ownable {
 
   mapping(uint256 => uint256) internal deadlines_;
   mapping(uint256 => uint256) internal sherRewards_;
-  mapping(uint256 => uint256) internal shares;
-  uint256 internal totalShares;
+  mapping(uint256 => uint256) internal stakeShares;
+  uint256 internal totalstakeShares;
 
   IStrategyManager public override strategy;
   ISherDistributionManager public override sherDistributionManager;
@@ -98,7 +98,7 @@ contract Sherlock is ISherlock, ERC721, Ownable {
   }
 
   function balanceOf(uint256 _tokenID) public view override returns (uint256) {
-    return (shares[_tokenID] * balanceOf()) / totalShares;
+    return (stakeShares[_tokenID] * balanceOf()) / totalstakeShares;
   }
 
   function balanceOf() public view override returns (uint256) {
@@ -273,20 +273,20 @@ contract Sherlock is ISherlock, ERC721, Ownable {
     token.safeTransfer(_receiver, _amount);
   }
 
-  function _burnSharesCalc(uint256 _shares) internal view returns (uint256) {
-    return (_shares * balanceOf()) / totalShares;
+  function _burnSharesCalc(uint256 _stakeShares) internal view returns (uint256) {
+    return (_stakeShares * balanceOf()) / totalstakeShares;
   }
 
   function _burnShares(
     uint256 _id,
-    uint256 _shares,
+    uint256 _stakeShares,
     address _receiver
   ) internal returns (uint256 _amount) {
-    _amount = _burnSharesCalc(_shares);
+    _amount = _burnSharesCalc(_stakeShares);
     if (_amount != 0) _transferOut(_receiver, _amount);
 
-    shares[_id] -= _shares;
-    totalShares -= _shares;
+    stakeShares[_id] -= _stakeShares;
+    totalstakeShares -= _stakeShares;
   }
 
   function _hold(
@@ -312,13 +312,14 @@ contract Sherlock is ISherlock, ERC721, Ownable {
 
     token.safeTransferFrom(msg.sender, address(this), _amount);
 
-    uint256 shares_;
-    uint256 totalShares_ = totalShares;
-    if (totalShares_ != 0) shares_ = (_amount * totalShares_) / (balanceOf() - _amount);
-    else shares_ = _amount;
+    uint256 stakeShares_;
+    uint256 totalstakeShares_ = totalstakeShares;
+    if (totalstakeShares_ != 0)
+      stakeShares_ = (_amount * totalstakeShares_) / (balanceOf() - _amount);
+    else stakeShares_ = _amount;
 
-    shares[_id] = shares_;
-    totalShares += shares_;
+    stakeShares[_id] = stakeShares_;
+    totalstakeShares += stakeShares_;
 
     _sher = _stake(_amount, _period, _id);
 
@@ -328,7 +329,7 @@ contract Sherlock is ISherlock, ERC721, Ownable {
   function burn(uint256 _id) external override returns (uint256 _amount) {
     address nftOwner = _verifyPositionAccessability(_id);
 
-    _amount = _burnShares(_id, shares[_id], nftOwner);
+    _amount = _burnShares(_id, stakeShares[_id], nftOwner);
     _sendSherRewardsToOwner(_id, nftOwner);
     _burn(_id);
 
@@ -351,7 +352,7 @@ contract Sherlock is ISherlock, ERC721, Ownable {
     uint256 targetTime = block.timestamp < maxRewardArbTime ? block.timestamp : maxRewardArbTime;
 
     // scaled by 10**18
-    uint256 maxRewardScaled = ARB_RESTAKE_MAX_PERCENTAGE * shares[_id];
+    uint256 maxRewardScaled = ARB_RESTAKE_MAX_PERCENTAGE * stakeShares[_id];
 
     return (
       ((targetTime - initialArbTime) * maxRewardScaled) /
