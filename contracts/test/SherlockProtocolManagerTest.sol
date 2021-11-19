@@ -16,7 +16,7 @@ contract SherlockProtocolManagerTest is SherlockProtocolManager {
     _settleTotalDebt();
   }
 
-  function privateSetMinBalance(uint256 _min) external {
+  function privatesetMinActiveBalance(uint256 _min) external {
     minActiveBalance = _min;
   }
 

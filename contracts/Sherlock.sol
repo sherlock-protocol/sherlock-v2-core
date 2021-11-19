@@ -192,7 +192,7 @@ contract Sherlock is ISherlock, ERC721, Ownable {
   function yieldStrategyDeposit(uint256 _amount) external override onlyOwner {
     if (_amount == 0) revert ZeroArgument();
 
-    sherlockProtocolManager.claimPremiums();
+    sherlockProtocolManager.claimPremiumsForStakers();
     token.safeTransfer(address(yieldStrategy), _amount);
     yieldStrategy.deposit();
   }
@@ -266,7 +266,7 @@ contract Sherlock is ISherlock, ERC721, Ownable {
   }
 
   function _transferTokensOut(address _receiver, uint256 _amount) internal {
-    sherlockProtocolManager.claimPremiums();
+    sherlockProtocolManager.claimPremiumsForStakers();
     uint256 mainBalance = token.balanceOf(address(this));
     if (_amount > mainBalance) {
       yieldStrategy.withdraw(_amount - mainBalance);

@@ -53,7 +53,7 @@ interface ISherlockProtocolManager is IManager {
 
   /// @notice View current chunk of premium that are claimable
   /// @return Premiums claimable
-  /// @dev will increase every block
+  /// @dev will increase every second
   /// @dev base + (now - last_settled) * pb
   function claimablePremiums() external view returns (uint256);
 
@@ -61,7 +61,7 @@ interface ISherlockProtocolManager is IManager {
   /// @dev callable by everyone
   /// @dev will be called on burn() from sherlock
   /// @dev funds will be transferred to sherlock core
-  function claimPremiums() external;
+  function claimPremiumsForStakers() external;
 
   /// @notice View current protocolAgent of `_protocol`
   /// @param _protocol Protocol identifier
@@ -126,11 +126,11 @@ interface ISherlockProtocolManager is IManager {
 
   /// @notice Remove a protocol with insufificient balance
   /// @param _protocol Protocol identifier
-  function forceRemoveByBalance(bytes32 _protocol) external;
+  function forceRemoveByActiveBalance(bytes32 _protocol) external;
 
   /// @notice Remove a protocol with insufificient coverage time
   /// @param _protocol Protocol identifier
-  function forceRemoveByRemainingCoverage(bytes32 _protocol) external;
+  function forceRemoveBySecondsOfCoverage(bytes32 _protocol) external;
 
   /// @notice View minimal balance needed before liquidation can start
   /// @return Minimal balance needed
@@ -143,7 +143,7 @@ interface ISherlockProtocolManager is IManager {
   /// @notice Set minimal balance needed before liquidation can start
   /// @param _minBalance Mininal balance needed
   /// @dev only gov
-  function setMinBalance(uint256 _minBalance) external;
+  function setMinActiveBalance(uint256 _minBalance) external;
 
   /// @notice Set minimal seconds of coverage needed before liquidation can start
   /// @param _minSeconds Mininal seconds of coverage needed
@@ -168,7 +168,7 @@ interface ISherlockProtocolManager is IManager {
   /// @param _protocol Protocol identifier
   /// @param _amount Amount of tokens to deposit
   /// @dev Approval should be made before calling
-  function depositProtocolBalance(bytes32 _protocol, uint256 _amount) external;
+  function depositToActiveBalance(bytes32 _protocol, uint256 _amount) external;
 
   /// @notice Withdraw `_amount` token that would pay premium for `_protocol`
   /// @param _protocol Protocol identifier
@@ -176,7 +176,7 @@ interface ISherlockProtocolManager is IManager {
   /// @dev Only claim starter role is able to withdraw balance
   /// @dev Balance can be withdraw up until 3 days of coverage outstanding
   /// @dev In case coverage is not active (0 premium), full balance can be withdrawn
-  function withdrawProtocolBalance(bytes32 _protocol, uint256 _amount) external;
+  function withdrawActiveBalance(bytes32 _protocol, uint256 _amount) external;
 
   /// @notice Transfer claimStarer role
   /// @param _protocol Protocol identifier
@@ -201,7 +201,7 @@ interface ISherlockProtocolManager is IManager {
     address _receiver
   ) external;
 
-  function coverageAmounts(bytes32 _protocol)
+  function coverageAmount(bytes32 _protocol)
     external
     view
     returns (uint256 current, uint256 previous);

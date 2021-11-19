@@ -144,7 +144,7 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
   // State methods
   //
 
-  function _setProtocolPremium(bytes32 _protocol, uint256 _premium)
+  function _setSingleProtocolPremium(bytes32 _protocol, uint256 _premium)
     internal
     returns (uint256 oldPremiumPerSecond, uint256 nonStakerShares)
   {
@@ -162,7 +162,7 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
   }
 
   function _setSingleAndGlobalProtocolPremium(bytes32 _protocol, uint256 _premium) internal {
-    (uint256 oldPremiumPerSecond, uint256 nonStakerShares) = _setProtocolPremium(_protocol, _premium);
+    (uint256 oldPremiumPerSecond, uint256 nonStakerShares) = _setSingleProtocolPremium(_protocol, _premium);
     _settleTotalDebt();
     allPremiumsPerSecToStakers = _calcGlobalPremiumPerSecForStakers(
       oldPremiumPerSecond,
@@ -189,7 +189,7 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
       uint256 balance = activeBalances[_protocol];
       if (debt > balance) {
         // Economically seen, this should never be reached as arb can remove a protocol and make a profit
-        // using forceRemoveByBalance and forceRemoveByRemainingCoverage
+        // using forceRemoveByActiveBalance and forceRemoveBySecondsOfCoverage
         // premium should be set to 0 as soon as possible
         // otherise stakers/nonstakers will be disadvantaged
         uint256 error = debt - balance;
@@ -270,7 +270,7 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
   }
 
   /// @inheritdoc ISherlockProtocolManager
-  function setMinBalance(uint256 _minActiveBalance) external override onlyOwner {
+  function setMinActiveBalance(uint256 _minActiveBalance) external override onlyOwner {
     require(_minActiveBalance < MIN_BALANCE_SANITY_CEILING, 'INSANE');
 
     emit MinBalance(minActiveBalance, _minActiveBalance);
@@ -309,7 +309,7 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
   }
 
   /// @inheritdoc ISherlockProtocolManager
-  function claimPremiums() external override {
+  function claimPremiumsForStakers() external override {
     address sherlock = address(sherlockCore);
     if (sherlock == address(0)) revert InvalidConditions();
 
@@ -323,7 +323,7 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
   }
 
   /// @inheritdoc ISherlockProtocolManager
-  function coverageAmounts(bytes32 _protocol)
+  function coverageAmount(bytes32 _protocol)
     external
     view
     override
@@ -403,7 +403,7 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
   }
 
   /// @inheritdoc ISherlockProtocolManager
-  function forceRemoveByBalance(bytes32 _protocol) external override {
+  function forceRemoveByActiveBalance(bytes32 _protocol) external override {
     address agent = _verifyProtocolExists(_protocol);
 
     _settleProtocolDebt(_protocol);
@@ -420,7 +420,7 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
   }
 
   /// @inheritdoc ISherlockProtocolManager
-  function forceRemoveByRemainingCoverage(bytes32 _protocol) external override {
+  function forceRemoveBySecondsOfCoverage(bytes32 _protocol) external override {
     address agent = _verifyProtocolExists(_protocol);
 
     uint256 percentageScaled = (_secondsOfCoverageLeft(_protocol) * HUNDRED_PERCENT) /
@@ -469,7 +469,7 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
     for (uint256 i; i < _protocol.length; i++) {
       _verifyProtocolExists(_protocol[i]);
 
-      (uint256 oldPremiumPerSecond, uint256 nonStakerShares) = _setProtocolPremium(
+      (uint256 oldPremiumPerSecond, uint256 nonStakerShares) = _setSingleProtocolPremium(
         _protocol[i],
         _premium[i]
       );
@@ -487,7 +487,7 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
   }
 
   /// @inheritdoc ISherlockProtocolManager
-  function depositProtocolBalance(bytes32 _protocol, uint256 _amount) external override {
+  function depositToActiveBalance(bytes32 _protocol, uint256 _amount) external override {
     if (_amount == uint256(0)) revert ZeroArgument();
     _verifyProtocolExists(_protocol);
 
@@ -498,7 +498,7 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
   }
 
   /// @inheritdoc ISherlockProtocolManager
-  function withdrawProtocolBalance(bytes32 _protocol, uint256 _amount) external override {
+  function withdrawActiveBalance(bytes32 _protocol, uint256 _amount) external override {
     if (_amount == uint256(0)) revert ZeroArgument();
     if (msg.sender != _verifyProtocolExists(_protocol)) revert Unauthorized();
 
