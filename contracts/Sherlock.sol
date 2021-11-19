@@ -26,14 +26,14 @@ contract Sherlock is ISherlock, ERC721, Ownable {
   IERC20 public immutable token;
   IERC20 public immutable sher;
 
-  mapping(uint256 => bool) public override periods;
+  mapping(uint256 => bool) public override stakingPeriods;
 
-  mapping(uint256 => uint256) internal deadlines_;
+  mapping(uint256 => uint256) internal lockupEnd_;
   mapping(uint256 => uint256) internal sherRewards_;
   mapping(uint256 => uint256) internal stakeShares;
   uint256 internal totalstakeShares;
 
-  IStrategyManager public override strategy;
+  IStrategyManager public override yieldStrategy;
   ISherDistributionManager public override sherDistributionManager;
   address public override nonStakersAddress;
   ISherlockProtocolManager public override sherlockProtocolManager;
@@ -46,33 +46,33 @@ contract Sherlock is ISherlock, ERC721, Ownable {
     IERC20 _sher,
     string memory _name,
     string memory _symbol,
-    IStrategyManager _strategy,
+    IStrategyManager _yieldStrategy,
     ISherDistributionManager _sherDistributionManager,
     address _nonStakersAddress,
     ISherlockProtocolManager _sherlockProtocolManager,
     ISherlockClaimManager _sherlockClaimManager,
-    uint256[] memory _initialPeriods
+    uint256[] memory _initialstakingPeriods
   ) ERC721(_name, _symbol) {
     if (address(_token) == address(0)) revert ZeroArgument();
     if (address(_sher) == address(0)) revert ZeroArgument();
-    if (address(_strategy) == address(0)) revert ZeroArgument();
+    if (address(_yieldStrategy) == address(0)) revert ZeroArgument();
     if (_nonStakersAddress == address(0)) revert ZeroArgument();
     if (address(_sherlockProtocolManager) == address(0)) revert ZeroArgument();
     if (address(_sherlockClaimManager) == address(0)) revert ZeroArgument();
 
     token = _token;
     sher = _sher;
-    strategy = _strategy;
+    yieldStrategy = _yieldStrategy;
     sherDistributionManager = _sherDistributionManager;
     nonStakersAddress = _nonStakersAddress;
     sherlockProtocolManager = _sherlockProtocolManager;
     sherlockClaimManager = _sherlockClaimManager;
 
-    for (uint256 i; i < _initialPeriods.length; i++) {
-      enablePeriod(_initialPeriods[i]);
+    for (uint256 i; i < _initialstakingPeriods.length; i++) {
+      enablePeriod(_initialstakingPeriods[i]);
     }
 
-    emit YieldStrategyUpdated(IStrategyManager(address(0)), _strategy);
+    emit YieldStrategyUpdated(IStrategyManager(address(0)), _yieldStrategy);
     emit SherDistributionManagerUpdated(
       ISherDistributionManager(address(0)),
       _sherDistributionManager
@@ -85,10 +85,10 @@ contract Sherlock is ISherlock, ERC721, Ownable {
   //
   // View functions
   //
-  function deadlines(uint256 _tokenID) public view override returns (uint256) {
+  function lockupEnd(uint256 _tokenID) public view override returns (uint256) {
     if (!_exists(_tokenID)) revert NonExistent();
 
-    return deadlines_[_tokenID];
+    return lockupEnd_[_tokenID];
   }
 
   function sherRewards(uint256 _tokenID) public view override returns (uint256) {
@@ -104,7 +104,7 @@ contract Sherlock is ISherlock, ERC721, Ownable {
   function balanceOf() public view override returns (uint256) {
     return
       token.balanceOf(address(this)) +
-      strategy.balanceOf() +
+      yieldStrategy.balanceOf() +
       sherlockProtocolManager.claimablePremiums();
   }
 
@@ -114,15 +114,15 @@ contract Sherlock is ISherlock, ERC721, Ownable {
 
   function enablePeriod(uint256 _period) public override onlyOwner {
     if (_period == 0) revert ZeroArgument();
-    if (periods[_period]) revert InvalidArgument();
+    if (stakingPeriods[_period]) revert InvalidArgument();
 
-    periods[_period] = true;
+    stakingPeriods[_period] = true;
     emit StakingPeriodEnabled(_period);
   }
 
   function disablePeriod(uint256 _period) external override onlyOwner {
-    if (!periods[_period]) revert InvalidArgument();
-    periods[_period] = false;
+    if (!stakingPeriods[_period]) revert InvalidArgument();
+    stakingPeriods[_period] = false;
 
     emit StakingPeriodDisabled(_period);
   }
@@ -181,30 +181,31 @@ contract Sherlock is ISherlock, ERC721, Ownable {
     sherlockClaimManager = _sherlockClaimManager;
   }
 
-  function updateStrategy(IStrategyManager _strategy) external override onlyOwner {
-    if (address(_strategy) == address(0)) revert ZeroArgument();
-    if (strategy == _strategy) revert InvalidArgument();
+  function updateStrategy(IStrategyManager _yieldStrategy) external override onlyOwner {
+    if (address(_yieldStrategy) == address(0)) revert ZeroArgument();
+    if (yieldStrategy == _yieldStrategy) revert InvalidArgument();
 
-    emit YieldStrategyUpdated(strategy, _strategy);
-    strategy = _strategy;
+    emit YieldStrategyUpdated(yieldStrategy, _yieldStrategy);
+    yieldStrategy = _yieldStrategy;
   }
 
   function strategyDeposit(uint256 _amount) external override onlyOwner {
     if (_amount == 0) revert ZeroArgument();
 
     sherlockProtocolManager.claimPremiums();
-    token.safeTransfer(address(strategy), _amount);
-    strategy.deposit();
+    token.safeTransfer(address(yieldStrategy), _amount);
+    yieldStrategy.deposit();
   }
 
   function strategyWithdraw(uint256 _amount) external override onlyOwner {
     if (_amount == 0) revert ZeroArgument();
 
-    strategy.withdraw(_amount);
+    yieldStrategy.withdraw(_amount);
+    token.transfer(address(yieldStrategy), _amount);
   }
 
   function strategyWithdrawAll() external override onlyOwner {
-    strategy.withdrawAll();
+    yieldStrategy.withdrawAll();
   }
 
   //
@@ -229,7 +230,7 @@ contract Sherlock is ISherlock, ERC721, Ownable {
     uint256 _period,
     uint256 _id
   ) internal returns (uint256 _sher) {
-    deadlines_[_id] = block.timestamp + _period;
+    lockupEnd_[_id] = block.timestamp + _period;
 
     if (address(sherDistributionManager) == address(0)) return 0;
     // could be zero on hold() but protocol will be broken as new stakes get infinite shares
@@ -253,7 +254,7 @@ contract Sherlock is ISherlock, ERC721, Ownable {
     _nftOwner = ownerOf(_id);
 
     if (_nftOwner != msg.sender) revert Unauthorized();
-    if (deadlines_[_id] > block.timestamp) revert InvalidConditions();
+    if (lockupEnd_[_id] > block.timestamp) revert InvalidConditions();
   }
 
   function _sendSherRewardsToOwner(uint256 _id, address _nftOwner) internal {
@@ -268,7 +269,7 @@ contract Sherlock is ISherlock, ERC721, Ownable {
     sherlockProtocolManager.claimPremiums();
     uint256 mainBalance = token.balanceOf(address(this));
     if (_amount > mainBalance) {
-      strategy.withdraw(_amount - mainBalance);
+      yieldStrategy.withdraw(_amount - mainBalance);
     }
     token.safeTransfer(_receiver, _amount);
   }
@@ -306,7 +307,7 @@ contract Sherlock is ISherlock, ERC721, Ownable {
     address _receiver
   ) external override returns (uint256 _id, uint256 _sher) {
     if (_amount == 0) revert ZeroArgument();
-    if (!periods[_period]) revert InvalidArgument();
+    if (!stakingPeriods[_period]) revert InvalidArgument();
     if (address(_receiver) == address(0)) revert ZeroArgument();
     _id = ++nftCounter;
 
@@ -333,18 +334,18 @@ contract Sherlock is ISherlock, ERC721, Ownable {
     _sendSherRewardsToOwner(_id, nftOwner);
     _burn(_id);
 
-    delete deadlines_[_id];
+    delete lockupEnd_[_id];
   }
 
   function hold(uint256 _id, uint256 _period) external override returns (uint256 _sher) {
     address nftOwner = _verifyUnlockableByOwner(_id);
-    if (!periods[_period]) revert InvalidArgument();
+    if (!stakingPeriods[_period]) revert InvalidArgument();
 
     _sher = _restake(_id, _period, nftOwner);
   }
 
   function _calcSharesForArbRestake(uint256 _id) internal view returns (uint256, bool) {
-    uint256 initialArbTime = deadlines_[_id] + ARB_RESTAKE_WAIT_TIME;
+    uint256 initialArbTime = lockupEnd_[_id] + ARB_RESTAKE_WAIT_TIME;
 
     if (initialArbTime > block.timestamp) return (0, false);
 

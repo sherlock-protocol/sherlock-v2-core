@@ -79,7 +79,7 @@ contract AaveV2Strategy is IStrategyManager, Manager {
 
   function isActive() public returns (bool) {
     // todo managing strategy should have the strategy() interface and return address(this)
-    return address(sherlockCore.strategy()) == address(this);
+    return address(sherlockCore.yieldStrategy()) == address(this);
   }
 
   function sweep(address _receiver, IERC20[] memory _extraTokens) external onlyOwner {
