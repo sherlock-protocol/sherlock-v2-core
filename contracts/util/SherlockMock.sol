@@ -114,27 +114,27 @@ contract SherlockMock is ISherlock, ERC721, Ownable {
     uint256 _id
   ) internal returns (uint256 _sher) {}
 
-  function _verifyPositionAccessability(uint256 _id) internal view returns (address _nftOwner) {}
+  function _verifyUnlockableByOwner(uint256 _id) internal view returns (address _nftOwner) {}
 
   function _sendSherRewardsToOwner(uint256 _id, address _nftOwner) internal {}
 
-  function _transferOut(address _receiver, uint256 _amount) internal {}
+  function _transferTokensOut(address _receiver, uint256 _amount) internal {}
 
-  function _burnSharesCalc(uint256 _stakeShares) internal view returns (uint256) {}
+  function _redeemSharesCalc(uint256 _stakeShares) internal view returns (uint256) {}
 
-  function _burnShares(
+  function _redeemShares(
     uint256 _id,
     uint256 _stakeShares,
     address _receiver
   ) internal returns (uint256 _amount) {}
 
-  function _hold(
+  function _restake(
     uint256 _id,
     uint256 _period,
     address _nftOwner
   ) internal returns (uint256 _sher) {}
 
-  function mint(
+  function initialStake(
     uint256 _amount,
     uint256 _period,
     address _receiver
@@ -144,9 +144,9 @@ contract SherlockMock is ISherlock, ERC721, Ownable {
 
   function hold(uint256 _id, uint256 _period) external override returns (uint256 _sher) {}
 
-  function _holdArbCalcShares(uint256 _id) internal view returns (uint256) {}
+  function _calcSharesForArbRestake(uint256 _id) internal view returns (uint256) {}
 
-  function holdArbCalc(uint256 _id) external view returns (uint256) {}
+  function viewRewardForArbRestake(uint256 _id) external view returns (uint256) {}
 
-  function holdArb(uint256 _id) external override returns (uint256 _sher, uint256 _arbReward) {}
+  function arbRestake(uint256 _id) external override returns (uint256 _sher, uint256 _arbReward) {}
 }

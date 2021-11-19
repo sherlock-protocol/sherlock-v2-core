@@ -301,7 +301,7 @@ contract Sherlock is ISherlock, ERC721, Ownable {
     emit Restaked(_id);
   }
 
-  function mint(
+  function initialStake(
     uint256 _amount,
     uint256 _period,
     address _receiver
@@ -366,13 +366,13 @@ contract Sherlock is ISherlock, ERC721, Ownable {
   /// @notice calc arb rewards
   /// @return profit How much profit an arb would make
   /// @return able If the transaction can be executed
-  function holdArbCalc(uint256 _id) external view returns (uint256 profit, bool able) {
+  function viewRewardForArbRestake(uint256 _id) external view returns (uint256 profit, bool able) {
     (uint256 sharesAmount, bool _able) = _calcSharesForArbRestake(_id);
     profit = _redeemSharesCalc(sharesAmount);
     able = _able;
   }
 
-  function holdArb(uint256 _id) external override returns (uint256 _sher, uint256 _arbReward) {
+  function arbRestake(uint256 _id) external override returns (uint256 _sher, uint256 _arbReward) {
     address nftOwner = ownerOf(_id);
 
     (uint256 arbRewardShares, bool able) = _calcSharesForArbRestake(_id);

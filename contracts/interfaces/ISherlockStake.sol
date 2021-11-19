@@ -34,7 +34,7 @@ interface ISherlockStake {
   /// @return _id TokenID of the position
   /// @return _sher Amount of SHER tokens to be relased after `_period` ends
   /// @dev `_period` needs to be whitelisted
-  function mint(
+  function initialStake(
     uint256 _amount,
     uint256 _period,
     address _receiver
@@ -64,5 +64,5 @@ interface ISherlockStake {
   /// @dev Can only be called after lockup `_period` is more than 2 weeks in the past
   /// @dev Max 10% of tokens in positions are used to incentivize arbs (x)
   /// @dev During a 2 week period the reward ratio will move from 0% to 100% (* x)
-  function holdArb(uint256 _id) external returns (uint256 _sher, uint256 _arbReward);
+  function arbRestake(uint256 _id) external returns (uint256 _sher, uint256 _arbReward);
 }
