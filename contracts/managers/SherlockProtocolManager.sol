@@ -21,16 +21,16 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
   uint256 constant HUNDRED_PERCENT = 10**18;
 
   mapping(bytes32 => address) protocolAgent_;
-  mapping(bytes32 => uint256) nonStakersShares;
+  mapping(bytes32 => uint256) nonStakersPercentage;
 
   mapping(bytes32 => uint256) premiums_;
-  mapping(bytes32 => uint256) balancesInternal;
-  mapping(bytes32 => uint256) lastAccountedProtocol;
-  mapping(bytes32 => uint256) nonStakersClaimableStored;
+  mapping(bytes32 => uint256) activeBalances;
+  mapping(bytes32 => uint256) lastAccountedEachProtocol;
+  mapping(bytes32 => uint256) nonStakersClaimableByProtocol;
 
-  uint256 lastAccounted;
-  uint256 totalPremiumPerBlock;
-  uint256 claimablePremiumsStored;
+  uint256 lastAccountedGlobal;
+  uint256 allPremiumsPerSecToStakers;
+  uint256 lastClaimablePremiumsForStakers;
 
   // the absolute minimal balane a protocol can hold
   /// @inheritdoc ISherlockProtocolManager
@@ -86,23 +86,23 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
   // View methods
   //
   function _calcIncrementalProtocolDebt(bytes32 _protocol) internal view returns (uint256) {
-    return (block.timestamp - lastAccountedProtocol[_protocol]) * premiums_[_protocol];
+    return (block.timestamp - lastAccountedEachProtocol[_protocol]) * premiums_[_protocol];
   }
 
   /// @inheritdoc ISherlockProtocolManager
   function nonStakersClaimable(bytes32 _protocol) external view override returns (uint256) {
     // non stakers can claim rewards after protocol is removed
     uint256 debt = _calcIncrementalProtocolDebt(_protocol);
-    uint256 balance = balancesInternal[_protocol];
+    uint256 balance = activeBalances[_protocol];
     if (debt > balance) debt = balance;
 
     return
-      nonStakersClaimableStored[_protocol] + (nonStakersShares[_protocol] * debt) / HUNDRED_PERCENT;
+      nonStakersClaimableByProtocol[_protocol] + (nonStakersPercentage[_protocol] * debt) / HUNDRED_PERCENT;
   }
 
   /// @inheritdoc ISherlockProtocolManager
   function claimablePremiums() public view override returns (uint256) {
-    return claimablePremiumsStored + (block.timestamp - lastAccounted) * totalPremiumPerBlock;
+    return lastClaimablePremiumsForStakers + (block.timestamp - lastAccountedGlobal) * allPremiumsPerSecToStakers;
   }
 
   /// @inheritdoc ISherlockProtocolManager
@@ -135,7 +135,7 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
 
   function _activeBalance(bytes32 _protocol) internal view returns (uint256) {
     uint256 debt = _calcIncrementalProtocolDebt(_protocol);
-    uint256 balance = balancesInternal[_protocol];
+    uint256 balance = activeBalances[_protocol];
     if (debt > balance) return 0;
     return balance - debt;
   }
@@ -164,12 +164,12 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
   function _setSingleAndGlobalProtocolPremium(bytes32 _protocol, uint256 _premium) internal {
     (uint256 oldPremiumPerSecond, uint256 nonStakerShares) = _setProtocolPremium(_protocol, _premium);
     _settleTotalDebt();
-    totalPremiumPerBlock = _calcGlobalPremiumPerSecForStakers(
+    allPremiumsPerSecToStakers = _calcGlobalPremiumPerSecForStakers(
       oldPremiumPerSecond,
       _premium,
       nonStakerShares,
       nonStakerShares,
-      totalPremiumPerBlock
+      allPremiumsPerSecToStakers
     );
   }
 
@@ -184,9 +184,9 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
 
   function _settleProtocolDebt(bytes32 _protocol) internal returns (uint256 _nonStakerPercentage) {
     uint256 debt = _calcIncrementalProtocolDebt(_protocol);
-    _nonStakerPercentage = nonStakersShares[_protocol];
+    _nonStakerPercentage = nonStakersPercentage[_protocol];
     if (debt != 0) {
-      uint256 balance = balancesInternal[_protocol];
+      uint256 balance = activeBalances[_protocol];
       if (debt > balance) {
         // Economically seen, this should never be reached as arb can remove a protocol and make a profit
         // using forceRemoveByBalance and forceRemoveByRemainingCoverage
@@ -197,7 +197,7 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
         _settleTotalDebt();
         // @note to production, set premium first to zero before solving accounting issue.
         // otherwise the accounting error keeps increasing
-        uint256 claimablePremiumsStored_ = claimablePremiumsStored;
+        uint256 lastClaimablePremiumsForStakers_ = lastClaimablePremiumsForStakers;
 
         // The debt is higher then balance, this means tokens are missing to make the accounting work
         // We probably are not going to see these tokens being transferred (no incentives)
@@ -205,32 +205,32 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
         // If that doesn't work (completely), we signal the missing tokens
         // The missing tokens will only be the staker part, the non stakers are disadvantaged
         // Non-stakers get the leftovers and they will not receive part of transferred missing tokens
-        // As lastAccountedProtocol is set at the end of this function which is used for nonstaker debt
+        // As lastAccountedEachProtocol is set at the end of this function which is used for nonstaker debt
         uint256 claimablePremiumError = ((HUNDRED_PERCENT - _nonStakerPercentage) * error) /
           HUNDRED_PERCENT;
 
         uint256 insufficientTokens;
-        if (claimablePremiumError > claimablePremiumsStored_) {
-          insufficientTokens = claimablePremiumError - claimablePremiumsStored_;
-          claimablePremiumsStored = 0;
+        if (claimablePremiumError > lastClaimablePremiumsForStakers_) {
+          insufficientTokens = claimablePremiumError - lastClaimablePremiumsForStakers_;
+          lastClaimablePremiumsForStakers = 0;
         } else {
           // insufficientTokens = 0
-          claimablePremiumsStored = claimablePremiumsStored_ - claimablePremiumError;
+          lastClaimablePremiumsForStakers = lastClaimablePremiumsForStakers_ - claimablePremiumError;
         }
 
         // If two events are thrown, the values need to be summed up for the actual state.
         emit AccountingError(_protocol, claimablePremiumError, insufficientTokens);
         debt = balance;
       }
-      balancesInternal[_protocol] = balance - debt;
-      nonStakersClaimableStored[_protocol] += (_nonStakerPercentage * debt) / HUNDRED_PERCENT;
+      activeBalances[_protocol] = balance - debt;
+      nonStakersClaimableByProtocol[_protocol] += (_nonStakerPercentage * debt) / HUNDRED_PERCENT;
     }
-    lastAccountedProtocol[_protocol] = block.timestamp;
+    lastAccountedEachProtocol[_protocol] = block.timestamp;
   }
 
   function _settleTotalDebt() internal {
-    claimablePremiumsStored += (block.timestamp - lastAccounted) * totalPremiumPerBlock;
-    lastAccounted = block.timestamp;
+    lastClaimablePremiumsForStakers += (block.timestamp - lastAccountedGlobal) * allPremiumsPerSecToStakers;
+    lastAccountedGlobal = block.timestamp;
   }
 
   function _calcGlobalPremiumPerSecForStakers(
@@ -238,10 +238,10 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
     uint256 _premiumNew,
     uint256 _nonStakerPercentageOld,
     uint256 _nonStakerPercentageNew,
-    uint256 _inMemTotalPremiumPerBlock
+    uint256 _inMemallPremiumsPerSecToStakers
   ) internal pure returns (uint256) {
     return
-      _inMemTotalPremiumPerBlock +
+      _inMemallPremiumsPerSecToStakers +
       ((HUNDRED_PERCENT - _nonStakerPercentageNew) * _premiumNew) /
       HUNDRED_PERCENT -
       ((HUNDRED_PERCENT - _nonStakerPercentageOld) * _premiumOld) /
@@ -251,17 +251,17 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
   function _forceRemoveProtocol(bytes32 _protocol, address _agent) internal {
     _setSingleAndGlobalProtocolPremium(_protocol, 0);
 
-    uint256 balance = balancesInternal[_protocol];
+    uint256 balance = activeBalances[_protocol];
     if (balance != 0) {
-      delete balancesInternal[_protocol];
+      delete activeBalances[_protocol];
       token.safeTransfer(_agent, balance);
 
       emit ProtocolBalanceWithdrawn(_protocol, balance);
     }
 
     _setProtocolAgent(_protocol, _agent, address(0));
-    delete nonStakersShares[_protocol];
-    delete lastAccountedProtocol[_protocol];
+    delete nonStakersPercentage[_protocol];
+    delete lastAccountedEachProtocol[_protocol];
     removedProtocolValidUntil[_protocol] = block.timestamp + PROTOCOL_CLAIM_DEADLINE;
     removedProtocolAgent[_protocol] = _agent;
 
@@ -301,10 +301,10 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
       _settleProtocolDebt(_protocol);
     }
 
-    uint256 balance = nonStakersClaimableStored[_protocol];
+    uint256 balance = nonStakersClaimableByProtocol[_protocol];
     if (_amount > balance) revert InsufficientBalance(_protocol);
 
-    nonStakersClaimableStored[_protocol] = balance - _amount;
+    nonStakersClaimableByProtocol[_protocol] = balance - _amount;
     token.safeTransfer(_receiver, _amount);
   }
 
@@ -314,8 +314,8 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
     if (sherlock == address(0)) revert InvalidConditions();
 
     uint256 amount = claimablePremiums();
-    claimablePremiumsStored = 0;
-    lastAccounted = block.timestamp;
+    lastClaimablePremiumsForStakers = 0;
+    lastAccountedGlobal = block.timestamp;
 
     if (amount != 0) {
       token.safeTransfer(sherlock, amount);
@@ -380,14 +380,14 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
     _settleTotalDebt();
 
     uint256 premium = premiums_[_protocol];
-    totalPremiumPerBlock = _calcGlobalPremiumPerSecForStakers(
+    allPremiumsPerSecToStakers = _calcGlobalPremiumPerSecForStakers(
       premium,
       premium,
-      nonStakersShares[_protocol],
+      nonStakersPercentage[_protocol],
       _nonStakers,
-      totalPremiumPerBlock
+      allPremiumsPerSecToStakers
     );
-    nonStakersShares[_protocol] = _nonStakers;
+    nonStakersPercentage[_protocol] = _nonStakers;
 
     previousCoverage[_protocol] = currentCoverage[_protocol];
     currentCoverage[_protocol] = _coverageAmount;
@@ -407,11 +407,11 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
     address agent = _verifyProtocolExists(_protocol);
 
     _settleProtocolDebt(_protocol);
-    uint256 remainingBalance = balancesInternal[_protocol];
+    uint256 remainingBalance = activeBalances[_protocol];
 
     if (remainingBalance >= minBalance) revert InvalidConditions();
     if (remainingBalance != 0) {
-      balancesInternal[_protocol] = 0;
+      activeBalances[_protocol] = 0;
       token.safeTransfer(msg.sender, remainingBalance);
     }
 
@@ -430,11 +430,11 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
     if (percentageScaled >= HUNDRED_PERCENT) revert InvalidConditions();
 
     _settleProtocolDebt(_protocol);
-    uint256 remainingBalance = balancesInternal[_protocol];
+    uint256 remainingBalance = activeBalances[_protocol];
 
     uint256 arbAmount = (remainingBalance * percentageScaled) / HUNDRED_PERCENT;
     if (arbAmount != 0) {
-      balancesInternal[_protocol] -= arbAmount;
+      activeBalances[_protocol] -= arbAmount;
     }
 
     _forceRemoveProtocol(_protocol, agent);
@@ -465,7 +465,7 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
 
     _settleTotalDebt();
 
-    uint256 totalPremiumPerBlock_ = totalPremiumPerBlock;
+    uint256 allPremiumsPerSecToStakers_ = allPremiumsPerSecToStakers;
     for (uint256 i; i < _protocol.length; i++) {
       _verifyProtocolExists(_protocol[i]);
 
@@ -474,16 +474,16 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
         _premium[i]
       );
 
-      totalPremiumPerBlock_ = _calcGlobalPremiumPerSecForStakers(
+      allPremiumsPerSecToStakers_ = _calcGlobalPremiumPerSecForStakers(
         oldPremiumPerSecond,
         _premium[i],
         nonStakerShares,
         nonStakerShares,
-        totalPremiumPerBlock_
+        allPremiumsPerSecToStakers_
       );
     }
 
-    totalPremiumPerBlock = totalPremiumPerBlock_;
+    allPremiumsPerSecToStakers = allPremiumsPerSecToStakers_;
   }
 
   /// @inheritdoc ISherlockProtocolManager
@@ -492,7 +492,7 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
     _verifyProtocolExists(_protocol);
 
     token.safeTransferFrom(msg.sender, address(this), _amount);
-    balancesInternal[_protocol] += _amount;
+    activeBalances[_protocol] += _amount;
 
     emit ProtocolBalanceDeposited(_protocol, _amount);
   }
@@ -505,10 +505,10 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
     // settle debt first just to make absolutely sure no extra tokens can be withdrawn
     _settleProtocolDebt(_protocol);
 
-    uint256 currentBalance = balancesInternal[_protocol];
+    uint256 currentBalance = activeBalances[_protocol];
     if (_amount > currentBalance) revert InsufficientBalance(_protocol);
 
-    balancesInternal[_protocol] = currentBalance - _amount;
+    activeBalances[_protocol] = currentBalance - _amount;
     if (_secondsOfCoverageLeft(_protocol) < MIN_SECONDS_LEFT) revert InsufficientBalance(_protocol);
 
     token.safeTransfer(msg.sender, _amount);
