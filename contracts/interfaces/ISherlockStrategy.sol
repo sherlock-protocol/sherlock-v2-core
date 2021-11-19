@@ -12,14 +12,14 @@ interface ISherlockStrategy {
   /// @notice Deposit `_amount` into active strategy
   /// @param _amount Amount of tokens
   /// @dev gov only
-  function strategyDeposit(uint256 _amount) external;
+  function yieldStrategyDeposit(uint256 _amount) external;
 
   /// @notice Withdraw `_amount` from active strategy
   /// @param _amount Amount of tokens
   /// @dev gov only
-  function strategyWithdraw(uint256 _amount) external;
+  function yieldStrategyWithdraw(uint256 _amount) external;
 
   /// @notice Withdraw all funds from active strategy
   /// @dev gov only
-  function strategyWithdrawAll() external;
+  function yieldStrategyWithdrawAll() external;
 }

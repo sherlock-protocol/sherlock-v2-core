@@ -33,12 +33,12 @@ interface ISherlockGov {
   /// @notice Allows stakers to stake for `_period` of time
   /// @param _period Period of time, in seconds,
   /// @dev should revert if already enabled
-  function enablePeriod(uint256 _period) external;
+  function enableStakingPeriod(uint256 _period) external;
 
   /// @notice Disallow stakers to stake for `_period` of time
   /// @param _period Period of time, in seconds,
   /// @dev should revert if already disabled
-  function disablePeriod(uint256 _period) external;
+  function disableStakingPeriod(uint256 _period) external;
 
   /// @notice View if `_period` is a valid period
   /// @return Boolean indicatin if period is valid
@@ -82,8 +82,8 @@ interface ISherlockGov {
 
   /// @notice Update yield strategy
   /// @param _yieldStrategy News address of the strategy
-  /// @dev try a strategyWithdrawAll() on old, ignore failure
-  function updateStrategy(IStrategyManager _yieldStrategy) external;
+  /// @dev try a yieldStrategyWithdrawAll() on old, ignore failure
+  function updateYieldStrategy(IStrategyManager _yieldStrategy) external;
 
   /// @notice Read current strategy
   /// @return Address of current strategy

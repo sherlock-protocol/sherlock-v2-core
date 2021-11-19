@@ -69,7 +69,7 @@ contract Sherlock is ISherlock, ERC721, Ownable {
     sherlockClaimManager = _sherlockClaimManager;
 
     for (uint256 i; i < _initialstakingPeriods.length; i++) {
-      enablePeriod(_initialstakingPeriods[i]);
+      enableStakingPeriod(_initialstakingPeriods[i]);
     }
 
     emit YieldStrategyUpdated(IStrategyManager(address(0)), _yieldStrategy);
@@ -112,7 +112,7 @@ contract Sherlock is ISherlock, ERC721, Ownable {
   // Gov functions
   //
 
-  function enablePeriod(uint256 _period) public override onlyOwner {
+  function enableStakingPeriod(uint256 _period) public override onlyOwner {
     if (_period == 0) revert ZeroArgument();
     if (stakingPeriods[_period]) revert InvalidArgument();
 
@@ -120,10 +120,10 @@ contract Sherlock is ISherlock, ERC721, Ownable {
     emit StakingPeriodEnabled(_period);
   }
 
-  function disablePeriod(uint256 _period) external override onlyOwner {
+  function disableStakingPeriod(uint256 _period) external override onlyOwner {
     if (!stakingPeriods[_period]) revert InvalidArgument();
-    stakingPeriods[_period] = false;
 
+    stakingPeriods[_period] = false;
     emit StakingPeriodDisabled(_period);
   }
 
@@ -181,7 +181,7 @@ contract Sherlock is ISherlock, ERC721, Ownable {
     sherlockClaimManager = _sherlockClaimManager;
   }
 
-  function updateStrategy(IStrategyManager _yieldStrategy) external override onlyOwner {
+  function updateYieldStrategy(IStrategyManager _yieldStrategy) external override onlyOwner {
     if (address(_yieldStrategy) == address(0)) revert ZeroArgument();
     if (yieldStrategy == _yieldStrategy) revert InvalidArgument();
 
@@ -189,7 +189,7 @@ contract Sherlock is ISherlock, ERC721, Ownable {
     yieldStrategy = _yieldStrategy;
   }
 
-  function strategyDeposit(uint256 _amount) external override onlyOwner {
+  function yieldStrategyDeposit(uint256 _amount) external override onlyOwner {
     if (_amount == 0) revert ZeroArgument();
 
     sherlockProtocolManager.claimPremiums();
@@ -197,14 +197,14 @@ contract Sherlock is ISherlock, ERC721, Ownable {
     yieldStrategy.deposit();
   }
 
-  function strategyWithdraw(uint256 _amount) external override onlyOwner {
+  function yieldStrategyWithdraw(uint256 _amount) external override onlyOwner {
     if (_amount == 0) revert ZeroArgument();
 
     yieldStrategy.withdraw(_amount);
     token.transfer(address(yieldStrategy), _amount);
   }
 
-  function strategyWithdrawAll() external override onlyOwner {
+  function yieldStrategyWithdrawAll() external override onlyOwner {
     yieldStrategy.withdrawAll();
   }
 
@@ -212,7 +212,7 @@ contract Sherlock is ISherlock, ERC721, Ownable {
   // Access control functions
   //
 
-  function payout(address _receiver, uint256 _amount) external override {
+  function payoutClaim(address _receiver, uint256 _amount) external override {
     if (msg.sender != address(sherlockClaimManager)) revert Unauthorized();
 
     if (_amount != 0) {

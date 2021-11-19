@@ -192,7 +192,7 @@ contract SherlockClaimManager is ISherlockClaimManager, Manager {
 
     emit ClaimPayout(_claimID);
 
-    sherlockCore.payout(receiver, amount);
+    sherlockCore.payoutClaim(receiver, amount);
   }
 
   function executeHalt(uint256 _claimID) external override onlyUMAHO {

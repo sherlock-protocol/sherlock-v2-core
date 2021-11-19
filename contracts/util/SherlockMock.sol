@@ -50,11 +50,11 @@ contract SherlockMock is ISherlock, ERC721, Ownable {
   // Gov functions
   //
 
-  function _setPeriod(uint256 _period) internal {}
+  function _setStakingPeriod(uint256 _period) internal {}
 
-  function enablePeriod(uint256 _period) external override onlyOwner {}
+  function enableStakingPeriod(uint256 _period) external override onlyOwner {}
 
-  function disablePeriod(uint256 _period) external override onlyOwner {}
+  function disableStakingPeriod(uint256 _period) external override onlyOwner {}
 
   function pullSherReward(uint256 _amount, uint256 _period) external {
     sherDistributionManager.pullReward(_amount, _period);
@@ -90,19 +90,19 @@ contract SherlockMock is ISherlock, ERC721, Ownable {
     sherlockClaimManager = _sherlockClaimManager;
   }
 
-  function updateStrategy(IStrategyManager _yieldStrategy) external override onlyOwner {}
+  function updateYieldStrategy(IStrategyManager _yieldStrategy) external override onlyOwner {}
 
-  function strategyDeposit(uint256 _amount) external override onlyOwner {}
+  function yieldStrategyDeposit(uint256 _amount) external override onlyOwner {}
 
-  function strategyWithdraw(uint256 _amount) external override onlyOwner {}
+  function yieldStrategyWithdraw(uint256 _amount) external override onlyOwner {}
 
-  function strategyWithdrawAll() external override onlyOwner {}
+  function yieldStrategyWithdrawAll() external override onlyOwner {}
 
   //
   // Access control functions
   //
 
-  function payout(address _receiver, uint256 _amount) external override {}
+  function payoutClaim(address _receiver, uint256 _amount) external override {}
 
   //
   // Non-access control functions
