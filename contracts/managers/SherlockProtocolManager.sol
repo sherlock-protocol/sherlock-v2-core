@@ -67,7 +67,7 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
   }
 
   /// @inheritdoc ISherlockProtocolManager
-  function premiums(bytes32 _protocol)
+  function premium(bytes32 _protocol)
     external
     view
     override
@@ -123,7 +123,7 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
   }
 
   /// @inheritdoc ISherlockProtocolManager
-  function balances(bytes32 _protocol)
+  function activeBalance(bytes32 _protocol)
     external
     view
     override

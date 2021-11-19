@@ -76,7 +76,7 @@ contract SherlockProtocolManagerTest is SherlockProtocolManager {
     return lastClaimablePremiumsForStakers;
   }
 
-  function viewActiveBalances(bytes32 _protocol) external view returns (uint256) {
+  function viewActiveBalance(bytes32 _protocol) external view returns (uint256) {
     return activeBalances[_protocol];
   }
 }

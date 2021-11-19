@@ -71,13 +71,13 @@ interface ISherlockProtocolManager is IManager {
   /// @notice View current premium of protocol
   /// @param _protocol Protocol identifier
   /// @return Amount of premium `_protocol` pays per second
-  function premiums(bytes32 _protocol) external view returns (uint256);
+  function premium(bytes32 _protocol) external view returns (uint256);
 
   /// @notice View current active balance of protocol
   /// @param _protocol Protocol identifier
   /// @return Active balance
   /// @dev Accrued debt is subtracted from the stored balance
-  function balances(bytes32 _protocol) external view returns (uint256);
+  function activeBalance(bytes32 _protocol) external view returns (uint256);
 
   /// @notice View seconds of coverage left of `_protocol`
   /// @param _protocol Protocol identifier
