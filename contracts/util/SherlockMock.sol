@@ -42,7 +42,7 @@ contract SherlockMock is ISherlock, ERC721, Ownable {
     token = _token;
   }
 
-  function balanceOf() public view override returns (uint256) {
+  function totalTokenBalanceStakers() public view override returns (uint256) {
     return token.balanceOf(address(this));
   }
 

@@ -25,7 +25,7 @@ interface ISherlockStake {
   /// @return Total amount of tokens staked
   /// @dev Contains principles + strategy + premiums
   /// @dev Will calculate the most up to date value for each block
-  function balanceOf() external view returns (uint256);
+  function totalTokenBalanceStakers() external view returns (uint256);
 
   /// @notice Stake `_amount` and lockup for `_period` seconds, `_receiver` will receive the receipt.`
   /// @param _amount Amount of tokens to stake

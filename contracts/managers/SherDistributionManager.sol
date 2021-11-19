@@ -45,7 +45,7 @@ contract SherDistributionManager is ISherDistributionManager, Manager {
     onlySherlockCore
     returns (uint256 _sher)
   {
-    _sher = calcReward(sherlockCore.balanceOf() - _amount, _amount, _period);
+    _sher = calcReward(sherlockCore.totalTokenBalanceStakers() - _amount, _amount, _period);
     sher.safeTransfer(msg.sender, _sher);
   }
 

@@ -98,10 +98,10 @@ contract Sherlock is ISherlock, ERC721, Ownable {
   }
 
   function balanceOf(uint256 _tokenID) public view override returns (uint256) {
-    return (stakeShares[_tokenID] * balanceOf()) / totalstakeShares;
+    return (stakeShares[_tokenID] * totalTokenBalanceStakers()) / totalstakeShares;
   }
 
-  function balanceOf() public view override returns (uint256) {
+  function totalTokenBalanceStakers() public view override returns (uint256) {
     return
       token.balanceOf(address(this)) +
       yieldStrategy.balanceOf() +
@@ -275,7 +275,7 @@ contract Sherlock is ISherlock, ERC721, Ownable {
   }
 
   function _redeemSharesCalc(uint256 _stakeShares) internal view returns (uint256) {
-    return (_stakeShares * balanceOf()) / totalstakeShares;
+    return (_stakeShares * totalTokenBalanceStakers()) / totalstakeShares;
   }
 
   function _redeemShares(
@@ -316,7 +316,7 @@ contract Sherlock is ISherlock, ERC721, Ownable {
     uint256 stakeShares_;
     uint256 totalstakeShares_ = totalstakeShares;
     if (totalstakeShares_ != 0)
-      stakeShares_ = (_amount * totalstakeShares_) / (balanceOf() - _amount);
+      stakeShares_ = (_amount * totalstakeShares_) / (totalTokenBalanceStakers() - _amount);
     else stakeShares_ = _amount;
 
     stakeShares[_id] = stakeShares_;
