@@ -172,7 +172,7 @@ contract SherlockClaimManager is ISherlockClaimManager, Manager {
     );
   }
 
-  function enactClaim(uint256 _claimID) external override {
+  function payoutClaim(uint256 _claimID) external override {
     bytes32 claimIdentifier = publicToInternalID[_claimID];
     Claim storage claim = claims_[claimIdentifier];
     address receiver = claim.receiver;

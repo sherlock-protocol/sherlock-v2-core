@@ -12,7 +12,7 @@ import './IManager.sol';
 interface ISherDistributionManager is IManager {
   // anyone can just send token to this contract to fund rewards
 
-  event Initialized(uint256 maxRewardsTVL, uint256 zeroRewardsTVL, uint256 maxRewardRate);
+  event Initialized(uint256 maxRewardsEndTVL, uint256 zeroRewardsStartTVL, uint256 maxRewardRate);
 
   /// @notice Caller will receive `_sher` SHER tokens based on `_amount` and `_period`
   /// @param _amount Amount of tokens

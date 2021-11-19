@@ -15,28 +15,28 @@ contract SherDistributionManager is ISherDistributionManager, Manager {
 
   uint256 constant DECIMALS = 10**6;
 
-  uint256 immutable maxRewardsTVL;
-  uint256 immutable zeroRewardsTVL;
+  uint256 immutable maxRewardsEndTVL;
+  uint256 immutable zeroRewardsStartTVL;
   uint256 immutable maxRewardsRate;
 
   IERC20 immutable sher;
 
   constructor(
-    uint256 _maxRewardsTVL,
-    uint256 _zeroRewardsTVL,
+    uint256 _maxRewardsEndTVL,
+    uint256 _zeroRewardsStartTVL,
     uint256 _maxRewardsRate,
     IERC20 _sher
   ) {
-    if (_maxRewardsTVL >= _zeroRewardsTVL) revert InvalidArgument();
+    if (_maxRewardsEndTVL >= _zeroRewardsStartTVL) revert InvalidArgument();
     if (_maxRewardsRate == 0) revert ZeroArgument();
     if (address(_sher) == address(0)) revert ZeroArgument();
 
-    maxRewardsTVL = _maxRewardsTVL;
-    zeroRewardsTVL = _zeroRewardsTVL;
+    maxRewardsEndTVL = _maxRewardsEndTVL;
+    zeroRewardsStartTVL = _zeroRewardsStartTVL;
     maxRewardsRate = _maxRewardsRate;
     sher = _sher;
 
-    emit Initialized(_maxRewardsTVL, _zeroRewardsTVL, _maxRewardsRate);
+    emit Initialized(_maxRewardsEndTVL, _zeroRewardsStartTVL, _maxRewardsRate);
   }
 
   function pullReward(uint256 _amount, uint256 _period)
@@ -56,11 +56,11 @@ contract SherDistributionManager is ISherDistributionManager, Manager {
   ) public view override returns (uint256 _sher) {
     if (_amount == 0) return 0;
 
-    uint256 maxRewardsTVL_ = maxRewardsTVL;
-    uint256 maxRewardsAvailable = maxRewardsTVL_ > _tvl ? maxRewardsTVL_ - _tvl : 0;
+    uint256 maxRewardsEndTVL_ = maxRewardsEndTVL;
+    uint256 maxRewardsAvailable = maxRewardsEndTVL_ > _tvl ? maxRewardsEndTVL_ - _tvl : 0;
 
-    uint256 zeroRewardsTVL_ = zeroRewardsTVL;
-    uint256 slopeRewardsAvailable = zeroRewardsTVL_ > _tvl ? zeroRewardsTVL_ - _tvl : 0;
+    uint256 zeroRewardsStartTVL_ = zeroRewardsStartTVL;
+    uint256 slopeRewardsAvailable = zeroRewardsStartTVL_ > _tvl ? zeroRewardsStartTVL_ - _tvl : 0;
 
     if (maxRewardsAvailable != 0) {
       if (_amount <= maxRewardsAvailable) {
@@ -85,8 +85,8 @@ contract SherDistributionManager is ISherDistributionManager, Manager {
 
       // calc SHER rewards based on position on the curve
       _sher +=
-        (((zeroRewardsTVL - position) * _amount * maxRewardsRate * _period) /
-          (zeroRewardsTVL - maxRewardsTVL)) *
+        (((zeroRewardsStartTVL - position) * _amount * maxRewardsRate * _period) /
+          (zeroRewardsStartTVL - maxRewardsEndTVL)) *
         DECIMALS;
     }
   }
