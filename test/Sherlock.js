@@ -497,7 +497,7 @@ describe('Sherlock ─ Functional', function () {
       await timeTraveler.revertSnapshot();
     });
     it('Initial state', async function () {
-      expect(await this.sherlock.periods(100)).to.eq(false);
+      expect(await this.sherlock.stakingPeriods(100)).to.eq(false);
     });
     it('Do', async function () {
       this.t0 = await meta(this.sherlock.enablePeriod(100));
@@ -507,7 +507,7 @@ describe('Sherlock ─ Functional', function () {
       expect(this.t0.events[0].args.period).to.eq(100);
     });
     it('Verify state', async function () {
-      expect(await this.sherlock.periods(100)).to.eq(true);
+      expect(await this.sherlock.stakingPeriods(100)).to.eq(true);
     });
   });
   describe('disablePeriod()', function () {
@@ -515,7 +515,7 @@ describe('Sherlock ─ Functional', function () {
       await timeTraveler.revertSnapshot();
     });
     it('Initial state', async function () {
-      expect(await this.sherlock.periods(10)).to.eq(true);
+      expect(await this.sherlock.stakingPeriods(10)).to.eq(true);
     });
     it('Do', async function () {
       this.t0 = await meta(this.sherlock.disablePeriod(10));
@@ -525,7 +525,7 @@ describe('Sherlock ─ Functional', function () {
       expect(this.t0.events[0].args.period).to.eq(10);
     });
     it('Verify state', async function () {
-      expect(await this.sherlock.periods(10)).to.eq(false);
+      expect(await this.sherlock.stakingPeriods(10)).to.eq(false);
     });
   });
   describe('updateSherDistributionManager()', function () {
