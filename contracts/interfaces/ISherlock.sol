@@ -24,4 +24,8 @@ interface ISherlock is ISherlockStake, ISherlockGov, ISherlockPayout, ISherlockS
   error InvalidSherAmount(uint256 expected, uint256 actual);
 
   error NonExistent();
+
+  event ArbRestaked(uint256 tokenID, uint256 reward);
+
+  event Restaked(uint256 tokenID);
 }

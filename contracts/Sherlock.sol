@@ -296,6 +296,8 @@ contract Sherlock is ISherlock, ERC721, Ownable {
   ) internal returns (uint256 _sher) {
     _sendSherRewardsToOwner(_id, _nftOwner);
     _sher = _stake(balanceOf(_id), _period, _id);
+
+    emit Restaked(_id);
   }
 
   function mint(
@@ -340,10 +342,10 @@ contract Sherlock is ISherlock, ERC721, Ownable {
     _sher = _hold(_id, _period, nftOwner);
   }
 
-  function _holdArbCalcShares(uint256 _id) internal view returns (uint256) {
+  function _holdArbCalcShares(uint256 _id) internal view returns (uint256, bool) {
     uint256 initialArbTime = deadlines_[_id] + ARB_RESTAKE_WAIT_TIME;
 
-    if (initialArbTime >= block.timestamp) return 0;
+    if (initialArbTime > block.timestamp) return (0, false);
 
     uint256 maxRewardArbTime = initialArbTime + ARB_RESTAKE_GROWTH_TIME;
     uint256 targetTime = block.timestamp < maxRewardArbTime ? block.timestamp : maxRewardArbTime;
@@ -351,23 +353,32 @@ contract Sherlock is ISherlock, ERC721, Ownable {
     // scaled by 10**18
     uint256 maxRewardScaled = ARB_RESTAKE_MAX_PERCENTAGE * shares[_id];
 
-    return
+    return (
       ((targetTime - initialArbTime) * maxRewardScaled) /
-      (maxRewardArbTime - initialArbTime) /
-      10**18;
+        (maxRewardArbTime - initialArbTime) /
+        10**18,
+      true
+    );
   }
 
-  function holdArbCalc(uint256 _id) external view returns (uint256) {
-    return _burnSharesCalc(_holdArbCalcShares(_id));
+  /// @notice calc arb rewards
+  /// @return profit How much profit an arb would make
+  /// @return able If the transaction can be executed
+  function holdArbCalc(uint256 _id) external view returns (uint256 profit, bool able) {
+    (uint256 sharesAmount, bool _able) = _holdArbCalcShares(_id);
+    profit = _burnSharesCalc(sharesAmount);
+    able = _able;
   }
 
   function holdArb(uint256 _id) external override returns (uint256 _sher, uint256 _arbReward) {
-    // @todo revert explicitly if arb can not be executed
     address nftOwner = ownerOf(_id);
-    if (nftOwner == address(0)) revert InvalidArgument();
 
-    uint256 arbRewardShares = _holdArbCalcShares(_id);
+    (uint256 arbRewardShares, bool able) = _holdArbCalcShares(_id);
+    if (!able) revert InvalidConditions();
+
     _arbReward = _burnShares(_id, arbRewardShares, msg.sender);
     _sher = _hold(_id, ARB_RESTAKE_PERIOD, nftOwner);
+
+    emit ArbRestaked(_id, _arbReward);
   }
 }
