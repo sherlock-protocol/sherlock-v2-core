@@ -97,7 +97,7 @@ contract Sherlock is ISherlock, ERC721, Ownable {
     return sherRewards_[_tokenID];
   }
 
-  function balanceOf(uint256 _tokenID) public view override returns (uint256) {
+  function tokenBalanceOf(uint256 _tokenID) public view override returns (uint256) {
     return (stakeShares[_tokenID] * totalTokenBalanceStakers()) / totalstakeShares;
   }
 
@@ -296,7 +296,7 @@ contract Sherlock is ISherlock, ERC721, Ownable {
     address _nftOwner
   ) internal returns (uint256 _sher) {
     _sendSherRewardsToOwner(_id, _nftOwner);
-    _sher = _stake(balanceOf(_id), _period, _id);
+    _sher = _stake(tokenBalanceOf(_id), _period, _id);
 
     emit Restaked(_id);
   }

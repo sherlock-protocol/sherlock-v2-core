@@ -19,7 +19,7 @@ interface ISherlockStake {
 
   /// @notice View the current token balance claimable upon reaching deadline
   /// @return Amount of tokens assigned to owner when burning position
-  function balanceOf(uint256 _tokenID) external view returns (uint256);
+  function tokenBalanceOf(uint256 _tokenID) external view returns (uint256);
 
   /// @notice View current total staker TVL
   /// @return Total amount of tokens staked

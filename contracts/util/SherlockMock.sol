@@ -36,7 +36,7 @@ contract SherlockMock is ISherlock, ERC721, Ownable {
   //
   // View functions
   //
-  function balanceOf(uint256 _tokenID) public view override returns (uint256) {}
+  function tokenBalanceOf(uint256 _tokenID) public view override returns (uint256) {}
 
   function setToken(IERC20 _token) external {
     token = _token;
