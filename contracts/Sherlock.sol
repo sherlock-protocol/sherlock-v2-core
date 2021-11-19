@@ -215,7 +215,7 @@ contract Sherlock is ISherlock, ERC721, Ownable {
     if (msg.sender != address(sherlockClaimManager)) revert Unauthorized();
 
     if (_amount != 0) {
-      _transferOut(_receiver, _amount);
+      _transferTokensOut(_receiver, _amount);
     }
     emit ClaimPayout(_receiver, _amount);
   }
@@ -249,7 +249,7 @@ contract Sherlock is ISherlock, ERC721, Ownable {
     sherRewards_[_id] = _sher;
   }
 
-  function _verifyPositionAccessability(uint256 _id) internal view returns (address _nftOwner) {
+  function _verifyUnlockableByOwner(uint256 _id) internal view returns (address _nftOwner) {
     _nftOwner = ownerOf(_id);
 
     if (_nftOwner != msg.sender) revert Unauthorized();
@@ -264,7 +264,7 @@ contract Sherlock is ISherlock, ERC721, Ownable {
     delete sherRewards_[_id];
   }
 
-  function _transferOut(address _receiver, uint256 _amount) internal {
+  function _transferTokensOut(address _receiver, uint256 _amount) internal {
     sherlockProtocolManager.claimPremiums();
     uint256 mainBalance = token.balanceOf(address(this));
     if (_amount > mainBalance) {
@@ -273,23 +273,23 @@ contract Sherlock is ISherlock, ERC721, Ownable {
     token.safeTransfer(_receiver, _amount);
   }
 
-  function _burnSharesCalc(uint256 _stakeShares) internal view returns (uint256) {
+  function _redeemSharesCalc(uint256 _stakeShares) internal view returns (uint256) {
     return (_stakeShares * balanceOf()) / totalstakeShares;
   }
 
-  function _burnShares(
+  function _redeemShares(
     uint256 _id,
     uint256 _stakeShares,
     address _receiver
   ) internal returns (uint256 _amount) {
-    _amount = _burnSharesCalc(_stakeShares);
-    if (_amount != 0) _transferOut(_receiver, _amount);
+    _amount = _redeemSharesCalc(_stakeShares);
+    if (_amount != 0) _transferTokensOut(_receiver, _amount);
 
     stakeShares[_id] -= _stakeShares;
     totalstakeShares -= _stakeShares;
   }
 
-  function _hold(
+  function _restake(
     uint256 _id,
     uint256 _period,
     address _nftOwner
@@ -327,9 +327,9 @@ contract Sherlock is ISherlock, ERC721, Ownable {
   }
 
   function burn(uint256 _id) external override returns (uint256 _amount) {
-    address nftOwner = _verifyPositionAccessability(_id);
+    address nftOwner = _verifyUnlockableByOwner(_id);
 
-    _amount = _burnShares(_id, stakeShares[_id], nftOwner);
+    _amount = _redeemShares(_id, stakeShares[_id], nftOwner);
     _sendSherRewardsToOwner(_id, nftOwner);
     _burn(_id);
 
@@ -337,13 +337,13 @@ contract Sherlock is ISherlock, ERC721, Ownable {
   }
 
   function hold(uint256 _id, uint256 _period) external override returns (uint256 _sher) {
-    address nftOwner = _verifyPositionAccessability(_id);
+    address nftOwner = _verifyUnlockableByOwner(_id);
     if (!periods[_period]) revert InvalidArgument();
 
-    _sher = _hold(_id, _period, nftOwner);
+    _sher = _restake(_id, _period, nftOwner);
   }
 
-  function _holdArbCalcShares(uint256 _id) internal view returns (uint256, bool) {
+  function _calcSharesForArbRestake(uint256 _id) internal view returns (uint256, bool) {
     uint256 initialArbTime = deadlines_[_id] + ARB_RESTAKE_WAIT_TIME;
 
     if (initialArbTime > block.timestamp) return (0, false);
@@ -366,19 +366,19 @@ contract Sherlock is ISherlock, ERC721, Ownable {
   /// @return profit How much profit an arb would make
   /// @return able If the transaction can be executed
   function holdArbCalc(uint256 _id) external view returns (uint256 profit, bool able) {
-    (uint256 sharesAmount, bool _able) = _holdArbCalcShares(_id);
-    profit = _burnSharesCalc(sharesAmount);
+    (uint256 sharesAmount, bool _able) = _calcSharesForArbRestake(_id);
+    profit = _redeemSharesCalc(sharesAmount);
     able = _able;
   }
 
   function holdArb(uint256 _id) external override returns (uint256 _sher, uint256 _arbReward) {
     address nftOwner = ownerOf(_id);
 
-    (uint256 arbRewardShares, bool able) = _holdArbCalcShares(_id);
+    (uint256 arbRewardShares, bool able) = _calcSharesForArbRestake(_id);
     if (!able) revert InvalidConditions();
 
-    _arbReward = _burnShares(_id, arbRewardShares, msg.sender);
-    _sher = _hold(_id, ARB_RESTAKE_PERIOD, nftOwner);
+    _arbReward = _redeemShares(_id, arbRewardShares, msg.sender);
+    _sher = _restake(_id, ARB_RESTAKE_PERIOD, nftOwner);
 
     emit ArbRestaked(_id, _arbReward);
   }
