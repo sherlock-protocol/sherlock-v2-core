@@ -126,26 +126,26 @@ describe('SherlockProtocolManager ─ Stateless', function () {
       );
     });
   });
-  describe('forceRemoveByBalance()', function () {
+  describe('forceRemoveByActiveBalance()', function () {
     it('Zero protocol', async function () {
-      await expect(this.spm.forceRemoveByBalance(constants.HashZero)).to.be.revertedWith(
+      await expect(this.spm.forceRemoveByActiveBalance(constants.HashZero)).to.be.revertedWith(
         'ProtocolNotExists("' + constants.HashZero + '")',
       );
     });
     it('Protocol not exists', async function () {
-      await expect(this.spm.forceRemoveByBalance(this.protocolY)).to.be.revertedWith(
+      await expect(this.spm.forceRemoveByActiveBalance(this.protocolY)).to.be.revertedWith(
         'ProtocolNotExists("' + this.protocolY + '")',
       );
     });
   });
-  describe('forceRemoveByRemainingCoverage()', function () {
+  describe('forceRemoveBySecondsOfCoverage()', function () {
     it('Zero protocol', async function () {
-      await expect(this.spm.forceRemoveByRemainingCoverage(constants.HashZero)).to.be.revertedWith(
+      await expect(this.spm.forceRemoveBySecondsOfCoverage(constants.HashZero)).to.be.revertedWith(
         'ProtocolNotExists("' + constants.HashZero + '")',
       );
     });
     it('Protocol not exists', async function () {
-      await expect(this.spm.forceRemoveByRemainingCoverage(this.protocolY)).to.be.revertedWith(
+      await expect(this.spm.forceRemoveBySecondsOfCoverage(this.protocolY)).to.be.revertedWith(
         'ProtocolNotExists("' + this.protocolY + '")',
       );
     });
@@ -217,47 +217,47 @@ describe('SherlockProtocolManager ─ Stateless', function () {
       ).to.be.revertedWith('ProtocolNotExists("' + this.protocolY + '")');
     });
   });
-  describe('depositProtocolBalance()', function () {
+  describe('depositToActiveBalance()', function () {
     it('Zero protocol', async function () {
-      await expect(this.spm.depositProtocolBalance(constants.HashZero, 1)).to.be.revertedWith(
+      await expect(this.spm.depositToActiveBalance(constants.HashZero, 1)).to.be.revertedWith(
         'ProtocolNotExists("' + constants.HashZero + '")',
       );
     });
     it('Zero amount', async function () {
-      await expect(this.spm.depositProtocolBalance(this.protocolX, 0)).to.be.revertedWith(
+      await expect(this.spm.depositToActiveBalance(this.protocolX, 0)).to.be.revertedWith(
         'ZeroArgument()',
       );
     });
     it('Protocol not exists', async function () {
-      await expect(this.spm.depositProtocolBalance(this.protocolY, 1)).to.be.revertedWith(
+      await expect(this.spm.depositToActiveBalance(this.protocolY, 1)).to.be.revertedWith(
         'ProtocolNotExists("' + this.protocolY + '")',
       );
     });
   });
-  describe('withdrawProtocolBalance()', function () {
+  describe('withdrawActiveBalance()', function () {
     it('Zero protocol', async function () {
-      await expect(this.spm.withdrawProtocolBalance(constants.HashZero, 1)).to.be.revertedWith(
+      await expect(this.spm.withdrawActiveBalance(constants.HashZero, 1)).to.be.revertedWith(
         'ProtocolNotExists("' + constants.HashZero + '")',
       );
     });
     it('Zero amount', async function () {
-      await expect(this.spm.withdrawProtocolBalance(this.protocolX, 0)).to.be.revertedWith(
+      await expect(this.spm.withdrawActiveBalance(this.protocolX, 0)).to.be.revertedWith(
         'ZeroArgument()',
       );
     });
     it('Protocol not exists', async function () {
-      await expect(this.spm.withdrawProtocolBalance(this.protocolY, 1)).to.be.revertedWith(
+      await expect(this.spm.withdrawActiveBalance(this.protocolY, 1)).to.be.revertedWith(
         'ProtocolNotExists("' + this.protocolY + '")',
       );
     });
     it('Protocol wrong agent', async function () {
-      await expect(this.spm.withdrawProtocolBalance(this.protocolX, 1)).to.be.revertedWith(
+      await expect(this.spm.withdrawActiveBalance(this.protocolX, 1)).to.be.revertedWith(
         'Unauthorized()',
       );
     });
     it('Protocol balance', async function () {
       await expect(
-        this.spm.connect(this.carol).withdrawProtocolBalance(this.protocolX, 1),
+        this.spm.connect(this.carol).withdrawActiveBalance(this.protocolX, 1),
       ).to.be.revertedWith('InsufficientBalance("' + this.protocolX + '")');
     });
   });
@@ -530,7 +530,7 @@ describe('SherlockProtocolManager ─ Functional', function () {
         parseEther('0.1'),
         500,
       );
-      await this.spm.depositProtocolBalance(this.protocolX, maxTokens);
+      await this.spm.depositToActiveBalance(this.protocolX, maxTokens);
       this.t1 = await meta(this.spm.setProtocolPremium(this.protocolX, this.premium));
 
       await timeTraveler.mine(10);
@@ -782,7 +782,7 @@ describe('SherlockProtocolManager ─ Functional', function () {
       this.t0 = await meta(
         this.spm.protocolAdd(this.protocolX, this.alice.address, id('t'), parseEther('0.1'), 500),
       );
-      await this.spm.depositProtocolBalance(this.protocolX, maxTokens);
+      await this.spm.depositToActiveBalance(this.protocolX, maxTokens);
     });
     it('Initial state', async function () {
       expect(await this.spm.viewActiveBalances(this.protocolX)).to.eq(maxTokens);
@@ -876,7 +876,7 @@ describe('SherlockProtocolManager ─ Functional', function () {
       this.t0 = await meta(
         this.spm.protocolAdd(this.protocolX, this.alice.address, id('t'), parseEther('0.1'), 500),
       );
-      await this.spm.depositProtocolBalance(this.protocolX, maxTokens);
+      await this.spm.depositToActiveBalance(this.protocolX, maxTokens);
 
       this.t1 = await meta(this.spm.setProtocolPremium(this.protocolX, this.premium));
     });
@@ -985,7 +985,7 @@ describe('SherlockProtocolManager ─ Functional', function () {
 
       this.balance = this.premium.mul(1000000);
       this.time = 30000000000000;
-      await this.spm.depositProtocolBalance(this.protocolX, this.balance);
+      await this.spm.depositToActiveBalance(this.protocolX, this.balance);
 
       this.t1 = await meta(this.spm.setProtocolPremium(this.protocolX, this.premium));
       await hre.network.provider.request({
@@ -1090,7 +1090,7 @@ describe('SherlockProtocolManager ─ Functional', function () {
       );
     });
   });
-  describe('forceRemoveByBalance()', function () {
+  describe('forceRemoveByActiveBalance()', function () {
     before(async function () {
       this.premium = parseUnits('10', 6);
       this.premiumStakers = parseUnits('9', 6);
@@ -1106,7 +1106,7 @@ describe('SherlockProtocolManager ─ Functional', function () {
       this.t0 = await meta(
         this.spm.protocolAdd(this.protocolX, this.alice.address, id('t'), parseEther('0.1'), 500),
       );
-      await this.spm.depositProtocolBalance(this.protocolX, this.minActiveBalance.mul(11));
+      await this.spm.depositToActiveBalance(this.protocolX, this.minActiveBalance.mul(11));
 
       this.t1 = await meta(this.spm.setProtocolPremium(this.protocolX, this.premium));
     });
@@ -1145,7 +1145,7 @@ describe('SherlockProtocolManager ─ Functional', function () {
       expect(await this.ERC20Mock6d.balanceOf(this.bob.address)).to.eq(0);
     });
     it('Fail', async function () {
-      await expect(this.spm.forceRemoveByBalance(this.protocolX)).to.be.revertedWith(
+      await expect(this.spm.forceRemoveByActiveBalance(this.protocolX)).to.be.revertedWith(
         'InvalidConditions()',
       );
 
@@ -1157,7 +1157,7 @@ describe('SherlockProtocolManager ─ Functional', function () {
       await timeTraveler.mine(1);
     });
     it('Do', async function () {
-      this.t2 = await meta(this.spm.connect(this.bob).forceRemoveByBalance(this.protocolX));
+      this.t2 = await meta(this.spm.connect(this.bob).forceRemoveByActiveBalance(this.protocolX));
 
       // events
       expect(this.t2.events.length).to.eq(6);
@@ -1277,7 +1277,7 @@ describe('SherlockProtocolManager ─ Functional', function () {
       );
     });
   });
-  describe('forceRemoveByBalance(), no remaining', function () {
+  describe('forceRemoveByActiveBalance(), no remaining', function () {
     before(async function () {
       this.premium = parseUnits('10', 6);
       this.premiumStakers = parseUnits('9', 6);
@@ -1293,7 +1293,7 @@ describe('SherlockProtocolManager ─ Functional', function () {
       this.t0 = await meta(
         this.spm.protocolAdd(this.protocolX, this.alice.address, id('t'), parseEther('0.1'), 500),
       );
-      await this.spm.depositProtocolBalance(this.protocolX, this.minActiveBalance.mul(11));
+      await this.spm.depositToActiveBalance(this.protocolX, this.minActiveBalance.mul(11));
 
       this.t1 = await meta(this.spm.setProtocolPremium(this.protocolX, this.premium));
     });
@@ -1339,7 +1339,7 @@ describe('SherlockProtocolManager ─ Functional', function () {
       });
       await timeTraveler.mine(1);
 
-      this.t2 = await meta(this.spm.connect(this.bob).forceRemoveByBalance(this.protocolX));
+      this.t2 = await meta(this.spm.connect(this.bob).forceRemoveByActiveBalance(this.protocolX));
 
       // events
       expect(this.t2.events.length).to.eq(5);
@@ -1407,7 +1407,7 @@ describe('SherlockProtocolManager ─ Functional', function () {
       expect(await this.ERC20Mock6d.balanceOf(this.bob.address)).to.eq(0);
     });
   });
-  describe('forceRemoveByRemainingCoverage()', function () {
+  describe('forceRemoveBySecondsOfCoverage()', function () {
     before(async function () {
       this.premium = parseUnits('10', 6);
       this.premiumStakers = parseUnits('9', 6);
@@ -1423,7 +1423,7 @@ describe('SherlockProtocolManager ─ Functional', function () {
         this.spm.protocolAdd(this.protocolX, this.alice.address, id('t'), parseEther('0.1'), 500),
       );
 
-      await this.spm.depositProtocolBalance(this.protocolX, this.balance);
+      await this.spm.depositToActiveBalance(this.protocolX, this.balance);
       this.t1 = await meta(this.spm.setProtocolPremium(this.protocolX, this.premium));
     });
     it('Initial state', async function () {
@@ -1461,7 +1461,7 @@ describe('SherlockProtocolManager ─ Functional', function () {
       expect(await this.ERC20Mock6d.balanceOf(this.bob.address)).to.eq(0);
     });
     it('Fail', async function () {
-      await expect(this.spm.forceRemoveByRemainingCoverage(this.protocolX)).to.be.revertedWith(
+      await expect(this.spm.forceRemoveBySecondsOfCoverage(this.protocolX)).to.be.revertedWith(
         'InvalidConditions()',
       );
       expect(await this.spm.secondsOfCoverageLeft(this.protocolX)).to.eq(this.minCoverageSeconds);
@@ -1511,7 +1511,7 @@ describe('SherlockProtocolManager ─ Functional', function () {
       );
 
       this.t2 = await meta(
-        this.spm.connect(this.bob).forceRemoveByRemainingCoverage(this.protocolX),
+        this.spm.connect(this.bob).forceRemoveBySecondsOfCoverage(this.protocolX),
       );
 
       expect(this.t2.events.length).to.eq(8);
@@ -1593,7 +1593,7 @@ describe('SherlockProtocolManager ─ Functional', function () {
       expect(await this.ERC20Mock6d.balanceOf(this.spm.address)).to.eq(prems.add(prems2));
     });
   });
-  describe('forceRemoveByRemainingCoverage(), no remaining', function () {
+  describe('forceRemoveBySecondsOfCoverage(), no remaining', function () {
     before(async function () {
       this.premium = parseUnits('10', 6);
       this.premiumStakers = parseUnits('9', 6);
@@ -1609,7 +1609,7 @@ describe('SherlockProtocolManager ─ Functional', function () {
         this.spm.protocolAdd(this.protocolX, this.alice.address, id('t'), parseEther('0.1'), 500),
       );
 
-      await this.spm.depositProtocolBalance(this.protocolX, this.balance);
+      await this.spm.depositToActiveBalance(this.protocolX, this.balance);
       this.t1 = await meta(this.spm.setProtocolPremium(this.protocolX, this.premium));
     });
     it('Initial state', async function () {
@@ -1656,7 +1656,7 @@ describe('SherlockProtocolManager ─ Functional', function () {
       // check state pre removal
 
       this.t2 = await meta(
-        this.spm.connect(this.bob).forceRemoveByRemainingCoverage(this.protocolX),
+        this.spm.connect(this.bob).forceRemoveBySecondsOfCoverage(this.protocolX),
       );
 
       expect(this.t2.events.length).to.eq(6);
@@ -1763,7 +1763,7 @@ describe('SherlockProtocolManager ─ Functional', function () {
       this.t2 = await meta(
         this.spm.protocolAdd(this.protocolX, this.alice.address, id('t'), 0, 500),
       );
-      await this.spm.depositProtocolBalance(this.protocolX, this.balance);
+      await this.spm.depositToActiveBalance(this.protocolX, this.balance);
 
       this.t3 = await meta(this.spm.setProtocolPremium(this.protocolX, this.premium));
 
@@ -1927,7 +1927,7 @@ describe('SherlockProtocolManager ─ Functional', function () {
       await expect(this.spm.setProtocolPremium(this.protocolX, this.premium)).to.be.revertedWith(
         'InsufficientBalance("' + this.protocolX + '")',
       );
-      await this.spm.depositProtocolBalance(this.protocolX, maxTokens);
+      await this.spm.depositToActiveBalance(this.protocolX, maxTokens);
     });
     it('Set same value (0)', async function () {
       this.t1 = await meta(this.spm.setProtocolPremium(this.protocolX, 0));
@@ -2215,7 +2215,7 @@ describe('SherlockProtocolManager ─ Functional', function () {
       await expect(
         this.spm.setProtocolPremiums([this.protocolX], [this.premium]),
       ).to.be.revertedWith('InsufficientBalance("' + this.protocolX + '")');
-      await this.spm.depositProtocolBalance(this.protocolX, maxTokens);
+      await this.spm.depositToActiveBalance(this.protocolX, maxTokens);
     });
     it('Set same value (0)', async function () {
       this.t1 = await meta(this.spm.setProtocolPremiums([this.protocolX], [0]));
@@ -2328,8 +2328,8 @@ describe('SherlockProtocolManager ─ Functional', function () {
       this.t1 = await meta(
         this.spm.protocolAdd(this.protocolY, this.alice.address, id('t'), parseEther('0.1'), 1500),
       );
-      await this.spm.depositProtocolBalance(this.protocolX, maxTokens.div(2));
-      await this.spm.depositProtocolBalance(this.protocolY, maxTokens.div(2));
+      await this.spm.depositToActiveBalance(this.protocolX, maxTokens.div(2));
+      await this.spm.depositToActiveBalance(this.protocolY, maxTokens.div(2));
     });
     it('Initial state', async function () {
       // protocol x
@@ -2612,7 +2612,7 @@ describe('SherlockProtocolManager ─ Functional', function () {
       );
     });
   });
-  describe('depositProtocolBalance()', function () {
+  describe('depositToActiveBalance()', function () {
     before(async function () {
       await timeTraveler.revertSnapshot();
 
@@ -2629,7 +2629,7 @@ describe('SherlockProtocolManager ─ Functional', function () {
     });
     it('Do', async function () {
       this.amount = parseUnits('100', 6);
-      this.t1 = await meta(this.spm.depositProtocolBalance(this.protocolX, this.amount));
+      this.t1 = await meta(this.spm.depositToActiveBalance(this.protocolX, this.amount));
 
       expect(this.t1.events.length).to.eq(3);
       expect(this.t1.events[2].event).to.eq('ProtocolBalanceDeposited');
@@ -2646,7 +2646,7 @@ describe('SherlockProtocolManager ─ Functional', function () {
     });
     it('Do again', async function () {
       this.amount2 = parseUnits('200', 6);
-      this.t2 = await meta(this.spm.depositProtocolBalance(this.protocolX, this.amount2));
+      this.t2 = await meta(this.spm.depositToActiveBalance(this.protocolX, this.amount2));
 
       expect(this.t2.events.length).to.eq(3);
       expect(this.t2.events[2].event).to.eq('ProtocolBalanceDeposited');
@@ -2666,7 +2666,7 @@ describe('SherlockProtocolManager ─ Functional', function () {
       );
     });
   });
-  describe('withdrawProtocolBalance()', function () {
+  describe('withdrawActiveBalance()', function () {
     before(async function () {
       await timeTraveler.revertSnapshot();
 
@@ -2682,12 +2682,12 @@ describe('SherlockProtocolManager ─ Functional', function () {
       expect(await this.ERC20Mock6d.balanceOf(this.spm.address)).to.eq(0);
     });
     it('Do insufficient', async function () {
-      await expect(this.spm.withdrawProtocolBalance(this.protocolX, 1)).to.be.revertedWith(
+      await expect(this.spm.withdrawActiveBalance(this.protocolX, 1)).to.be.revertedWith(
         'InsufficientBalance("' + this.protocolX + '")',
       );
 
       this.amount = 60 * 60 * 24 * 4;
-      this.t1 = await meta(this.spm.depositProtocolBalance(this.protocolX, this.amount));
+      this.t1 = await meta(this.spm.depositToActiveBalance(this.protocolX, this.amount));
       await this.spm.setProtocolPremium(this.protocolX, 1);
 
       expect(await this.spm.viewActiveBalances(this.protocolX)).to.eq(this.amount);
@@ -2700,12 +2700,12 @@ describe('SherlockProtocolManager ─ Functional', function () {
     });
     it('Do insufficient time', async function () {
       await expect(
-        this.spm.withdrawProtocolBalance(this.protocolX, 60 * 60 * 25),
+        this.spm.withdrawActiveBalance(this.protocolX, 60 * 60 * 25),
       ).to.be.revertedWith('InsufficientBalance("' + this.protocolX + '")');
     });
     it('Do', async function () {
       this.withdraw = 60 * 60 * 23;
-      this.t1 = await meta(this.spm.withdrawProtocolBalance(this.protocolX, this.withdraw));
+      this.t1 = await meta(this.spm.withdrawActiveBalance(this.protocolX, this.withdraw));
 
       expect(this.t1.events.length).to.eq(2);
       expect(this.t1.events[1].event).to.eq('ProtocolBalanceWithdrawn');
@@ -2779,7 +2779,7 @@ describe('SherlockProtocolManager ─ Functional', function () {
         this.spm.protocolAdd(this.protocolX, this.alice.address, id('t'), parseEther('0.1'), 500),
       );
 
-      await this.spm.depositProtocolBalance(this.protocolX, this.balance);
+      await this.spm.depositToActiveBalance(this.protocolX, this.balance);
       this.t1 = await meta(this.spm.setProtocolPremium(this.protocolX, this.premium));
     });
     it('Initial state', async function () {
@@ -2885,8 +2885,8 @@ describe('SherlockProtocolManager ─ Functional', function () {
         500,
       );
 
-      await this.spm.depositProtocolBalance(this.protocolX, this.balance);
-      await this.spm.depositProtocolBalance(this.protocolY, this.balance.mul(10));
+      await this.spm.depositToActiveBalance(this.protocolX, this.balance);
+      await this.spm.depositToActiveBalance(this.protocolY, this.balance.mul(10));
 
       this.t1 = await meta(this.spm.setProtocolPremium(this.protocolX, this.premium));
       await hre.network.provider.request({
@@ -2983,7 +2983,7 @@ describe('SherlockProtocolManager ─ Functional', function () {
       this.t0 = await meta(
         this.spm.protocolAdd(this.protocolX, this.alice.address, id('t'), parseEther('0.1'), 500),
       );
-      await this.spm.depositProtocolBalance(this.protocolX, this.balance);
+      await this.spm.depositToActiveBalance(this.protocolX, this.balance);
     });
     it('Initial state', async function () {
       await expect(this.spm.isActive()).to.be.revertedWith(
