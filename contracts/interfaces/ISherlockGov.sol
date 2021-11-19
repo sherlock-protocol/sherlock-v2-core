@@ -42,7 +42,7 @@ interface ISherlockGov {
 
   /// @notice View if `_period` is a valid period
   /// @return Boolean indicatin if period is valid
-  function periods(uint256 _period) external view returns (bool);
+  function stakingPeriods(uint256 _period) external view returns (bool);
 
   /// @notice Update SHER distribution manager contract
   /// @param _manager New adddress of the manager
@@ -81,12 +81,12 @@ interface ISherlockGov {
   function updateSherlockClaimManager(ISherlockClaimManager _sherlockClaimManager) external;
 
   /// @notice Update yield strategy
-  /// @param _strategy News address of the strategy
+  /// @param _yieldStrategy News address of the strategy
   /// @dev try a strategyWithdrawAll() on old, ignore failure
-  function updateStrategy(IStrategyManager _strategy) external;
+  function updateStrategy(IStrategyManager _yieldStrategy) external;
 
   /// @notice Read current strategy
   /// @return Address of current strategy
   /// @dev can never be address(0)
-  function strategy() external view returns (IStrategyManager);
+  function yieldStrategy() external view returns (IStrategyManager);
 }

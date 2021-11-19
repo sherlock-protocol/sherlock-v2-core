@@ -11,7 +11,7 @@ pragma solidity 0.8.9;
 interface ISherlockStake {
   /// @notice View the current deadline of `_tokenID`
   /// @return Timestamp when NFT position unlocks
-  function deadlines(uint256 _tokenID) external view returns (uint256);
+  function lockupEnd(uint256 _tokenID) external view returns (uint256);
 
   /// @notice View the current SHER reward of `_tokenID`
   /// @return Amount of SHER rewarded to owner upon reaching deadline
