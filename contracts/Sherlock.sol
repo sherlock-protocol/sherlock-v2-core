@@ -327,7 +327,7 @@ contract Sherlock is ISherlock, ERC721, Ownable {
     _safeMint(_receiver, _id);
   }
 
-  function burn(uint256 _id) external override returns (uint256 _amount) {
+  function redeemNFT(uint256 _id) external override returns (uint256 _amount) {
     address nftOwner = _verifyUnlockableByOwner(_id);
 
     _amount = _redeemShares(_id, stakeShares[_id], nftOwner);
@@ -337,7 +337,7 @@ contract Sherlock is ISherlock, ERC721, Ownable {
     delete lockupEnd_[_id];
   }
 
-  function hold(uint256 _id, uint256 _period) external override returns (uint256 _sher) {
+  function ownerRestake(uint256 _id, uint256 _period) external override returns (uint256 _sher) {
     address nftOwner = _verifyUnlockableByOwner(_id);
     if (!stakingPeriods[_period]) revert InvalidArgument();
 

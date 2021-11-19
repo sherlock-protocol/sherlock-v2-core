@@ -46,7 +46,7 @@ interface ISherlockStake {
   /// @dev Only the owner of `_id` will be able to burn their position
   /// @dev The remaining SHER rewards will be released
   /// @dev Can only be called after lockup `_period` has ended
-  function burn(uint256 _id) external returns (uint256 _amount);
+  function redeemNFT(uint256 _id) external returns (uint256 _amount);
 
   /// @notice Keep holding position with ID: `_id` for `_period` seconds
   /// @param _id TokenID of the position
@@ -55,7 +55,7 @@ interface ISherlockStake {
   /// @dev Only the owner of `_id` will be able to restake their position using this call
   /// @dev `_period` needs to be whitelisted
   /// @dev Can only be called after lockup `_period` has ended
-  function hold(uint256 _id, uint256 _period) external returns (uint256 _sher);
+  function ownerRestake(uint256 _id, uint256 _period) external returns (uint256 _sher);
 
   /// @notice Force owner to hold position with ID: `_id` for 3 months
   /// @param _id TokenID of the position

@@ -140,9 +140,9 @@ contract SherlockMock is ISherlock, ERC721, Ownable {
     address _receiver
   ) external override returns (uint256 _id, uint256 _sher) {}
 
-  function burn(uint256 _id) external override returns (uint256 _amount) {}
+  function redeemNFT(uint256 _id) external override returns (uint256 _amount) {}
 
-  function hold(uint256 _id, uint256 _period) external override returns (uint256 _sher) {}
+  function ownerRestake(uint256 _id, uint256 _period) external override returns (uint256 _sher) {}
 
   function _calcSharesForArbRestake(uint256 _id) internal view returns (uint256) {}
 
