@@ -760,8 +760,8 @@ describe('Sherlock ─ Functional', function () {
       await this.token.approve(this.sherlock.address, maxTokens);
     });
     it('Initial state', async function () {
-      expect(await this.sherlock.deadlines(1)).to.eq(0);
-      expect(await this.sherlock.sherRewards(1)).to.eq(0);
+      await expect(this.sherlock.deadlines(1)).to.be.revertedWith('NonExistent()');
+      await expect(this.sherlock.sherRewards(1)).to.be.revertedWith('NonExistent()');
     });
     it('Do', async function () {
       this.amount = parseUnits('100', 6);
@@ -891,7 +891,99 @@ describe('Sherlock ─ Functional', function () {
       expect(await this.sherlock.ownerOf(2)).to.eq(this.bob.address);
     });
   });
-  describe('burn()', function () {});
-  describe('hold()', function () {});
-  describe('holdArb()', function () {});
+  describe('burn(), invalid conditions and 0amount, 0sher', function () {
+    before(async function () {
+      await timeTraveler.revertSnapshot();
+
+      this.amount = parseUnits('100', 6);
+
+      await this.token.approve(this.sherlock.address, maxTokens);
+
+      this.t1 = await meta(this.sherlock.mint(this.amount, 10, this.carol.address));
+    });
+    it('Initial state', async function () {
+      expect(await this.token.balanceOf(this.carol.address)).to.eq(0);
+      expect(await this.sher.balanceOf(this.carol.address)).to.eq(0);
+
+      expect(await this.sherlock.viewShares(1)).to.eq(this.amount);
+      expect(await this.sherlock.viewTotalShares()).to.eq(this.amount);
+      expect(await this.sherlock.ownerOf(1)).to.eq(this.carol.address);
+      expect(await this.sherlock.deadlines(1)).to.eq(this.t1.time.add(10));
+      expect(await this.sherlock.sherRewards(1)).to.eq(0);
+    });
+    it('Non owner', async function () {
+      await expect(this.sherlock.connect(this.bob).burn(1)).to.be.revertedWith('Unauthorized()');
+    });
+    it('invalid conditions', async function () {
+      await expect(this.sherlock.connect(this.carol).burn(1)).to.be.revertedWith(
+        'InvalidConditions()',
+      );
+    });
+    it('zero amount redeem', async function () {
+      await timeTraveler.mine(10);
+
+      await this.sherlock.transfer(this.alice.address, this.amount);
+      expect(await this.token.balanceOf(this.sherlock.address)).to.eq(0);
+
+      await this.sherlock.connect(this.carol).burn(1);
+    });
+    it('Verify state', async function () {
+      expect(await this.token.balanceOf(this.carol.address)).to.eq(0);
+      expect(await this.sher.balanceOf(this.carol.address)).to.eq(0);
+
+      expect(await this.sherlock.viewShares(1)).to.eq(0);
+      expect(await this.sherlock.viewTotalShares()).to.eq(0);
+      await expect(this.sherlock.ownerOf(1)).to.be.reverted;
+      await expect(this.sherlock.deadlines(1)).to.be.revertedWith('NonExistent()');
+      await expect(this.sherlock.sherRewards(1)).to.be.revertedWith('NonExistent()');
+    });
+  });
+  describe('burn(), !0amount, !0sher', function () {
+    before(async function () {
+      await timeTraveler.revertSnapshot();
+
+      this.amount = parseUnits('100', 6);
+      this.reward = parseEther('2');
+
+      await this.token.approve(this.sherlock.address, maxTokens);
+      await this.sher.transfer(this.sherdist.address, parseEther('1000'));
+      await this.sherdist.setReward(this.reward);
+
+      this.t1 = await meta(this.sherlock.mint(this.amount, 10, this.carol.address));
+    });
+    it('Initial state', async function () {
+      expect(await this.token.balanceOf(this.carol.address)).to.eq(0);
+      expect(await this.sher.balanceOf(this.carol.address)).to.eq(0);
+
+      expect(await this.sherlock.viewShares(1)).to.eq(this.amount);
+      expect(await this.sherlock.viewTotalShares()).to.eq(this.amount);
+      expect(await this.sherlock.ownerOf(1)).to.eq(this.carol.address);
+      expect(await this.sherlock.deadlines(1)).to.eq(this.t1.time.add(10));
+      expect(await this.sherlock.sherRewards(1)).to.eq(this.reward);
+    });
+    it('Do', async function () {
+      await timeTraveler.mine(10);
+
+      await this.sherlock.connect(this.carol).burn(1);
+    });
+    it('Verify state', async function () {
+      expect(await this.token.balanceOf(this.carol.address)).to.eq(this.amount);
+      expect(await this.sher.balanceOf(this.carol.address)).to.eq(this.reward);
+
+      expect(await this.sherlock.viewShares(1)).to.eq(0);
+      expect(await this.sherlock.viewTotalShares()).to.eq(0);
+      await expect(this.sherlock.ownerOf(1)).to.be.reverted;
+      await expect(this.sherlock.deadlines(1)).to.be.revertedWith('NonExistent()');
+      await expect(this.sherlock.sherRewards(1)).to.be.revertedWith('NonExistent()');
+    });
+  });
+  describe('hold()', function () {
+    // do for non owner fail
+    // hold in deadline fail
+    // hold with zero sher rewards
+    // check stake daedline and sher rewards (dont capture exceptions)
+  });
+  describe('holdArb()', function () {
+    // test very good
+  });
 });

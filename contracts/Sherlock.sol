@@ -13,6 +13,8 @@ import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 
 import './interfaces/ISherlock.sol';
 
+import 'hardhat/console.sol';
+
 contract Sherlock is ISherlock, ERC721, Ownable {
   using SafeERC20 for IERC20;
 
@@ -26,8 +28,8 @@ contract Sherlock is ISherlock, ERC721, Ownable {
 
   mapping(uint256 => bool) public override periods;
 
-  mapping(uint256 => uint256) public override deadlines;
-  mapping(uint256 => uint256) public override sherRewards;
+  mapping(uint256 => uint256) internal deadlines_;
+  mapping(uint256 => uint256) internal sherRewards_;
   mapping(uint256 => uint256) internal shares;
   uint256 internal totalShares;
 
@@ -83,6 +85,18 @@ contract Sherlock is ISherlock, ERC721, Ownable {
   //
   // View functions
   //
+  function deadlines(uint256 _tokenID) public view override returns (uint256) {
+    if (!_exists(_tokenID)) revert NonExistent();
+
+    return deadlines_[_tokenID];
+  }
+
+  function sherRewards(uint256 _tokenID) public view override returns (uint256) {
+    if (!_exists(_tokenID)) revert NonExistent();
+
+    return sherRewards_[_tokenID];
+  }
+
   function balanceOf(uint256 _tokenID) public view override returns (uint256) {
     return (shares[_tokenID] * balanceOf()) / totalShares;
   }
@@ -215,7 +229,7 @@ contract Sherlock is ISherlock, ERC721, Ownable {
     uint256 _period,
     uint256 _id
   ) internal returns (uint256 _sher) {
-    deadlines[_id] = block.timestamp + _period;
+    deadlines_[_id] = block.timestamp + _period;
 
     if (address(sherDistributionManager) == address(0)) return 0;
 
@@ -230,22 +244,22 @@ contract Sherlock is ISherlock, ERC721, Ownable {
 
     uint256 actualAmount = sher.balanceOf(address(this)) - before;
     if (actualAmount != _sher) revert InvalidSherAmount(_sher, actualAmount);
-    sherRewards[_id] = _sher;
+    sherRewards_[_id] = _sher;
   }
 
   function _verifyPositionAccessability(uint256 _id) internal view returns (address _nftOwner) {
     _nftOwner = ownerOf(_id);
 
     if (_nftOwner != msg.sender) revert Unauthorized();
-    if (deadlines[_id] > block.timestamp) revert InvalidConditions();
+    if (deadlines_[_id] > block.timestamp) revert InvalidConditions();
   }
 
   function _sendSherRewardsToOwner(uint256 _id, address _nftOwner) internal {
-    uint256 sherReward = sherRewards[_id];
+    uint256 sherReward = sherRewards_[_id];
     if (sherReward == 0) return;
 
     sher.safeTransfer(_nftOwner, sherReward);
-    delete sherRewards[_id];
+    delete sherRewards_[_id];
   }
 
   function _transferOut(address _receiver, uint256 _amount) internal {
@@ -314,7 +328,7 @@ contract Sherlock is ISherlock, ERC721, Ownable {
     _sendSherRewardsToOwner(_id, nftOwner);
     _burn(_id);
 
-    delete deadlines[_id];
+    delete deadlines_[_id];
   }
 
   function hold(uint256 _id, uint256 _period) external override returns (uint256 _sher) {
@@ -323,7 +337,7 @@ contract Sherlock is ISherlock, ERC721, Ownable {
   }
 
   function _holdArbCalcShares(uint256 _id) internal view returns (uint256) {
-    uint256 initialArbTime = deadlines[_id] + ARB_RESTAKE_WAIT_TIME;
+    uint256 initialArbTime = deadlines_[_id] + ARB_RESTAKE_WAIT_TIME;
 
     if (initialArbTime >= block.timestamp) return 0;
 

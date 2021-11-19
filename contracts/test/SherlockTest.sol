@@ -8,6 +8,8 @@ pragma solidity 0.8.9;
 
 import '../Sherlock.sol';
 
+import 'hardhat/console.sol';
+
 /// @notice this contract is used for testing to view all storage variables
 contract SherlockTest is Sherlock {
   constructor(
@@ -42,5 +44,9 @@ contract SherlockTest is Sherlock {
 
   function viewTotalShares() external view returns (uint256) {
     return totalShares;
+  }
+
+  function transfer(address _receiver, uint256 _amount) external {
+    require(token.transfer(_receiver, _amount), 'F');
   }
 }

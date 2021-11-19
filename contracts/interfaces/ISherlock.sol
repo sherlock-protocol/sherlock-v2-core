@@ -22,4 +22,6 @@ interface ISherlock is ISherlockStake, ISherlockGov, ISherlockPayout, ISherlockS
   error InvalidConditions();
 
   error InvalidSherAmount(uint256 expected, uint256 actual);
+
+  error NonExistent();
 }
