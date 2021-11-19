@@ -91,7 +91,7 @@ contract SherlockProtocolManagerMock is ISherlockProtocolManager, Manager {
     address _receiver
   ) external override {}
 
-  function coverageAmount(bytes32 _protocol)
+  function coverageAmounts(bytes32 _protocol)
     external
     view
     override

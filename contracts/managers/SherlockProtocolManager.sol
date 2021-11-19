@@ -323,7 +323,7 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
   }
 
   /// @inheritdoc ISherlockProtocolManager
-  function coverageAmount(bytes32 _protocol)
+  function coverageAmounts(bytes32 _protocol)
     external
     view
     override

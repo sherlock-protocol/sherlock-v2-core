@@ -103,7 +103,7 @@ contract SherlockClaimManager is ISherlockClaimManager, Manager {
     address agent = protocolManager.protocolAgent(_protocol);
     require(msg.sender == agent);
 
-    (uint256 current, uint256 previous) = protocolManager.coverageAmount(_protocol);
+    (uint256 current, uint256 previous) = protocolManager.coverageAmounts(_protocol);
     uint256 maxClaim = current > previous ? current : previous;
     bool prevCoverage = _amount > current;
     require(_amount <= maxClaim);

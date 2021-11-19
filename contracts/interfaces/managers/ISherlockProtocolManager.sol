@@ -201,7 +201,7 @@ interface ISherlockProtocolManager is IManager {
     address _receiver
   ) external;
 
-  function coverageAmount(bytes32 _protocol)
+  function coverageAmounts(bytes32 _protocol)
     external
     view
     returns (uint256 current, uint256 previous);
