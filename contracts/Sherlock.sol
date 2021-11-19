@@ -201,7 +201,6 @@ contract Sherlock is ISherlock, ERC721, Ownable {
     if (_amount == 0) revert ZeroArgument();
 
     yieldStrategy.withdraw(_amount);
-    token.transfer(address(yieldStrategy), _amount);
   }
 
   function yieldStrategyWithdrawAll() external override onlyOwner {
