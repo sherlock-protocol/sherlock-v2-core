@@ -14,12 +14,12 @@ import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 import '../interfaces/ISherlock.sol';
 
 contract SherlockMock is ISherlock, ERC721, Ownable {
-  mapping(uint256 => bool) public override periods;
+  mapping(uint256 => bool) public override stakingPeriods;
 
-  mapping(uint256 => uint256) public override deadlines;
+  mapping(uint256 => uint256) public override lockupEnd;
   mapping(uint256 => uint256) public override sherRewards;
 
-  IStrategyManager public override strategy;
+  IStrategyManager public override yieldStrategy;
   ISherDistributionManager public override sherDistributionManager;
   address public override nonStakersAddress;
   ISherlockProtocolManager public override sherlockProtocolManager;
@@ -90,7 +90,7 @@ contract SherlockMock is ISherlock, ERC721, Ownable {
     sherlockClaimManager = _sherlockClaimManager;
   }
 
-  function updateStrategy(IStrategyManager _strategy) external override onlyOwner {}
+  function updateStrategy(IStrategyManager _yieldStrategy) external override onlyOwner {}
 
   function strategyDeposit(uint256 _amount) external override onlyOwner {}
 
@@ -120,11 +120,11 @@ contract SherlockMock is ISherlock, ERC721, Ownable {
 
   function _transferOut(address _receiver, uint256 _amount) internal {}
 
-  function _burnSharesCalc(uint256 _shares) internal view returns (uint256) {}
+  function _burnSharesCalc(uint256 _stakeShares) internal view returns (uint256) {}
 
   function _burnShares(
     uint256 _id,
-    uint256 _shares,
+    uint256 _stakeShares,
     address _receiver
   ) internal returns (uint256 _amount) {}
 
