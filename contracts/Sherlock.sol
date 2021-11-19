@@ -31,7 +31,7 @@ contract Sherlock is ISherlock, ERC721, Ownable {
   mapping(uint256 => uint256) internal lockupEnd_;
   mapping(uint256 => uint256) internal sherRewards_;
   mapping(uint256 => uint256) internal stakeShares;
-  uint256 internal totalstakeShares;
+  uint256 internal totalStakeShares;
 
   IStrategyManager public override yieldStrategy;
   ISherDistributionManager public override sherDistributionManager;
@@ -98,7 +98,7 @@ contract Sherlock is ISherlock, ERC721, Ownable {
   }
 
   function tokenBalanceOf(uint256 _tokenID) public view override returns (uint256) {
-    return (stakeShares[_tokenID] * totalTokenBalanceStakers()) / totalstakeShares;
+    return (stakeShares[_tokenID] * totalTokenBalanceStakers()) / totalStakeShares;
   }
 
   function totalTokenBalanceStakers() public view override returns (uint256) {
@@ -275,7 +275,7 @@ contract Sherlock is ISherlock, ERC721, Ownable {
   }
 
   function _redeemSharesCalc(uint256 _stakeShares) internal view returns (uint256) {
-    return (_stakeShares * totalTokenBalanceStakers()) / totalstakeShares;
+    return (_stakeShares * totalTokenBalanceStakers()) / totalStakeShares;
   }
 
   function _redeemShares(
@@ -287,7 +287,7 @@ contract Sherlock is ISherlock, ERC721, Ownable {
     if (_amount != 0) _transferTokensOut(_receiver, _amount);
 
     stakeShares[_id] -= _stakeShares;
-    totalstakeShares -= _stakeShares;
+    totalStakeShares -= _stakeShares;
   }
 
   function _restake(
@@ -314,13 +314,13 @@ contract Sherlock is ISherlock, ERC721, Ownable {
     token.safeTransferFrom(msg.sender, address(this), _amount);
 
     uint256 stakeShares_;
-    uint256 totalstakeShares_ = totalstakeShares;
-    if (totalstakeShares_ != 0)
-      stakeShares_ = (_amount * totalstakeShares_) / (totalTokenBalanceStakers() - _amount);
+    uint256 totalStakeShares_ = totalStakeShares;
+    if (totalStakeShares_ != 0)
+      stakeShares_ = (_amount * totalStakeShares_) / (totalTokenBalanceStakers() - _amount);
     else stakeShares_ = _amount;
 
     stakeShares[_id] = stakeShares_;
-    totalstakeShares += stakeShares_;
+    totalStakeShares += stakeShares_;
 
     _sher = _stake(_amount, _period, _id);
 

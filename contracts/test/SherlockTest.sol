@@ -43,7 +43,7 @@ contract SherlockTest is Sherlock {
   }
 
   function viewTotalStakeShares() external view returns (uint256) {
-    return totalstakeShares;
+    return totalStakeShares;
   }
 
   function transfer(address _receiver, uint256 _amount) external {
