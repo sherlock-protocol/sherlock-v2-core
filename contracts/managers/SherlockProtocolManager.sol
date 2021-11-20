@@ -270,6 +270,8 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
   }
 
   // Internal function to set a new protocolAgent for a specific protocol
+  // _oldAgent is only included as part of emitting an event
+  // Question Why don't we just read the old agent before we update it? Less potential for error?
   function _setProtocolAgent(
     bytes32 _protocol,
     address _oldAgent,
@@ -366,7 +368,7 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
   }
 
   // Helper function to remove and clean up a protocol from Sherlock
-  // Takes the protocol ID and the protocol agent to which funds should be sent and from which post-removal claims can be made
+  // Params are the protocol ID and the protocol agent to which funds should be sent and from which post-removal claims can be made
   function _forceRemoveProtocol(bytes32 _protocol, address _agent) internal {
     // Sets the individual protocol's premium to zero and updates the global premium variable for a zero premium at this protocol
     _setSingleAndGlobalProtocolPremium(_protocol, 0);
@@ -375,6 +377,7 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
     uint256 balance = activeBalances[_protocol];
 
     // If there's still some active balance, delete the entry and send the remaining balance to the protocol agent
+    // Question Should we make it so that only the balance above MIN_SECONDS_LEFT can be sent to the protocol agent? Rest is kept by stakers/nonstakers?
     if (balance != 0) {
       delete activeBalances[_protocol];
       token.safeTransfer(_agent, balance);
@@ -481,13 +484,19 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
     }
   }
 
-  /// @inheritdoc ISherlockProtocolManager
+  // Function is used in the SherlockClaimManager contract to decide if a proposed claim falls under either the current or previous coverage amounts
+  /// @param _protocol Protocol identifier
+  /// @return Current and previous coverage amounts for this protocol
+  // Note For this process to work, a protocol's coverage amount should not be set more than once in the span of claim delay period (7 days or something)
   function coverageAmounts(bytes32 _protocol)
     external
     view
     override
     returns (uint256 current, uint256 previous)
   {
+    // Checks to see if the protocol has an active protocolAgent (protocol not removed)
+    // OR checks to see if the removed protocol is still within the claim window
+    // If so, gives the current and previous coverage, otherwise throws an error
     if (
       protocolAgent_[_protocol] != address(0) ||
       block.timestamp <= removedProtocolClaimDeadline[_protocol]
@@ -498,7 +507,16 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
     revert ProtocolNotExists(_protocol);
   }
 
-  /// @inheritdoc ISherlockProtocolManager
+  /// @notice Add a new protocol to Sherlock
+  /// @param _protocol Protocol identifier
+  /// @param _protocolAgent Address able to submit a claim on behalf of the protocol
+  /// @param _coverage Hash referencing the active coverage agreement
+  /// @param _nonStakers Percentage of premium payments to nonstakers, scaled by 10**18
+  /// @param _coverageAmount Max amount claimable by this protocol
+  /// @dev Adding a protocol allows the `_protocolAgent` to submit a claim
+  /// @dev Coverage is not started yet as the protocol doesn't pay a premium at this point
+  /// @dev `_nonStakers` is scaled by 10**18
+  /// @dev Only callable by governance
   function protocolAdd(
     bytes32 _protocol,
     address _protocolAgent,
@@ -508,8 +526,10 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
   ) external override onlyOwner {
     if (_protocol == bytes32(0)) revert ZeroArgument();
     if (_protocolAgent == address(0)) revert ZeroArgument();
+    // Checks to make sure the protocol doesn't exist already
     if (protocolAgent_[_protocol] != address(0)) revert InvalidConditions();
 
+    // Updates the protocol agent and passes in the old agent which is 0 address in this case
     _setProtocolAgent(_protocol, address(0), _protocolAgent);
 
     // Delete mappings that are potentially non default values
@@ -520,10 +540,17 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
     delete previousCoverage[_protocol];
 
     emit ProtocolAdded(_protocol);
+
+    // Most of the logic for actually adding a protocol in this function
     protocolUpdate(_protocol, _coverage, _nonStakers, _coverageAmount);
   }
 
-  /// @inheritdoc ISherlockProtocolManager
+  /// @notice Update info regarding a protocol
+  /// @param _protocol Protocol identifier
+  /// @param _coverage Hash referencing the active coverage agreement
+  /// @param _nonStakers Percentage of premium payments to nonstakers, scaled by 10**18
+  /// @param _coverageAmount Max amount claimable by this protocol
+  /// @dev Only callable by governance
   function protocolUpdate(
     bytes32 _protocol,
     bytes32 _coverage,
@@ -533,12 +560,21 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
     if (_coverage == bytes32(0)) revert ZeroArgument();
     if (_nonStakers > HUNDRED_PERCENT) revert InvalidArgument();
     if (_coverageAmount == uint256(0)) revert ZeroArgument();
+
+    // Checks to make sure the protocol has been assigned a protocol agent
     _verifyProtocolExists(_protocol);
 
+    // Subtracts the accrued debt from a protocol's active balance (if any)
+    // Updates the amount that can be claimed by nonstakers
     _settleProtocolDebt(_protocol);
+
+    // Updates the global claimable amount for stakers
     _settleTotalDebt();
 
+    // Gets the premium per second for this protocol
     uint256 premium = premiums_[_protocol];
+
+    // Updates allPremiumsPerSecToStakers (premium is not able to be updated in this function, but percentage to nonstakers can be)
     allPremiumsPerSecToStakers = _calcGlobalPremiumPerSecForStakers(
       premium,
       premium,
@@ -546,93 +582,143 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
       _nonStakers,
       allPremiumsPerSecToStakers
     );
-    nonStakersPercentage[_protocol] = _nonStakers;
 
+    // Updates the stored value of percentage of premiums that go to nonstakers
+    nonStakersPercentage[_protocol] = _nonStakers;
+    
+    // Updates previous coverage and current coverage amounts
     previousCoverage[_protocol] = currentCoverage[_protocol];
     currentCoverage[_protocol] = _coverageAmount;
 
     emit ProtocolUpdated(_protocol, _coverage, _nonStakers, _coverageAmount);
   }
 
-  /// @inheritdoc ISherlockProtocolManager
+  /// @notice Remove a protocol from coverage
+  /// @param _protocol Protocol identifier
+  /// @dev Before removing a protocol the premium must be 0
+  /// @dev Removing a protocol basically stops the `_protocolAgent` from being active (can still submit claims until claim deadline though) 
+  /// @dev Pays off debt + sends remaining balance to protocol agent
+  /// @dev This call should be subject to a timelock
+  /// @dev Only callable by governance
   function protocolRemove(bytes32 _protocol) external override onlyOwner {
+    // checks to make sure the protocol actually has a protocol agent
     address agent = _verifyProtocolExists(_protocol);
 
+    // Removes a protocol from Sherlock and cleans up its data
+    // Params are the protocol ID and the protocol agent to which remaining active balance should be sent and from which post-removal claims can be made
     _forceRemoveProtocol(_protocol, agent);
   }
 
-  /// @inheritdoc ISherlockProtocolManager
+  /// @notice Remove a protocol with insufficient active balance
+  /// @param _protocol Protocol identifier
+  // msg.sender receives whatever is left of the insufficient active balance, this should incentivize arbs to call this function
   function forceRemoveByActiveBalance(bytes32 _protocol) external override {
     address agent = _verifyProtocolExists(_protocol);
 
+    // Gets the latest value of the active balance at this protocol
     _settleProtocolDebt(_protocol);
+    // Sets latest value of active balance to remainingBalance variable
     uint256 remainingBalance = activeBalances[_protocol];
 
+    // This means the protocol still has adequate active balance and thus cannot be removed
     if (remainingBalance >= minActiveBalance) revert InvalidConditions();
+
+    // Sets the protocol's active balance to 0 and sends the remaining balance to msg.sender
+    // NOTE: Should we move the transfer to after _forceRemoveProtocol() to mitigate reentrancy?
     if (remainingBalance != 0) {
       activeBalances[_protocol] = 0;
       token.safeTransfer(msg.sender, remainingBalance);
     }
 
+    // Removes the protocol from coverage
     _forceRemoveProtocol(_protocol, agent);
     emit ProtocolRemovedByArb(_protocol, msg.sender, remainingBalance);
   }
 
-  /// @inheritdoc ISherlockProtocolManager
+  /// @notice Removes a protocol with insufficent seconds of coverage left
+  /// @param _protocol Protocol identifier
+  // Seconds of coverage is defined by the active balance of the protocol divided by the protocol's premium per second
   function forceRemoveBySecondsOfCoverage(bytes32 _protocol) external override {
+    // NOTE: Could we use secondsOfCoverageLeft() instead of _secondsOfCoverageLeft() and skip this check here?
     address agent = _verifyProtocolExists(_protocol);
 
+    // Figuring out how far above or below the minSecondsOfCoverage this protocol currently is
     uint256 percentageScaled = (_secondsOfCoverageLeft(_protocol) * HUNDRED_PERCENT) /
       minSecondsOfCoverage;
 
-    // the first epoch you'll get the minimal reward
+    // Reverts if there is still more seconds of coverage left than the minimum required
     if (percentageScaled >= HUNDRED_PERCENT) revert InvalidConditions();
 
+    // Gets the latest value of the active balance at this protocol
     _settleProtocolDebt(_protocol);
+
+    // Sets latest value of active balance to remainingBalance variable
     uint256 remainingBalance = activeBalances[_protocol];
 
+    // NOTE: Why isn't the arbAmount just the remaining balance? Like it is for forceRemoveByActiveBalance()?
+    // NOTE: This calc seems like it decreases the reward over time while it's already decreasing?
     uint256 arbAmount = (remainingBalance * percentageScaled) / HUNDRED_PERCENT;
     if (arbAmount != 0) {
+      // subtracts the amount that will be paid to the arb from the active balance
       activeBalances[_protocol] -= arbAmount;
     }
 
+    // Removes the protocol from coverage
+    // This function also pays the active balance to the protocol agent, so it's good we do this after subtracting arb amount above
     _forceRemoveProtocol(_protocol, agent);
 
-    // done after removing protocol to mitigate reentrency pattern
-    // (in case token allows callback)
+    // Done after removing protocol to mitigate reentrency pattern
+    // (In case token allows callback)
     if (arbAmount != 0) {
       token.safeTransfer(msg.sender, arbAmount);
     }
     emit ProtocolRemovedByArb(_protocol, msg.sender, arbAmount);
   }
 
-  /// @inheritdoc ISherlockProtocolManager
+  /// @notice Set premium of `_protocol` to `_premium`
+  /// @param _protocol Protocol identifier
+  /// @param _premium Amount of premium `_protocol` pays per second
+  /// @dev The value 0 would mean inactive coverage
+  /// @dev Only callable by governance
   function setProtocolPremium(bytes32 _protocol, uint256 _premium) external override onlyOwner {
+    // Checks to see if protocol has a protocol agent
     _verifyProtocolExists(_protocol);
 
+    // Updates individual protocol's premium and allPremiumsPerSecToStakers
     _setSingleAndGlobalProtocolPremium(_protocol, _premium);
   }
 
-  /// @inheritdoc ISherlockProtocolManager
+  /// @notice Set premium of multiple protocols
+  /// @param _protocol Array of protocol identifiers
+  /// @param _premium Array of premium amounts protocols pay per second
+  /// @dev The value 0 would mean inactive coverage
+  /// @dev Only callable by governance
   function setProtocolPremiums(bytes32[] calldata _protocol, uint256[] calldata _premium)
     external
     override
     onlyOwner
   {
+    // Checks to make sure there are an equal amount of entries in each array
     if (_protocol.length != _premium.length) revert UnequalArrayLength();
     if (_protocol.length == 0) revert InvalidArgument();
 
+    // Updates the global claimable amount for stakers
     _settleTotalDebt();
 
     uint256 allPremiumsPerSecToStakers_ = allPremiumsPerSecToStakers;
+
+    // Loops through the array of protocols and checks to make sure each has a protocol agent assigned
     for (uint256 i; i < _protocol.length; i++) {
       _verifyProtocolExists(_protocol[i]);
 
+      // Sets the protocol premium for that specific protocol
+      // Function returns the old premium and nonStakerPercentage for that specific protocol
       (uint256 oldPremiumPerSecond, uint256 nonStakerPercentage) = _setSingleProtocolPremium(
         _protocol[i],
         _premium[i]
       );
 
+      // Calculates the new global premium which adds up all premiums paid by all protocols
       allPremiumsPerSecToStakers_ = _calcGlobalPremiumPerSecForStakers(
         oldPremiumPerSecond,
         _premium[i],
@@ -642,53 +728,84 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
       );
     }
 
+    // After the loop has finished, sets allPremiumsPerSecToStakers to the final temp value
     allPremiumsPerSecToStakers = allPremiumsPerSecToStakers_;
   }
 
-  /// @inheritdoc ISherlockProtocolManager
+  // This is how protocols pay for coverage by increasing their active balance
+  /// @notice Deposits `_amount` of token to the active balance of `_protocol`
+  /// @param _protocol Protocol identifier
+  /// @param _amount Amount of tokens to deposit
+  /// @dev Approval should be made before calling
   function depositToActiveBalance(bytes32 _protocol, uint256 _amount) external override {
     if (_amount == uint256(0)) revert ZeroArgument();
     _verifyProtocolExists(_protocol);
 
+    // Transfers _amount to this contract
     token.safeTransferFrom(msg.sender, address(this), _amount);
+    // Increases the active balance of the protocol by _amount
     activeBalances[_protocol] += _amount;
 
     emit ProtocolBalanceDeposited(_protocol, _amount);
   }
 
-  /// @inheritdoc ISherlockProtocolManager
+  // If a protocol has paid too much into the active balance (which is how a protocol pays the premium)
+  // Then the protocol can remove some of the active balance (up until there is 3 days worth of balance left)
+  /// @notice Withdraws `_amount` of token from the active balance of `_protocol`
+  /// @param _protocol Protocol identifier
+  /// @param _amount Amount of tokens to withdraw
+  /// @dev Only protocol agent is able to withdraw
+  /// @dev Balance can be withdrawn up until 3 days worth of active balance
+  /// @dev In case coverage is not active (0 premium), full balance can be withdrawn
   function withdrawActiveBalance(bytes32 _protocol, uint256 _amount) external override {
     if (_amount == uint256(0)) revert ZeroArgument();
+    // Only the protocol agent can call this function
     if (msg.sender != _verifyProtocolExists(_protocol)) revert Unauthorized();
 
-    // settle debt first just to make absolutely sure no extra tokens can be withdrawn
+    // Updates the active balance of the protocol 
     _settleProtocolDebt(_protocol);
 
+    // Sets currentBalance to the active balance of the protocol
     uint256 currentBalance = activeBalances[_protocol];
+    // Reverts if trying to withdraw more than the active balance
     if (_amount > currentBalance) revert InsufficientBalance(_protocol);
 
+    // Removes the _amount to be withdrawn from the active balance
     activeBalances[_protocol] = currentBalance - _amount;
+    // Reverts if a protocol has less than 3 days worth of active balance left
     if (_secondsOfCoverageLeft(_protocol) < MIN_SECONDS_LEFT) revert InsufficientBalance(_protocol);
 
+    // Transfers the amount to the msg.sender (protocol agent)
     token.safeTransfer(msg.sender, _amount);
     emit ProtocolBalanceWithdrawn(_protocol, _amount);
   }
 
-  /// @inheritdoc ISherlockProtocolManager
+  /// @notice Transfer protocol agent role
+  /// @param _protocol Protocol identifier
+  /// @param _protocolAgent Account able to submit a claim on behalf of the protocol
+  /// @dev Only the active protocolAgent is able to transfer the role
   function transferProtocolAgent(bytes32 _protocol, address _protocolAgent) external override {
     if (_protocolAgent == address(0)) revert ZeroArgument();
+    // Can't set the new protocol agent to the caller address
     if (msg.sender == _protocolAgent) revert InvalidArgument();
+    // Because the caller must be the current protocol agent
     if (msg.sender != _verifyProtocolExists(_protocol)) revert Unauthorized();
 
+    // Sets the protocol agent to the new address
     _setProtocolAgent(_protocol, msg.sender, _protocolAgent);
   }
 
+  // Checks to see if this contract is the assigned protocol manager contract in the Sherlock core contract
   function isActive() public view returns (bool) {
     return address(sherlockCore.sherlockProtocolManager()) == address(this);
   }
 
+  // Only contract owner can call this
+  // Sends all specified tokens in this contract to the receiver's address (as well as ETH)
   function sweep(address _receiver, IERC20[] memory _extraTokens) external onlyOwner {
+    // This contract must be the current assigned protocol manager contract
     require(!isActive());
+    // Executes the sweep for ERC-20s specified in _extraTokens as well as for ETH
     _sweep(_receiver, _extraTokens);
   }
 }
