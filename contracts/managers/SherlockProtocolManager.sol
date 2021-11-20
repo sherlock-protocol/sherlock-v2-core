@@ -486,7 +486,7 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
 
   // Function is used in the SherlockClaimManager contract to decide if a proposed claim falls under either the current or previous coverage amounts
   /// @param _protocol Protocol identifier
-  /// @return Current and previous coverage amounts for this protocol
+  /// @return current and previous are the current and previous coverage amounts for this protocol
   // Note For this process to work, a protocol's coverage amount should not be set more than once in the span of claim delay period (7 days or something)
   function coverageAmounts(bytes32 _protocol)
     external
