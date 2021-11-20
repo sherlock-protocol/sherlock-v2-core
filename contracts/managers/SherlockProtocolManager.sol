@@ -402,7 +402,7 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
 
 
   /// @notice Sets the minimum active balance before an arb can remove a protocol
-  /// @param _minBalance Minimum balance needed (in USDC)
+  /// @param _minActiveBalance Minimum balance needed (in USDC)
   /// @dev Only gov
   function setMinActiveBalance(uint256 _minActiveBalance) external override onlyOwner {
     // Can't set a value that is too high to be reasonable
