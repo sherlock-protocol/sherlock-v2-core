@@ -143,7 +143,7 @@ interface ISherlockProtocolManager is IManager {
   /// @notice Sets the minimum active balance before an arb can remove a protocol
   /// @param _minActiveBalance Minimum balance needed (in USDC)
   /// @dev Only gov
-  function setMinActiveBalance(uint256 _minBalance) external;
+  function setMinActiveBalance(uint256 _minActiveBalance) external;
 
   /// @notice Sets the minimum active balance (as measured in seconds of coverage left) before an arb can remove a protocol
   /// @param _minSeconds Minimum seconds of coverage needed
