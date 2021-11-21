@@ -28,16 +28,16 @@ contract SherlockProtocolManagerMock is ISherlockProtocolManager, Manager {
 
   function claimablePremiums() external view override returns (uint256) {}
 
-  function claimPremiums() external override {
+  function claimPremiumsForStakers() external override {
     token.transfer(msg.sender, amount);
     claimCalled++;
   }
 
   function protocolAgent(bytes32 _protocol) external view override returns (address) {}
 
-  function premiums(bytes32 _protocol) external view override returns (uint256) {}
+  function premium(bytes32 _protocol) external view override returns (uint256) {}
 
-  function balances(bytes32 _protocol) external view override returns (uint256) {}
+  function activeBalance(bytes32 _protocol) external view override returns (uint256) {}
 
   function secondsOfCoverageLeft(bytes32 _protocol) external view override returns (uint256) {}
 
@@ -58,15 +58,15 @@ contract SherlockProtocolManagerMock is ISherlockProtocolManager, Manager {
 
   function protocolRemove(bytes32 _protocol) external override {}
 
-  function forceRemoveByBalance(bytes32 _protocol) external override {}
+  function forceRemoveByActiveBalance(bytes32 _protocol) external override {}
 
-  function forceRemoveByRemainingCoverage(bytes32 _protocol) external override {}
+  function forceRemoveBySecondsOfCoverage(bytes32 _protocol) external override {}
 
-  function minBalance() external view override returns (uint256) {}
+  function minActiveBalance() external view override returns (uint256) {}
 
   function minSecondsOfCoverage() external view override returns (uint256) {}
 
-  function setMinBalance(uint256 _minBalance) external override {}
+  function setMinActiveBalance(uint256 _minBalance) external override {}
 
   function setMinSecondsOfCoverage(uint256 _minSeconds) external override {}
 
@@ -77,9 +77,9 @@ contract SherlockProtocolManagerMock is ISherlockProtocolManager, Manager {
     override
   {}
 
-  function depositProtocolBalance(bytes32 _protocol, uint256 _amount) external override {}
+  function depositToActiveBalance(bytes32 _protocol, uint256 _amount) external override {}
 
-  function withdrawProtocolBalance(bytes32 _protocol, uint256 _amount) external override {}
+  function withdrawActiveBalance(bytes32 _protocol, uint256 _amount) external override {}
 
   function transferProtocolAgent(bytes32 _protocol, address _protocolAgent) external override {}
 

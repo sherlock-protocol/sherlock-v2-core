@@ -14,5 +14,5 @@ interface ISherlockPayout {
   /// @param _amount Amount to send
   /// @dev only payout manager should call this
   /// @dev should pull money out of strategy
-  function payout(address _receiver, uint256 _amount) external;
+  function payoutClaim(address _receiver, uint256 _amount) external;
 }

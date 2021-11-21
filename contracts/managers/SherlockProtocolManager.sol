@@ -9,65 +9,115 @@ pragma solidity 0.8.9;
 import './Manager.sol';
 import '../interfaces/managers/ISherlockProtocolManager.sol';
 
+/// @title Sherlock core interface for protocols
+/// @author Evert Kors
+// This is the contract that manages covered protocols
+
 contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
   using SafeERC20 for IERC20;
+
+  // Represents the token that protocols pay with (currently USDC)
   IERC20 immutable token;
 
-  uint256 constant MIN_BALANCE_SANITY_MAX = 20_000 * 10**6; // 20k usdc
-  uint256 constant MIN_SOC_SANITY_MAX = 7 days;
+  // This is the ceiling value that can be set for the threshold (based on USDC balance) at which a protocol can get removed
+  uint256 constant MIN_BALANCE_SANITY_CEILING = 20_000 * 10**6; // 20k usdc
 
+  // This is the ceiling value that can be set for the threshold (based on seconds of coverage left) at which a protocol can get removed
+  uint256 constant MIN_SECS_OF_COVERAGE_SANITY_CEILING = 7 days;
+
+  // A removed protocol is still able to make a claim for this amount of time after its removal
   uint256 constant PROTOCOL_CLAIM_DEADLINE = 7 days;
+
+  // This is the amount that cannot be withdrawn (measured in seconds of payment) if a protocol wants to remove active balance
   uint256 constant MIN_SECONDS_LEFT = 3 days;
+
+  // Convenient for percentage calculations
   uint256 constant HUNDRED_PERCENT = 10**18;
 
+  // This is an address that is controlled by a covered protocol (maybe its a multisig used by that protocol, etc.)
   mapping(bytes32 => address) protocolAgent_;
-  mapping(bytes32 => uint256) nonStakersShares;
 
+  // The percentage of premiums that is NOT sent to stakers (set aside for security experts, reinsurance partners, etc.)
+  mapping(bytes32 => uint256) nonStakersPercentage;
+
+  // The premium per second paid by each protocol is stored in this mapping
   mapping(bytes32 => uint256) premiums_;
-  mapping(bytes32 => uint256) balancesInternal;
-  mapping(bytes32 => uint256) lastAccountedProtocol;
-  mapping(bytes32 => uint256) nonStakersClaimableStored;
 
-  uint256 lastAccounted;
-  uint256 totalPremiumPerBlock;
-  uint256 claimablePremiumsStored;
+  // Each protocol should keep an active balance (in USDC) which is drawn against to pay stakers, nonstakers, etc.
+  // This "active balance" is really just an accounting concept, doesn't mean tokens have been transferred or not
+  mapping(bytes32 => uint256) activeBalances;
 
-  // the absolute minimal balane a protocol can hold
-  /// @inheritdoc ISherlockProtocolManager
-  uint256 public override minBalance;
-  // the absolute minimal remaining coverage a protocol can hold
-  /// @inheritdoc ISherlockProtocolManager
+  // The timestamp at which Sherlock last ran this internal accounting (on the active balance) for each protocol 
+  mapping(bytes32 => uint256) lastAccountedEachProtocol;
+
+  // The amount that can be claimed by nonstakers for each protocol
+  // We need this value so we can track how much payment is coming from each protocol 
+  mapping(bytes32 => uint256) nonStakersClaimableByProtocol;
+
+  // The last time where the global accounting was run (to calc allPremiumsPerSecToStakers below)
+  uint256 lastAccountedGlobal;
+
+  // This is the total amount of premiums paid (per second) by all the covered protocols (added up)
+  uint256 allPremiumsPerSecToStakers;
+
+  // This is the amount that was claimable by stakers the last time the accounting was run
+  // The claimable amount presumably changes every second so this value is marked "last" because it is usually out-of-date
+  uint256 lastClaimablePremiumsForStakers;
+
+  // The minimum active balance (measured in USDC) a protocol must keep before arbitragers can remove the protocol from coverage
+  // This is one of two criteria a protocol must meet in order to avoid removal (the other is minSecondsOfCoverage below)
+  uint256 public override minActiveBalance;
+  
+  // The minimum active "seconds of coverage left" a protocol must have before arbitragers can remove the protocol from coverage
+  // This value is calculated from a protocol's active balance divided by the premium per second the protocol is paying
   uint256 public override minSecondsOfCoverage;
 
-  mapping(bytes32 => uint256) removedProtocolValidUntil;
+  // Removed protocols can still make a claim up until this timestamp (will be 10 days or something)
+  mapping(bytes32 => uint256) removedProtocolClaimDeadline;
+
+  // Mapping to store the protocolAgents for removed protocols (useful for claims made by a removed protocol)
   mapping(bytes32 => address) removedProtocolAgent;
+
+  // Current amount of coverage (i.e. 20M USDC) for a protocol
   mapping(bytes32 => uint256) currentCoverage;
+
+  // Previous amount of coverage for a protocol
+  // Previous is also tracked in case a protocol lowers their coverage amount but still needs to make a claim on the old, higher amount
   mapping(bytes32 => uint256) previousCoverage;
 
+  // Setting the token to USDC
   constructor(IERC20 _token) {
     token = _token;
   }
 
+  // Modifier used to ensure a protocol exists (has been instantiated and not removed)
   modifier protocolExists(bytes32 _protocol) {
     _verifyProtocolExists(_protocol);
     _;
   }
 
-  /// @inheritdoc ISherlockProtocolManager
+  /// @notice View current protocolAgent of `_protocol`
+  /// @param _protocol Protocol identifier
+  /// @return Address able to submit claims
   function protocolAgent(bytes32 _protocol) external view override returns (address) {
     address agent = protocolAgent_[_protocol];
     if (agent != address(0)) return agent;
 
-    // Note old protocol agent will never be address(0)
-    if (block.timestamp <= removedProtocolValidUntil[_protocol]) {
+    // If a protocol has been removed but is still within the claim deadline, the protocolAgent is returned
+    // Note: Old protocol agent will never be address(0)
+    if (block.timestamp <= removedProtocolClaimDeadline[_protocol]) {
       return removedProtocolAgent[_protocol];
     }
 
+    // If a protocol was never instantiated or was removed and the claim deadline has passed, this error is returned
     revert ProtocolNotExists(_protocol);
   }
 
-  /// @inheritdoc ISherlockProtocolManager
-  function premiums(bytes32 _protocol)
+  // Checks if the protocol exists, then returns the current premium per second being charged
+  /// @notice View current premium of protocol
+  /// @param _protocol Protocol identifier
+  /// @return Amount of premium `_protocol` pays per second
+  function premium(bytes32 _protocol)
     external
     view
     override
@@ -77,6 +127,8 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
     return premiums_[_protocol];
   }
 
+  // Checks to see if a protocol has a protocolAgent assigned to it (we use this to check if a protocol exists)
+  // If a protocol has been removed, it will throw an error here no matter what (even if still within claim window)
   function _verifyProtocolExists(bytes32 _protocol) internal view returns (address _protocolAgent) {
     _protocolAgent = protocolAgent_[_protocol];
     if (_protocolAgent == address(0)) revert ProtocolNotExists(_protocol);
@@ -85,27 +137,43 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
   //
   // View methods
   //
-  function _calcProtocolDebt(bytes32 _protocol) internal view returns (uint256) {
-    return (block.timestamp - lastAccountedProtocol[_protocol]) * premiums_[_protocol];
+
+  // Calcs the debt accrued by the protocol since it last had an accounting update
+  // This is the amount that needs to be removed from a protocol's active balance
+  function _calcIncrementalProtocolDebt(bytes32 _protocol) internal view returns (uint256) {
+    return (block.timestamp - lastAccountedEachProtocol[_protocol]) * premiums_[_protocol];
   }
 
-  /// @inheritdoc ISherlockProtocolManager
+  /// @notice View the amount nonstakers can claim from this protocol
+  /// @param _protocol Protocol identifier
+  /// @return Amount of tokens claimable by nonstakers
+  /// @dev this reads from a storage variable + (now-lastsettled) * premiums
+  // Question: Can nonstakers still claim rewards after protocol is removed? Seems like no?
   function nonStakersClaimable(bytes32 _protocol) external view override returns (uint256) {
-    // non stakers can claim rewards after protocol is removed
-    uint256 debt = _calcProtocolDebt(_protocol);
-    uint256 balance = balancesInternal[_protocol];
+    // Calcs the debt of a protocol since the last accounting update
+    uint256 debt = _calcIncrementalProtocolDebt(_protocol);
+    // Gets the active balance of the protocol
+    uint256 balance = activeBalances[_protocol];
+    // The debt should never be higher than the balance (only happens if the arbitrages fail)
     if (debt > balance) debt = balance;
 
+    // Adds the incremental claimable amount owed to nonstakers to the total claimable amount
     return
-      nonStakersClaimableStored[_protocol] + (nonStakersShares[_protocol] * debt) / HUNDRED_PERCENT;
+      nonStakersClaimableByProtocol[_protocol] + (nonStakersPercentage[_protocol] * debt) / HUNDRED_PERCENT;
   }
 
-  /// @inheritdoc ISherlockProtocolManager
+  /// @notice View current amount of all premiums that are owed to stakers
+  /// @return Premiums claimable
+  /// @dev Will increase every block
+  /// @dev base + (now - last_settled) * ps
   function claimablePremiums() public view override returns (uint256) {
-    return claimablePremiumsStored + (block.timestamp - lastAccounted) * totalPremiumPerBlock;
+    // Takes last balance and adds (number of seconds since last accounting update * total premiums per second)
+    return lastClaimablePremiumsForStakers + (block.timestamp - lastAccountedGlobal) * allPremiumsPerSecToStakers;
   }
 
-  /// @inheritdoc ISherlockProtocolManager
+  /// @notice View seconds of coverage left for `_protocol` before it runs out of active balance
+  /// @param _protocol Protocol identifier
+  /// @return Seconds of coverage left
   function secondsOfCoverageLeft(bytes32 _protocol)
     external
     view
@@ -116,26 +184,33 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
     return _secondsOfCoverageLeft(_protocol);
   }
 
+  // Helper function to return seconds of coverage left for a protocol
+  // Gets the current active balance of the protocol and divides by the premium per second for the protocol
   function _secondsOfCoverageLeft(bytes32 _protocol) internal view returns (uint256) {
     uint256 premium = premiums_[_protocol];
     if (premium == 0) return 0;
-    return _balances(_protocol) / premiums_[_protocol];
+    return _activeBalance(_protocol) / premiums_[_protocol];
   }
 
-  /// @inheritdoc ISherlockProtocolManager
-  function balances(bytes32 _protocol)
+  /// @notice View current active balance of covered protocol
+  /// @param _protocol Protocol identifier
+  /// @return Active balance
+  /// @dev Accrued debt is subtracted from the stored active balance
+  function activeBalance(bytes32 _protocol)
     external
     view
     override
     protocolExists(_protocol)
     returns (uint256)
   {
-    return _balances(_protocol);
+    return _activeBalance(_protocol);
   }
 
-  function _balances(bytes32 _protocol) internal view returns (uint256) {
-    uint256 debt = _calcProtocolDebt(_protocol);
-    uint256 balance = balancesInternal[_protocol];
+  // Helper function to calc the active balance of a protocol at current time
+  function _activeBalance(bytes32 _protocol) internal view returns (uint256) {
+    uint256 debt = _calcIncrementalProtocolDebt(_protocol);
+    uint256 balance = activeBalances[_protocol];
+    // The debt should never be higher than the balance (only happens if the arbitrages fail)
     if (debt > balance) return 0;
     return balance - debt;
   }
@@ -144,35 +219,59 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
   // State methods
   //
 
-  function _setProtocolPremium(bytes32 _protocol, uint256 _premium)
+  /// @notice Helps set the premium per second for an individual protocol
+  /// @param _protocol Protocol identifier
+  /// @param _premium New premium per second
+  /// @return oldPremiumPerSecond and nonStakerPercentage are returned for gas savings in the calling function
+  function _setSingleProtocolPremium(bytes32 _protocol, uint256 _premium)
     internal
-    returns (uint256 oldPremium, uint256 nonStakerShares)
+    returns (uint256 oldPremiumPerSecond, uint256 nonStakerPercentage)
   {
-    nonStakerShares = _settleProtocolDebt(_protocol);
-    oldPremium = premiums_[_protocol];
+    // _settleProtocolDebt() subtracts debt from the protocol's active balance and updates the % due to nonstakers
+    // Also updates the last accounted timestamp for this protocol
+    // nonStakerPercentage is carried over from _settleProtocolDebt() for gas savings
+    // nonStakerPercentage represents the percentage that goes to nonstakers for this protocol
+    nonStakerPercentage = _settleProtocolDebt(_protocol);
+    // Stores the old premium before it gets updated
+    oldPremiumPerSecond = premiums_[_protocol];
 
-    if (oldPremium != _premium) {
+
+    if (oldPremiumPerSecond != _premium) {
+      // Sets the protocol's premium per second to the new value
       premiums_[_protocol] = _premium;
-      emit ProtocolPremiumChanged(_protocol, oldPremium, _premium);
+      emit ProtocolPremiumChanged(_protocol, oldPremiumPerSecond, _premium);
     }
-
+    // Doesn't allow a protocol's premium to be changed if they are able to be removed by arbs
+    // Mostly doesn't allow for an update here so that it doesn't accidentally drain the protocol's active balance before arbs can remove it
+    // Question: Shouldn't this be minSecondsOfCoverage not MIN_SECONDS_LEFT?
+    // Question: Why don't we also check if it is < minActiveBalance?
     if (_premium != 0 && _secondsOfCoverageLeft(_protocol) < MIN_SECONDS_LEFT) {
       revert InsufficientBalance(_protocol);
     }
   }
 
-  function _setSingleProtocolPremium(bytes32 _protocol, uint256 _premium) internal {
-    (uint256 oldPremium, uint256 nonStakerShares) = _setProtocolPremium(_protocol, _premium);
+  /// @notice Sets a single protocol's premium per second and also updates the global total of premiums per second
+  /// @param _protocol Protocol identifier
+  /// @param _premium New premium per second
+  function _setSingleAndGlobalProtocolPremium(bytes32 _protocol, uint256 _premium) internal {
+    // Sets the individual protocol's premium and returns oldPremiumPerSecond and nonStakerPercentage for gas savings
+    (uint256 oldPremiumPerSecond, uint256 nonStakerPercentage) = _setSingleProtocolPremium(_protocol, _premium);
+    // Settling the total amount of premiums owed to stakers before a new premium per second gets set
     _settleTotalDebt();
-    totalPremiumPerBlock = _calcTotalPremiumPerBlockValue(
-      oldPremium,
+    // This calculates the new global premium per second that gets paid to stakers
+    // We input the same nonStakerPercentage twice because we simply aren't updating that value in this function
+    allPremiumsPerSecToStakers = _calcGlobalPremiumPerSecForStakers(
+      oldPremiumPerSecond,
       _premium,
-      nonStakerShares,
-      nonStakerShares,
-      totalPremiumPerBlock
+      nonStakerPercentage,
+      nonStakerPercentage,
+      allPremiumsPerSecToStakers
     );
   }
 
+  // Internal function to set a new protocolAgent for a specific protocol
+  // _oldAgent is only included as part of emitting an event
+  // Question Why don't we just read the old agent before we update it? Less potential for error?
   function _setProtocolAgent(
     bytes32 _protocol,
     address _oldAgent,
@@ -182,110 +281,157 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
     emit ProtocolAgentTransfer(_protocol, _oldAgent, _protocolAgent);
   }
 
-  function _settleProtocolDebt(bytes32 _protocol) internal returns (uint256 _nonStakerShares) {
-    uint256 debt = _calcProtocolDebt(_protocol);
-    _nonStakerShares = nonStakersShares[_protocol];
+  // Subtracts the accrued debt from a protocol's active balance
+  // Credits the amount that can be claimed by nonstakers for this protocol
+  // Takes the protocol ID as a param and returns the nonStakerPercentage for gas savings
+  // Most of this function is dealing with an edge case related to a protocol not being removed by arbs
+  function _settleProtocolDebt(bytes32 _protocol) internal returns (uint256 _nonStakerPercentage) {
+    // This calcs the accrued debt of the protocol since it was last updated
+    uint256 debt = _calcIncrementalProtocolDebt(_protocol);
+    // This pulls the percentage that is sent to nonstakers
+    _nonStakerPercentage = nonStakersPercentage[_protocol];
+    // This is a beginning of an 
     if (debt != 0) {
-      uint256 balance = balancesInternal[_protocol];
+      // Pulls the stored active balance of the protocol
+      uint256 balance = activeBalances[_protocol];
+      // This is the start of handling an edge case where arbitragers don't remove this protocol before debt becomes greater than active balance
+      // Economically spearking, this point should never be reached as arbs will get rewarded for removing the protocol before this point
+      // The arb would use forceRemoveByActiveBalance and forceRemoveBySecondsOfCoverage
+      // However, if arbs don't come in, the premium for this protocol should be set to 0 asap otherwise accounting for stakers/nonstakers gets messed up
       if (debt > balance) {
-        // Economically seen, this should never be reached as arb can remove a protocol and make a profit
-        // using forceRemoveByBalance and forceRemoveByRemainingCoverage
-        // premium should be set to 0 as soon as possible
-        // otherise stakers/nonstakers will be disadvantaged
+        // This error amount represents the magnitude of the mistake
         uint256 error = debt - balance;
-        // premiums were optimistically added, subtract them
+        // Gets the latest value of claimable premiums for stakers
         _settleTotalDebt();
         // @note to production, set premium first to zero before solving accounting issue.
         // otherwise the accounting error keeps increasing
-        uint256 claimablePremiumsStored_ = claimablePremiumsStored;
+        uint256 lastClaimablePremiumsForStakers_ = lastClaimablePremiumsForStakers;
 
-        // The debt is higher then balance, this means tokens are missing to make the accounting work
-        // We probably are not going to see these tokens being transferred (no incentives)
-        // We try to mitigate the accounting error by subtracting it from the staker pool
-        // If that doesn't work (completely), we signal the missing tokens
-        // The missing tokens will only be the staker part, the non stakers are disadvantaged
-        // Non-stakers get the leftovers and they will not receive part of transferred missing tokens
-        // As lastAccountedProtocol is set at the end of this function which is used for nonstaker debt
-        uint256 claimablePremiumError = ((HUNDRED_PERCENT - _nonStakerShares) * error) /
+        // Figures out the amount due to stakers by subtracting the nonstaker percentage from 100%
+        uint256 claimablePremiumError = ((HUNDRED_PERCENT - _nonStakerPercentage) * error) /
           HUNDRED_PERCENT;
 
+        // This insufficient tokens var is simply how we know (emitted as an event) how many tokens the protocol is short
         uint256 insufficientTokens;
-        if (claimablePremiumError > claimablePremiumsStored_) {
-          insufficientTokens = claimablePremiumError - claimablePremiumsStored_;
-          claimablePremiumsStored = 0;
+
+        // The idea here is that claimablePremiumsStored has gotten too big accidentally
+        // We need to decrease the balance of claimablePremiumsStored by the amount that was added in error
+        // Question: How could claimablePremiumError ever be bigger than claimablePremiumsStored?
+        // Question: How does it make sense to subtract lastClaimablePremiumsForStakers_ from claimablePremiumError?
+        if (claimablePremiumError > lastClaimablePremiumsForStakers_) {
+          insufficientTokens = claimablePremiumError - lastClaimablePremiumsForStakers_;
+          lastClaimablePremiumsForStakers = 0;
         } else {
-          // insufficientTokens = 0
-          claimablePremiumsStored = claimablePremiumsStored_ - claimablePremiumError;
+          // If the error is not bigger than the claimable premiums, then we just decrease claimable premiums
+          // By the amount that was added in error (error) and insufficientTokens = 0
+          lastClaimablePremiumsForStakers = lastClaimablePremiumsForStakers_ - claimablePremiumError;
         }
 
         // If two events are thrown, the values need to be summed up for the actual state.
+        // Question: What does the line above mean?
         emit AccountingError(_protocol, claimablePremiumError, insufficientTokens);
+        // We set the debt equal to the balance, and in the next line we effectively set the protocol's active balance to 0 in this case
         debt = balance;
       }
-      balancesInternal[_protocol] = balance - debt;
-      nonStakersClaimableStored[_protocol] += (_nonStakerShares * debt) / HUNDRED_PERCENT;
+      // Subtracts the accrued debt (since last update) from the protocol's active balance and updates active balance
+      activeBalances[_protocol] = balance - debt;
+      // Adds the requisite amount of the debt to the balance claimable by nonstakers for this protocol
+      nonStakersClaimableByProtocol[_protocol] += (_nonStakerPercentage * debt) / HUNDRED_PERCENT;
     }
-    lastAccountedProtocol[_protocol] = block.timestamp;
+    // Updates the last accounted timestamp for this protocol
+    lastAccountedEachProtocol[_protocol] = block.timestamp;
   }
 
+  // Multiplies the total premium per second * number of seconds since the last global accounting update
+  // And adds it to the total claimable amount for stakers
   function _settleTotalDebt() internal {
-    claimablePremiumsStored += (block.timestamp - lastAccounted) * totalPremiumPerBlock;
-    lastAccounted = block.timestamp;
+    lastClaimablePremiumsForStakers += (block.timestamp - lastAccountedGlobal) * allPremiumsPerSecToStakers;
+    lastAccountedGlobal = block.timestamp;
   }
 
-  function _calcTotalPremiumPerBlockValue(
+  // Calculates the global premium per second for stakers
+  // Takes a specific protocol's old and new values for premium per second and nonstaker percentage and the old global premium per second to stakers
+  // Subtracts out the old values of a protocol's premium per second and nonstaker percentage and adds the new ones 
+  function _calcGlobalPremiumPerSecForStakers(
     uint256 _premiumOld,
     uint256 _premiumNew,
-    uint256 _nonStakerSharesOld,
-    uint256 _nonStakerSharesNew,
-    uint256 _inMemTotalPremiumPerBlock
+    uint256 _nonStakerPercentageOld,
+    uint256 _nonStakerPercentageNew,
+    uint256 _inMemAllPremiumsPerSecToStakers
   ) internal pure returns (uint256) {
     return
-      _inMemTotalPremiumPerBlock +
-      ((HUNDRED_PERCENT - _nonStakerSharesNew) * _premiumNew) /
+      _inMemAllPremiumsPerSecToStakers +
+      ((HUNDRED_PERCENT - _nonStakerPercentageNew) * _premiumNew) /
       HUNDRED_PERCENT -
-      ((HUNDRED_PERCENT - _nonStakerSharesOld) * _premiumOld) /
+      ((HUNDRED_PERCENT - _nonStakerPercentageOld) * _premiumOld) /
       HUNDRED_PERCENT;
   }
 
+  // Helper function to remove and clean up a protocol from Sherlock
+  // Params are the protocol ID and the protocol agent to which funds should be sent and from which post-removal claims can be made
   function _forceRemoveProtocol(bytes32 _protocol, address _agent) internal {
-    _setSingleProtocolPremium(_protocol, 0);
+    // Sets the individual protocol's premium to zero and updates the global premium variable for a zero premium at this protocol
+    _setSingleAndGlobalProtocolPremium(_protocol, 0);
 
-    uint256 balance = balancesInternal[_protocol];
+    // Grabs the protocol's active balance
+    uint256 balance = activeBalances[_protocol];
+
+    // If there's still some active balance, delete the entry and send the remaining balance to the protocol agent
+    // Question Should we make it so that only the balance above MIN_SECONDS_LEFT can be sent to the protocol agent? Rest is kept by stakers/nonstakers?
     if (balance != 0) {
-      delete balancesInternal[_protocol];
+      delete activeBalances[_protocol];
       token.safeTransfer(_agent, balance);
 
       emit ProtocolBalanceWithdrawn(_protocol, balance);
     }
 
+    // Sets the protocol agent to zero address (as part of clean up)
     _setProtocolAgent(_protocol, _agent, address(0));
-    delete nonStakersShares[_protocol];
-    delete lastAccountedProtocol[_protocol];
-    removedProtocolValidUntil[_protocol] = block.timestamp + PROTOCOL_CLAIM_DEADLINE;
+    
+    // Cleans up other mappings for this protocol
+    delete nonStakersPercentage[_protocol];
+    delete lastAccountedEachProtocol[_protocol];
+
+    // Sets a deadline in the future until which this protocol agent can still make claims for this removed protocol
+    removedProtocolClaimDeadline[_protocol] = block.timestamp + PROTOCOL_CLAIM_DEADLINE;
+
+    // This mapping allows Sherlock to verify the protocol agent making a claim after the protocol has been removed
+    // Remember, only the protocol agent can make claims on behalf of the protocol, so this must be checked
     removedProtocolAgent[_protocol] = _agent;
 
     emit ProtocolUpdated(_protocol, bytes32(0), uint256(0), uint256(0));
     emit ProtocolRemoved(_protocol);
   }
 
-  /// @inheritdoc ISherlockProtocolManager
-  function setMinBalance(uint256 _minBalance) external override onlyOwner {
-    require(_minBalance < MIN_BALANCE_SANITY_MAX, 'INSANE');
 
-    emit MinBalance(minBalance, _minBalance);
-    minBalance = _minBalance;
+  /// @notice Sets the minimum active balance before an arb can remove a protocol
+  /// @param _minActiveBalance Minimum balance needed (in USDC)
+  /// @dev Only gov
+  function setMinActiveBalance(uint256 _minActiveBalance) external override onlyOwner {
+    // Can't set a value that is too high to be reasonable
+    require(_minActiveBalance < MIN_BALANCE_SANITY_CEILING, 'INSANE');
+
+    emit MinBalance(minActiveBalance, _minActiveBalance);
+    minActiveBalance = _minActiveBalance;
   }
 
-  /// @inheritdoc ISherlockProtocolManager
+  /// @notice Sets the minimum active balance (as measured in seconds of coverage left) before an arb can remove a protocol
+  /// @param _minSeconds Minimum seconds of coverage needed
+  /// @dev Only gov
   function setMinSecondsOfCoverage(uint256 _minSeconds) external override onlyOwner {
-    require(_minSeconds < MIN_SOC_SANITY_MAX, 'INSANE');
+    // Can't set a value that is too high to be reasonable
+    require(_minSeconds < MIN_SECS_OF_COVERAGE_SANITY_CEILING, 'INSANE');
 
     emit MinSecondsOfCoverage(minSecondsOfCoverage, _minSeconds);
     minSecondsOfCoverage = _minSeconds;
   }
 
-  /// @inheritdoc ISherlockProtocolManager
+  // This function allows the nonstakers role to claim tokens owed to them by a specific protocol
+  /// @notice Choose an `_amount` of tokens that nonstakers (`_receiver` address) will receive from `_protocol`
+  /// @param _protocol Protocol identifier
+  /// @param _amount Amount of tokens
+  /// @param _receiver Address to receive tokens
+  /// @dev Only callable by nonstakers role
   function nonStakersClaim(
     bytes32 _protocol,
     uint256 _amount,
@@ -294,44 +440,66 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
     if (_protocol == bytes32(0)) revert ZeroArgument();
     if (_amount == uint256(0)) revert ZeroArgument();
     if (_receiver == address(0)) revert ZeroArgument();
+    // Only the nonstakers role (multisig or contract) can pull the funds
     if (msg.sender != sherlockCore.nonStakersAddress()) revert Unauthorized();
 
-    // call can be executed on protocol that is removed
+    // Call can't be executed on protocol that is removed
     if (protocolAgent_[_protocol] != address(0)) {
+      // Updates the amount that nonstakers can claim from this protocol 
       _settleProtocolDebt(_protocol);
     }
 
-    uint256 balance = nonStakersClaimableStored[_protocol];
+    // Sets balance to the amount that is claimable by nonstakers for this specific protocol
+    uint256 balance = nonStakersClaimableByProtocol[_protocol];
+    // If the amount requested is more than what's owed to nonstakers, revert
     if (_amount > balance) revert InsufficientBalance(_protocol);
 
-    nonStakersClaimableStored[_protocol] = balance - _amount;
+    // Sets the claimable amount to whatever is left over after this amount is pulled
+    nonStakersClaimableByProtocol[_protocol] = balance - _amount;
+    // Transfers the amount requested to the nonstaker address
     token.safeTransfer(_receiver, _amount);
   }
 
-  /// @inheritdoc ISherlockProtocolManager
-  function claimPremiums() external override {
+  // Transfers funds owed to stakers from this contract to the Sherlock core contract (where we handle paying out stakers)
+  /// @notice Transfer current claimable premiums (for stakers) to core Sherlock address
+  /// @dev Callable by everyone
+  /// @dev Will be called by burn() in Sherlock core contract
+  /// @dev Funds will be transferred to Sherlock core contract
+  function claimPremiumsForStakers() external override {
+    // Gets address of core Sherlock contract
     address sherlock = address(sherlockCore);
+    // Revert if core Sherlock contract not initialized yet
     if (sherlock == address(0)) revert InvalidConditions();
 
+    // Question: What is difference between this function and _settleTotalDebt()?
+    // Retrieves current amount of all premiums that are owed to stakers
     uint256 amount = claimablePremiums();
-    claimablePremiumsStored = 0;
-    lastAccounted = block.timestamp;
+    // Global value of premiums owed to stakers is set to zero since we are transferring the entire amount out
+    lastClaimablePremiumsForStakers = 0;
+    lastAccountedGlobal = block.timestamp;
 
+    // Transfers all the premiums owed to stakers to the Sherlock core contract
     if (amount != 0) {
       token.safeTransfer(sherlock, amount);
     }
   }
 
-  /// @inheritdoc ISherlockProtocolManager
+  // Function is used in the SherlockClaimManager contract to decide if a proposed claim falls under either the current or previous coverage amounts
+  /// @param _protocol Protocol identifier
+  /// @return current and previous are the current and previous coverage amounts for this protocol
+  // Note For this process to work, a protocol's coverage amount should not be set more than once in the span of claim delay period (7 days or something)
   function coverageAmounts(bytes32 _protocol)
     external
     view
     override
     returns (uint256 current, uint256 previous)
   {
+    // Checks to see if the protocol has an active protocolAgent (protocol not removed)
+    // OR checks to see if the removed protocol is still within the claim window
+    // If so, gives the current and previous coverage, otherwise throws an error
     if (
       protocolAgent_[_protocol] != address(0) ||
-      block.timestamp <= removedProtocolValidUntil[_protocol]
+      block.timestamp <= removedProtocolClaimDeadline[_protocol]
     ) {
       return (currentCoverage[_protocol], previousCoverage[_protocol]);
     }
@@ -339,7 +507,16 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
     revert ProtocolNotExists(_protocol);
   }
 
-  /// @inheritdoc ISherlockProtocolManager
+  /// @notice Add a new protocol to Sherlock
+  /// @param _protocol Protocol identifier
+  /// @param _protocolAgent Address able to submit a claim on behalf of the protocol
+  /// @param _coverage Hash referencing the active coverage agreement
+  /// @param _nonStakers Percentage of premium payments to nonstakers, scaled by 10**18
+  /// @param _coverageAmount Max amount claimable by this protocol
+  /// @dev Adding a protocol allows the `_protocolAgent` to submit a claim
+  /// @dev Coverage is not started yet as the protocol doesn't pay a premium at this point
+  /// @dev `_nonStakers` is scaled by 10**18
+  /// @dev Only callable by governance
   function protocolAdd(
     bytes32 _protocol,
     address _protocolAgent,
@@ -349,22 +526,31 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
   ) external override onlyOwner {
     if (_protocol == bytes32(0)) revert ZeroArgument();
     if (_protocolAgent == address(0)) revert ZeroArgument();
+    // Checks to make sure the protocol doesn't exist already
     if (protocolAgent_[_protocol] != address(0)) revert InvalidConditions();
 
+    // Updates the protocol agent and passes in the old agent which is 0 address in this case
     _setProtocolAgent(_protocol, address(0), _protocolAgent);
 
     // Delete mappings that are potentially non default values
     // From previous time protocol was added/removed
-    delete removedProtocolValidUntil[_protocol];
+    delete removedProtocolClaimDeadline[_protocol];
     delete removedProtocolAgent[_protocol];
     delete currentCoverage[_protocol];
     delete previousCoverage[_protocol];
 
     emit ProtocolAdded(_protocol);
+
+    // Most of the logic for actually adding a protocol in this function
     protocolUpdate(_protocol, _coverage, _nonStakers, _coverageAmount);
   }
 
-  /// @inheritdoc ISherlockProtocolManager
+  /// @notice Update info regarding a protocol
+  /// @param _protocol Protocol identifier
+  /// @param _coverage Hash referencing the active coverage agreement
+  /// @param _nonStakers Percentage of premium payments to nonstakers, scaled by 10**18
+  /// @param _coverageAmount Max amount claimable by this protocol
+  /// @dev Only callable by governance
   function protocolUpdate(
     bytes32 _protocol,
     bytes32 _coverage,
@@ -374,162 +560,252 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
     if (_coverage == bytes32(0)) revert ZeroArgument();
     if (_nonStakers > HUNDRED_PERCENT) revert InvalidArgument();
     if (_coverageAmount == uint256(0)) revert ZeroArgument();
+
+    // Checks to make sure the protocol has been assigned a protocol agent
     _verifyProtocolExists(_protocol);
 
+    // Subtracts the accrued debt from a protocol's active balance (if any)
+    // Updates the amount that can be claimed by nonstakers
     _settleProtocolDebt(_protocol);
+
+    // Updates the global claimable amount for stakers
     _settleTotalDebt();
 
+    // Gets the premium per second for this protocol
     uint256 premium = premiums_[_protocol];
-    totalPremiumPerBlock = _calcTotalPremiumPerBlockValue(
-      premium,
-      premium,
-      nonStakersShares[_protocol],
-      _nonStakers,
-      totalPremiumPerBlock
-    );
-    nonStakersShares[_protocol] = _nonStakers;
 
+    // Updates allPremiumsPerSecToStakers (premium is not able to be updated in this function, but percentage to nonstakers can be)
+    allPremiumsPerSecToStakers = _calcGlobalPremiumPerSecForStakers(
+      premium,
+      premium,
+      nonStakersPercentage[_protocol],
+      _nonStakers,
+      allPremiumsPerSecToStakers
+    );
+
+    // Updates the stored value of percentage of premiums that go to nonstakers
+    nonStakersPercentage[_protocol] = _nonStakers;
+    
+    // Updates previous coverage and current coverage amounts
     previousCoverage[_protocol] = currentCoverage[_protocol];
     currentCoverage[_protocol] = _coverageAmount;
 
     emit ProtocolUpdated(_protocol, _coverage, _nonStakers, _coverageAmount);
   }
 
-  /// @inheritdoc ISherlockProtocolManager
+  /// @notice Remove a protocol from coverage
+  /// @param _protocol Protocol identifier
+  /// @dev Before removing a protocol the premium must be 0
+  /// @dev Removing a protocol basically stops the `_protocolAgent` from being active (can still submit claims until claim deadline though) 
+  /// @dev Pays off debt + sends remaining balance to protocol agent
+  /// @dev This call should be subject to a timelock
+  /// @dev Only callable by governance
   function protocolRemove(bytes32 _protocol) external override onlyOwner {
+    // checks to make sure the protocol actually has a protocol agent
     address agent = _verifyProtocolExists(_protocol);
 
+    // Removes a protocol from Sherlock and cleans up its data
+    // Params are the protocol ID and the protocol agent to which remaining active balance should be sent and from which post-removal claims can be made
     _forceRemoveProtocol(_protocol, agent);
   }
 
-  /// @inheritdoc ISherlockProtocolManager
-  function forceRemoveByBalance(bytes32 _protocol) external override {
+  /// @notice Remove a protocol with insufficient active balance
+  /// @param _protocol Protocol identifier
+  // msg.sender receives whatever is left of the insufficient active balance, this should incentivize arbs to call this function
+  function forceRemoveByActiveBalance(bytes32 _protocol) external override {
     address agent = _verifyProtocolExists(_protocol);
 
+    // Gets the latest value of the active balance at this protocol
     _settleProtocolDebt(_protocol);
-    uint256 remainingBalance = balancesInternal[_protocol];
+    // Sets latest value of active balance to remainingBalance variable
+    uint256 remainingBalance = activeBalances[_protocol];
 
-    if (remainingBalance >= minBalance) revert InvalidConditions();
+    // This means the protocol still has adequate active balance and thus cannot be removed
+    if (remainingBalance >= minActiveBalance) revert InvalidConditions();
+
+    // Sets the protocol's active balance to 0 and sends the remaining balance to msg.sender
+    // NOTE: Should we move the transfer to after _forceRemoveProtocol() to mitigate reentrancy?
     if (remainingBalance != 0) {
-      balancesInternal[_protocol] = 0;
+      activeBalances[_protocol] = 0;
       token.safeTransfer(msg.sender, remainingBalance);
     }
 
+    // Removes the protocol from coverage
     _forceRemoveProtocol(_protocol, agent);
     emit ProtocolRemovedByArb(_protocol, msg.sender, remainingBalance);
   }
 
-  /// @inheritdoc ISherlockProtocolManager
-  function forceRemoveByRemainingCoverage(bytes32 _protocol) external override {
+  /// @notice Removes a protocol with insufficent seconds of coverage left
+  /// @param _protocol Protocol identifier
+  // Seconds of coverage is defined by the active balance of the protocol divided by the protocol's premium per second
+  function forceRemoveBySecondsOfCoverage(bytes32 _protocol) external override {
+    // NOTE: Could we use secondsOfCoverageLeft() instead of _secondsOfCoverageLeft() and skip this check here?
     address agent = _verifyProtocolExists(_protocol);
 
+    // Figuring out how far above or below the minSecondsOfCoverage this protocol currently is
     uint256 percentageScaled = (_secondsOfCoverageLeft(_protocol) * HUNDRED_PERCENT) /
       minSecondsOfCoverage;
 
-    // the first epoch you'll get the minimal reward
+    // Reverts if there is still more seconds of coverage left than the minimum required
     if (percentageScaled >= HUNDRED_PERCENT) revert InvalidConditions();
 
+    // Gets the latest value of the active balance at this protocol
     _settleProtocolDebt(_protocol);
-    uint256 remainingBalance = balancesInternal[_protocol];
 
+    // Sets latest value of active balance to remainingBalance variable
+    uint256 remainingBalance = activeBalances[_protocol];
+
+    // NOTE: Why isn't the arbAmount just the remaining balance? Like it is for forceRemoveByActiveBalance()?
+    // NOTE: This calc seems like it decreases the reward over time while it's already decreasing?
     uint256 arbAmount = (remainingBalance * percentageScaled) / HUNDRED_PERCENT;
     if (arbAmount != 0) {
-      balancesInternal[_protocol] -= arbAmount;
+      // subtracts the amount that will be paid to the arb from the active balance
+      activeBalances[_protocol] -= arbAmount;
     }
 
+    // Removes the protocol from coverage
+    // This function also pays the active balance to the protocol agent, so it's good we do this after subtracting arb amount above
     _forceRemoveProtocol(_protocol, agent);
 
-    // done after removing protocol to mitigate reentrency pattern
-    // (in case token allows callback)
+    // Done after removing protocol to mitigate reentrency pattern
+    // (In case token allows callback)
     if (arbAmount != 0) {
       token.safeTransfer(msg.sender, arbAmount);
     }
     emit ProtocolRemovedByArb(_protocol, msg.sender, arbAmount);
   }
 
-  /// @inheritdoc ISherlockProtocolManager
+  /// @notice Set premium of `_protocol` to `_premium`
+  /// @param _protocol Protocol identifier
+  /// @param _premium Amount of premium `_protocol` pays per second
+  /// @dev The value 0 would mean inactive coverage
+  /// @dev Only callable by governance
   function setProtocolPremium(bytes32 _protocol, uint256 _premium) external override onlyOwner {
+    // Checks to see if protocol has a protocol agent
     _verifyProtocolExists(_protocol);
 
-    _setSingleProtocolPremium(_protocol, _premium);
+    // Updates individual protocol's premium and allPremiumsPerSecToStakers
+    _setSingleAndGlobalProtocolPremium(_protocol, _premium);
   }
 
-  /// @inheritdoc ISherlockProtocolManager
+  /// @notice Set premium of multiple protocols
+  /// @param _protocol Array of protocol identifiers
+  /// @param _premium Array of premium amounts protocols pay per second
+  /// @dev The value 0 would mean inactive coverage
+  /// @dev Only callable by governance
   function setProtocolPremiums(bytes32[] calldata _protocol, uint256[] calldata _premium)
     external
     override
     onlyOwner
   {
+    // Checks to make sure there are an equal amount of entries in each array
     if (_protocol.length != _premium.length) revert UnequalArrayLength();
     if (_protocol.length == 0) revert InvalidArgument();
 
+    // Updates the global claimable amount for stakers
     _settleTotalDebt();
 
-    uint256 totalPremiumPerBlock_ = totalPremiumPerBlock;
+    uint256 allPremiumsPerSecToStakers_ = allPremiumsPerSecToStakers;
+
+    // Loops through the array of protocols and checks to make sure each has a protocol agent assigned
     for (uint256 i; i < _protocol.length; i++) {
       _verifyProtocolExists(_protocol[i]);
 
-      (uint256 oldPremium, uint256 nonStakerShares) = _setProtocolPremium(
+      // Sets the protocol premium for that specific protocol
+      // Function returns the old premium and nonStakerPercentage for that specific protocol
+      (uint256 oldPremiumPerSecond, uint256 nonStakerPercentage) = _setSingleProtocolPremium(
         _protocol[i],
         _premium[i]
       );
 
-      totalPremiumPerBlock_ = _calcTotalPremiumPerBlockValue(
-        oldPremium,
+      // Calculates the new global premium which adds up all premiums paid by all protocols
+      allPremiumsPerSecToStakers_ = _calcGlobalPremiumPerSecForStakers(
+        oldPremiumPerSecond,
         _premium[i],
-        nonStakerShares,
-        nonStakerShares,
-        totalPremiumPerBlock_
+        nonStakerPercentage,
+        nonStakerPercentage,
+        allPremiumsPerSecToStakers_
       );
     }
 
-    totalPremiumPerBlock = totalPremiumPerBlock_;
+    // After the loop has finished, sets allPremiumsPerSecToStakers to the final temp value
+    allPremiumsPerSecToStakers = allPremiumsPerSecToStakers_;
   }
 
-  /// @inheritdoc ISherlockProtocolManager
-  function depositProtocolBalance(bytes32 _protocol, uint256 _amount) external override {
+  // This is how protocols pay for coverage by increasing their active balance
+  /// @notice Deposits `_amount` of token to the active balance of `_protocol`
+  /// @param _protocol Protocol identifier
+  /// @param _amount Amount of tokens to deposit
+  /// @dev Approval should be made before calling
+  function depositToActiveBalance(bytes32 _protocol, uint256 _amount) external override {
     if (_amount == uint256(0)) revert ZeroArgument();
     _verifyProtocolExists(_protocol);
 
+    // Transfers _amount to this contract
     token.safeTransferFrom(msg.sender, address(this), _amount);
-    balancesInternal[_protocol] += _amount;
+    // Increases the active balance of the protocol by _amount
+    activeBalances[_protocol] += _amount;
 
     emit ProtocolBalanceDeposited(_protocol, _amount);
   }
 
-  /// @inheritdoc ISherlockProtocolManager
-  function withdrawProtocolBalance(bytes32 _protocol, uint256 _amount) external override {
+  // If a protocol has paid too much into the active balance (which is how a protocol pays the premium)
+  // Then the protocol can remove some of the active balance (up until there is 3 days worth of balance left)
+  /// @notice Withdraws `_amount` of token from the active balance of `_protocol`
+  /// @param _protocol Protocol identifier
+  /// @param _amount Amount of tokens to withdraw
+  /// @dev Only protocol agent is able to withdraw
+  /// @dev Balance can be withdrawn up until 3 days worth of active balance
+  /// @dev In case coverage is not active (0 premium), full balance can be withdrawn
+  function withdrawActiveBalance(bytes32 _protocol, uint256 _amount) external override {
     if (_amount == uint256(0)) revert ZeroArgument();
+    // Only the protocol agent can call this function
     if (msg.sender != _verifyProtocolExists(_protocol)) revert Unauthorized();
 
-    // settle debt first just to make absolutely sure no extra tokens can be withdrawn
+    // Updates the active balance of the protocol 
     _settleProtocolDebt(_protocol);
 
-    uint256 currentBalance = balancesInternal[_protocol];
+    // Sets currentBalance to the active balance of the protocol
+    uint256 currentBalance = activeBalances[_protocol];
+    // Reverts if trying to withdraw more than the active balance
     if (_amount > currentBalance) revert InsufficientBalance(_protocol);
 
-    balancesInternal[_protocol] = currentBalance - _amount;
+    // Removes the _amount to be withdrawn from the active balance
+    activeBalances[_protocol] = currentBalance - _amount;
+    // Reverts if a protocol has less than 3 days worth of active balance left
     if (_secondsOfCoverageLeft(_protocol) < MIN_SECONDS_LEFT) revert InsufficientBalance(_protocol);
 
+    // Transfers the amount to the msg.sender (protocol agent)
     token.safeTransfer(msg.sender, _amount);
     emit ProtocolBalanceWithdrawn(_protocol, _amount);
   }
 
-  /// @inheritdoc ISherlockProtocolManager
+  /// @notice Transfer protocol agent role
+  /// @param _protocol Protocol identifier
+  /// @param _protocolAgent Account able to submit a claim on behalf of the protocol
+  /// @dev Only the active protocolAgent is able to transfer the role
   function transferProtocolAgent(bytes32 _protocol, address _protocolAgent) external override {
     if (_protocolAgent == address(0)) revert ZeroArgument();
+    // Can't set the new protocol agent to the caller address
     if (msg.sender == _protocolAgent) revert InvalidArgument();
+    // Because the caller must be the current protocol agent
     if (msg.sender != _verifyProtocolExists(_protocol)) revert Unauthorized();
 
+    // Sets the protocol agent to the new address
     _setProtocolAgent(_protocol, msg.sender, _protocolAgent);
   }
 
+  // Checks to see if this contract is the assigned protocol manager contract in the Sherlock core contract
   function isActive() public view returns (bool) {
     return address(sherlockCore.sherlockProtocolManager()) == address(this);
   }
 
+  // Only contract owner can call this
+  // Sends all specified tokens in this contract to the receiver's address (as well as ETH)
   function sweep(address _receiver, IERC20[] memory _extraTokens) external onlyOwner {
+    // This contract must be the current assigned protocol manager contract
     require(!isActive());
+    // Executes the sweep for ERC-20s specified in _extraTokens as well as for ETH
     _sweep(_receiver, _extraTokens);
   }
 }

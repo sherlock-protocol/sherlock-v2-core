@@ -28,11 +28,14 @@ abstract contract Manager is IManager, Ownable {
     emit SherlockCoreSet(_sherlock);
   }
 
+  // Internal function to send tokens remaining in a contract to the receiver address
   function _sweep(address _receiver, IERC20[] memory _extraTokens) internal {
+    // Loops through the extra tokens (ERC20) provided and sends all of them to the receiver address
     for (uint256 i; i < _extraTokens.length; i++) {
       IERC20 token = _extraTokens[i];
       token.safeTransfer(_receiver, token.balanceOf(address(this)));
     }
+    // Sends any remaining ETH to the receiver address (as long as receiver address is payable)
     payable(_receiver).transfer(address(this).balance);
   }
 }

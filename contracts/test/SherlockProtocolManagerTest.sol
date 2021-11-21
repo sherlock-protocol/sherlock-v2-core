@@ -16,8 +16,8 @@ contract SherlockProtocolManagerTest is SherlockProtocolManager {
     _settleTotalDebt();
   }
 
-  function privateSetMinBalance(uint256 _min) external {
-    minBalance = _min;
+  function privatesetMinActiveBalance(uint256 _min) external {
+    minActiveBalance = _min;
   }
 
   function privateSetMinSecondsOfCoverage(uint256 _min) external {
@@ -28,8 +28,8 @@ contract SherlockProtocolManagerTest is SherlockProtocolManager {
     return minSecondsOfCoverage;
   }
 
-  function viewMinBalance() external view returns (uint256) {
-    return minBalance;
+  function viewMinActiveBalance() external view returns (uint256) {
+    return minActiveBalance;
   }
 
   function viewProtocolAgent(bytes32 _protocol) external view returns (address) {
@@ -40,12 +40,12 @@ contract SherlockProtocolManagerTest is SherlockProtocolManager {
     return removedProtocolAgent[_protocol];
   }
 
-  function viewRemovedProtocolValidUntil(bytes32 _protocol) external view returns (uint256) {
-    return removedProtocolValidUntil[_protocol];
+  function viewRemovedProtocolClaimDeadline(bytes32 _protocol) external view returns (uint256) {
+    return removedProtocolClaimDeadline[_protocol];
   }
 
-  function viewNonStakersShares(bytes32 _protocol) external view returns (uint256) {
-    return nonStakersShares[_protocol];
+  function viewNonStakersPercentage(bytes32 _protocol) external view returns (uint256) {
+    return nonStakersPercentage[_protocol];
   }
 
   function viewCurrentCoverage(bytes32 _protocol) external view returns (uint256) {
@@ -56,27 +56,27 @@ contract SherlockProtocolManagerTest is SherlockProtocolManager {
     return previousCoverage[_protocol];
   }
 
-  function viewLastAccountedProtocol(bytes32 _protocol) external view returns (uint256) {
-    return lastAccountedProtocol[_protocol];
+  function viewLastAccountedEachProtocol(bytes32 _protocol) external view returns (uint256) {
+    return lastAccountedEachProtocol[_protocol];
   }
 
-  function viewNonStakersClaimableStored(bytes32 _protocol) external view returns (uint256) {
-    return nonStakersClaimableStored[_protocol];
+  function viewNonStakersClaimableByProtocol(bytes32 _protocol) external view returns (uint256) {
+    return nonStakersClaimableByProtocol[_protocol];
   }
 
-  function viewLastAccounted() external view returns (uint256) {
-    return lastAccounted;
+  function viewLastAccountedGlobal() external view returns (uint256) {
+    return lastAccountedGlobal;
   }
 
-  function viewTotalPremiumPerBlock() external view returns (uint256) {
-    return totalPremiumPerBlock;
+  function viewAllPremiumsPerSecToStakers() external view returns (uint256) {
+    return allPremiumsPerSecToStakers;
   }
 
-  function viewClaimablePremiumsStored() external view returns (uint256) {
-    return claimablePremiumsStored;
+  function viewLastClaimablePremiumsForStakers() external view returns (uint256) {
+    return lastClaimablePremiumsForStakers;
   }
 
-  function viewBalancesInternal(bytes32 _protocol) external view returns (uint256) {
-    return balancesInternal[_protocol];
+  function viewActiveBalance(bytes32 _protocol) external view returns (uint256) {
+    return activeBalances[_protocol];
   }
 }

@@ -14,12 +14,12 @@ import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 import '../interfaces/ISherlock.sol';
 
 contract SherlockMock is ISherlock, ERC721, Ownable {
-  mapping(uint256 => bool) public override periods;
+  mapping(uint256 => bool) public override stakingPeriods;
 
-  mapping(uint256 => uint256) public override deadlines;
+  mapping(uint256 => uint256) public override lockupEnd;
   mapping(uint256 => uint256) public override sherRewards;
 
-  IStrategyManager public override strategy;
+  IStrategyManager public override yieldStrategy;
   ISherDistributionManager public override sherDistributionManager;
   address public override nonStakersAddress;
   ISherlockProtocolManager public override sherlockProtocolManager;
@@ -36,13 +36,13 @@ contract SherlockMock is ISherlock, ERC721, Ownable {
   //
   // View functions
   //
-  function balanceOf(uint256 _tokenID) public view override returns (uint256) {}
+  function tokenBalanceOf(uint256 _tokenID) public view override returns (uint256) {}
 
   function setToken(IERC20 _token) external {
     token = _token;
   }
 
-  function balanceOf() public view override returns (uint256) {
+  function totalTokenBalanceStakers() public view override returns (uint256) {
     return token.balanceOf(address(this));
   }
 
@@ -50,11 +50,11 @@ contract SherlockMock is ISherlock, ERC721, Ownable {
   // Gov functions
   //
 
-  function _setPeriod(uint256 _period) internal {}
+  function _setStakingPeriod(uint256 _period) internal {}
 
-  function enablePeriod(uint256 _period) external override onlyOwner {}
+  function enableStakingPeriod(uint256 _period) external override onlyOwner {}
 
-  function disablePeriod(uint256 _period) external override onlyOwner {}
+  function disableStakingPeriod(uint256 _period) external override onlyOwner {}
 
   function pullSherReward(uint256 _amount, uint256 _period) external {
     sherDistributionManager.pullReward(_amount, _period);
@@ -90,19 +90,19 @@ contract SherlockMock is ISherlock, ERC721, Ownable {
     sherlockClaimManager = _sherlockClaimManager;
   }
 
-  function updateStrategy(IStrategyManager _strategy) external override onlyOwner {}
+  function updateYieldStrategy(IStrategyManager _yieldStrategy) external override onlyOwner {}
 
-  function strategyDeposit(uint256 _amount) external override onlyOwner {}
+  function yieldStrategyDeposit(uint256 _amount) external override onlyOwner {}
 
-  function strategyWithdraw(uint256 _amount) external override onlyOwner {}
+  function yieldStrategyWithdraw(uint256 _amount) external override onlyOwner {}
 
-  function strategyWithdrawAll() external override onlyOwner {}
+  function yieldStrategyWithdrawAll() external override onlyOwner {}
 
   //
   // Access control functions
   //
 
-  function payout(address _receiver, uint256 _amount) external override {}
+  function payoutClaim(address _receiver, uint256 _amount) external override {}
 
   //
   // Non-access control functions
@@ -114,39 +114,39 @@ contract SherlockMock is ISherlock, ERC721, Ownable {
     uint256 _id
   ) internal returns (uint256 _sher) {}
 
-  function _verifyPositionAccessability(uint256 _id) internal view returns (address _nftOwner) {}
+  function _verifyUnlockableByOwner(uint256 _id) internal view returns (address _nftOwner) {}
 
   function _sendSherRewardsToOwner(uint256 _id, address _nftOwner) internal {}
 
-  function _transferOut(address _receiver, uint256 _amount) internal {}
+  function _transferTokensOut(address _receiver, uint256 _amount) internal {}
 
-  function _burnSharesCalc(uint256 _shares) internal view returns (uint256) {}
+  function _redeemSharesCalc(uint256 _stakeShares) internal view returns (uint256) {}
 
-  function _burnShares(
+  function _redeemShares(
     uint256 _id,
-    uint256 _shares,
+    uint256 _stakeShares,
     address _receiver
   ) internal returns (uint256 _amount) {}
 
-  function _hold(
+  function _restake(
     uint256 _id,
     uint256 _period,
     address _nftOwner
   ) internal returns (uint256 _sher) {}
 
-  function mint(
+  function initialStake(
     uint256 _amount,
     uint256 _period,
     address _receiver
   ) external override returns (uint256 _id, uint256 _sher) {}
 
-  function burn(uint256 _id) external override returns (uint256 _amount) {}
+  function redeemNFT(uint256 _id) external override returns (uint256 _amount) {}
 
-  function hold(uint256 _id, uint256 _period) external override returns (uint256 _sher) {}
+  function ownerRestake(uint256 _id, uint256 _period) external override returns (uint256 _sher) {}
 
-  function _holdArbCalcShares(uint256 _id) internal view returns (uint256) {}
+  function _calcSharesForArbRestake(uint256 _id) internal view returns (uint256) {}
 
-  function holdArbCalc(uint256 _id) external view returns (uint256) {}
+  function viewRewardForArbRestake(uint256 _id) external view returns (uint256) {}
 
-  function holdArb(uint256 _id) external override returns (uint256 _sher, uint256 _arbReward) {}
+  function arbRestake(uint256 _id) external override returns (uint256 _sher, uint256 _arbReward) {}
 }

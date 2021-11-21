@@ -100,7 +100,7 @@ interface ISherlockClaimManager is IManager, OptimisticRequester {
   /// @notice execute claim, storage will be removed after
   /// @dev needs to be SpccApproved or UmaApproved && >1 day
   /// @dev funds will be pulled from core
-  function enactClaim(uint256 _claimID) external;
+  function payoutClaim(uint256 _claimID) external;
 
   /// @notice uho is able to execute a halt if the state is UmaApproved + less then 1 day changed
   function executeHalt(uint256 _claimID) external;
