@@ -477,7 +477,7 @@ contract Sherlock is ISherlock, ERC721, Ownable {
     // Checks to make sure caller is the owner of the NFT position, and that the lockup period is over
     address nftOwner = _verifyUnlockableByOwner(_id);
 
-    // Transfers USDC to the NFT owner based on the stakeShares associated with this NFT ID
+    // Transfers USDC to the NFT owner based on the stake shares associated with this NFT ID
     // Also burns the requisite amount of shares associated with this NFT position
     // Returns the amount of USDC owed to these shares
     _amount = _redeemShares(_id, stakeShares[_id], nftOwner);
@@ -513,16 +513,24 @@ contract Sherlock is ISherlock, ERC721, Ownable {
   // Calcs the reward (in stake shares) an arb would get for restaking a position
   // Takes the NFT ID as a param and outputs the stake shares (which can be redeemed for USDC) for the arb
   function _calcSharesForArbRestake(uint256 _id) internal view returns (uint256, bool) {
+    // this is the first point at which an arb can restake a position (i.e. two weeks after the initial lockup ends)
     uint256 initialArbTime = lockupEnd_[_id] + ARB_RESTAKE_WAIT_TIME;
 
+    // If the initialArbTime has not passed, return 0 for the stake shares and false for whether an arb can restake the position
     if (initialArbTime > block.timestamp) return (0, false);
 
+    // The max rewards (as a % of the position's shares) for the arb are available at this timestamp
     uint256 maxRewardArbTime = initialArbTime + ARB_RESTAKE_GROWTH_TIME;
+
+    // Caps the timestamp at the maxRewardArbTime so the calc below never goes above 100%
     uint256 targetTime = block.timestamp < maxRewardArbTime ? block.timestamp : maxRewardArbTime;
 
-    // scaled by 10**18
+    // Scaled by 10**18
+    // Represents the max amount of stake shares that an arb could get from restaking this position
     uint256 maxRewardScaled = ARB_RESTAKE_MAX_PERCENTAGE * stakeShares[_id];
 
+    // Calcs what % of the max reward an arb gets based on the timestamp at which they call this function
+    // If targetTime == maxRewardArbTime, then the arb gets 100% of the maxRewardScaled
     return (
       ((targetTime - initialArbTime) * maxRewardScaled) /
         (maxRewardArbTime - initialArbTime) /
@@ -531,22 +539,39 @@ contract Sherlock is ISherlock, ERC721, Ownable {
     );
   }
 
-  /// @notice calc arb rewards
-  /// @return profit How much profit an arb would make
-  /// @return able If the transaction can be executed
+  /// @notice Calculates the reward in tokens (USDC) that an arb would get for calling restake on a position
+  /// @return profit How much profit an arb would make in USDC
+  /// @return able If the transaction can be executed (the current timestamp is during an arb period, etc.)
   function viewRewardForArbRestake(uint256 _id) external view returns (uint256 profit, bool able) {
+    // Returns the stake shares that an arb would get, and whether the position can currently be arbed
     (uint256 sharesAmount, bool _able) = _calcSharesForArbRestake(_id);
+    // Calculates the tokens (USDC) represented by that amount of stake shares
     profit = _redeemSharesCalc(sharesAmount);
     able = _able;
   }
 
+  /// @notice Allows someone who doesn't own the position (an arbitrager) to restake the position for 3 months (ARB_RESTAKE_PERIOD)
+  /// @param _id ID of the position
+  /// @return _sher Amount of SHER tokens to be released to position owner on expiry of the 3 month lockup
+  /// @return _arbReward Amount of tokens (USDC) sent to caller (the arbitrager) in return for calling the function
+  /// @dev Can only be called after lockup `_period` is more than 2 weeks in the past (assuming ARB_RESTAKE_WAIT_TIME is 2 weeks)
+  /// @dev Max 10% (ARB_RESTAKE_MAX_PERCENTAGE) of tokens associated with a position are used to incentivize arbs (x)
+  /// @dev During a 2 week period the reward ratio will move from 0% to 100% (* x)
   function arbRestake(uint256 _id) external override returns (uint256 _sher, uint256 _arbReward) {
     address nftOwner = ownerOf(_id);
 
+    // Returns the stake shares that an arb would get, and whether the position can currently be arbed
     (uint256 arbRewardShares, bool able) = _calcSharesForArbRestake(_id);
+    // Revert if not able to be arbed
     if (!able) revert InvalidConditions();
 
+    // Transfers USDC to the arbitrager based on the stake shares associated with the arb reward
+    // Also burns the requisite amount of shares associated with this NFT position
+    // Returns the amount of USDC paid to the arbitrager
     _arbReward = _redeemShares(_id, arbRewardShares, msg.sender);
+
+    // Restakes the tokens (USDC) associated with this position for the ARB_RESTAKE PERIOD (3 months)
+    // Sends previously earned SHER rewards to the NFT owner address
     _sher = _restake(_id, ARB_RESTAKE_PERIOD, nftOwner);
 
     emit ArbRestaked(_id, _arbReward);
