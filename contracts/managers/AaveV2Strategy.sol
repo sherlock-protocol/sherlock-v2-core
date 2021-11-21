@@ -77,7 +77,7 @@ contract AaveV2Strategy is IStrategyManager, Manager {
     aaveIncentivesController.claimRewards(assets, type(uint256).max, aaveLmReceiver);
   }
 
-  function isActive() public returns (bool) {
+  function isActive() public view returns (bool) {
     // todo managing strategy should have the strategy() interface and return address(this)
     return address(sherlockCore.yieldStrategy()) == address(this);
   }
