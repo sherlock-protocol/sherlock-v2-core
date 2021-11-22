@@ -15,21 +15,21 @@ interface ISherDistributionManager is IManager {
   event Initialized(uint256 maxRewardsEndTVL, uint256 zeroRewardsStartTVL, uint256 maxRewardRate);
 
   /// @notice Caller will receive `_sher` SHER tokens based on `_amount` and `_period`
-  /// @param _amount Amount of tokens
-  /// @param _period Period of time, in seconds
-  /// @return _sher Amount of SHER tokens to be receiver
-  /// @dev calling contract will depend of before + after balance diff and return value\
-  /// @dev INCLUDING, function expects the `_amount` to be deposited already
-  /// @dev e.g. if tvl=50, amount=50. It would calculate for the first 50 tokens going in
+  /// @param _amount Amount of tokens (in USDC) staked
+  /// @param _period Period of time for stake, in seconds
+  /// @return _sher Amount of SHER tokens sent to Sherlock core contract
+  /// @dev Calling contract will depend on before + after balance diff and return value
+  /// @dev INCLUDES stake in calculation, function expects the `_amount` to be deposited already
+  /// @dev If tvl=50 and amount=50, this means it is calculating SHER rewards for the first 50 tokens going in
   function pullReward(uint256 _amount, uint256 _period) external returns (uint256 _sher);
 
-  /// @notice Calculate how much `_sher` SHER tokens will be send based on `_amount` and `_period`
-  /// @param _tvl TVL to use for reward calculation
-  /// @param _amount Amount of tokens
-  /// @param _period Period of time, in seconds
-  /// @return _sher Amount of SHER tokens
-  /// @dev EXCLUDING `_amount` will be added on top of TVL (_tvl is excluding _amount)
-  /// @dev e.g. if tvl=0, amount=50. It would calculate for the first 50 tokens going in
+  /// @notice Calculates how many `_sher` SHER tokens are owed to a stake position based on `_amount` and `_period`
+  /// @param _tvl TVL to use for reward calculation (pre-stake TVL)
+  /// @param _amount Amount of tokens (USDC) staked
+  /// @param _period Stake period (in seconds)
+  /// @return _sher Amount of SHER tokens owed to this stake position
+  /// @dev EXCLUDES `_amount` of stake, this will be added on top of TVL (_tvl is excluding _amount)
+  /// @dev If tvl=0 and amount=50, it would calculate for the first 50 tokens going in (different from pullReward())
   function calcReward(
     uint256 _tvl,
     uint256 _amount,
