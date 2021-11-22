@@ -205,4 +205,10 @@ interface ISherlockProtocolManager is IManager {
     external
     view
     returns (uint256 current, uint256 previous);
+
+  /// @notice Function used to check if this is the current active protocol manager
+  /// @return Boolean indicating it's active
+  /// @dev If inactive the owner can pull all ERC20s
+  /// @dev Will be checked by calling the sherlock contract
+  function isActive() external view returns (bool);
 }
