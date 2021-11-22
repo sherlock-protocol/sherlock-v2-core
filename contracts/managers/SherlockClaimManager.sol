@@ -82,8 +82,12 @@ contract SherlockClaimManager is ISherlockClaimManager, Manager {
     emit UMAHORenounced();
   }
 
-  function claims(uint256 _claimID) external view override returns (Claim memory) {
-    return claims_[publicToInternalID[_claimID]];
+  function claims(uint256 _claimID) external view override returns (Claim memory claim_) {
+    bytes32 id_ = publicToInternalID[_claimID];
+    if (id == bytes32(0)) revert InvalidArgument();
+
+    claim_ = claims_[id_];
+    if (claim_.state == State.NonExistent) revert InvalidArgument();
   }
 
   function startClaim(
@@ -102,6 +106,8 @@ contract SherlockClaimManager is ISherlockClaimManager, Manager {
     if (ancillaryData.length == 0) revert ZeroArgument();
 
     bytes32 claimIdentifier = keccak256(ancillaryData);
+    if (claimIdentifier == bytes32(0)) revert ZeroArgument();
+
     if (claims_[claimIdentifier].state != State.NonExistent) revert InvalidArgument();
 
     ISherlockProtocolManager protocolManager = sherlockCore.sherlockProtocolManager();
@@ -135,16 +141,22 @@ contract SherlockClaimManager is ISherlockClaimManager, Manager {
 
   function spccApprove(uint256 _claimID) external override onlySPCC {
     bytes32 claimIdentifier = publicToInternalID[_claimID];
+    if (claimIdentifier == bytes32(0)) revert InvalidArgument();
+
     if (_setState(claimIdentifier, State.SpccApproved) != State.SpccPending) revert InvalidState();
   }
 
   function spccRefuse(uint256 _claimID) external override onlySPCC {
     bytes32 claimIdentifier = publicToInternalID[_claimID];
+    if (claimIdentifier == bytes32(0)) revert InvalidArgument();
+
     if (_setState(claimIdentifier, State.SpccDenied) != State.SpccPending) revert InvalidState();
   }
 
   function escalate(uint256 _claimID) external override {
     bytes32 claimIdentifier = publicToInternalID[_claimID];
+    if (claimIdentifier == bytes32(0)) revert InvalidArgument();
+
     Claim storage claim = claims_[claimIdentifier];
 
     ISherlockProtocolManager protocolManager = sherlockCore.sherlockProtocolManager();
@@ -176,6 +188,8 @@ contract SherlockClaimManager is ISherlockClaimManager, Manager {
 
   function payoutClaim(uint256 _claimID) external override {
     bytes32 claimIdentifier = publicToInternalID[_claimID];
+    if (claimIdentifier == bytes32(0)) revert InvalidArgument();
+
     Claim storage claim = claims_[claimIdentifier];
     address receiver = claim.receiver;
     uint256 amount = claim.amount;
@@ -199,6 +213,7 @@ contract SherlockClaimManager is ISherlockClaimManager, Manager {
 
   function executeHalt(uint256 _claimID) external override onlyUMAHO {
     bytes32 claimIdentifier = publicToInternalID[_claimID];
+    if (claimIdentifier == bytes32(0)) revert InvalidArgument();
 
     if (_setState(claimIdentifier, State.UmaDenied) != State.UmaApproved) revert InvalidState();
     if (_setState(claimIdentifier, State.NonExistent) != State.UmaDenied) revert InvalidState();
@@ -217,6 +232,8 @@ contract SherlockClaimManager is ISherlockClaimManager, Manager {
     SkinnyOptimisticOracleInterface.Request memory request
   ) external override onlyUMA(identifier) {
     bytes32 claimIdentifier = keccak256(ancillaryData);
+    if (claimIdentifier == bytes32(0)) revert InvalidArgument();
+
     Claim storage claim = claims_[claimIdentifier];
     if (claim.updated != block.timestamp) InvalidConditions();
 
@@ -241,6 +258,8 @@ contract SherlockClaimManager is ISherlockClaimManager, Manager {
     SkinnyOptimisticOracleInterface.Request memory request
   ) external override onlyUMA(identifier) {
     bytes32 claimIdentifier = keccak256(ancillaryData);
+    if (claimIdentifier == bytes32(0)) revert InvalidArgument();
+
     Claim storage claim = claims_[claimIdentifier];
     if (claim.updated != block.timestamp) InvalidConditions();
 
@@ -256,6 +275,8 @@ contract SherlockClaimManager is ISherlockClaimManager, Manager {
     SkinnyOptimisticOracleInterface.Request memory request
   ) external override onlyUMA(identifier) {
     bytes32 claimIdentifier = keccak256(ancillaryData);
+    if (claimIdentifier == bytes32(0)) revert InvalidArgument();
+
     Claim storage claim = claims_[claimIdentifier];
 
     uint256 resolvedPrice = uint256(request.resolvedPrice);
