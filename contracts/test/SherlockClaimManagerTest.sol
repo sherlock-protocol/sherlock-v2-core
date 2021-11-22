@@ -10,5 +10,5 @@ import '../managers/SherlockClaimManager.sol';
 
 /// @notice this contract is used for testing to view all storage variables
 contract SherlockClaimManagerTest is SherlockClaimManager {
-
+  constructor(address _umaho, address _spcc) SherlockClaimManager(_umaho, _spcc) {}
 }

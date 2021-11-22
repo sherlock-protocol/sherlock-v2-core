@@ -11,7 +11,10 @@ import '../interfaces/managers/ISherlockClaimManager.sol';
 import '../interfaces/managers/ISherlockProtocolManager.sol';
 import '../interfaces/UMAprotocol/SkinnyOptimisticOracleInterface.sol';
 
+import 'hardhat/console.sol';
+
 // @todo everyone can escalate and enact?
+// @todo add callback for payout
 
 /// @dev expects 6 decimals input tokens
 contract SherlockClaimManager is ISherlockClaimManager, Manager {
@@ -28,7 +31,7 @@ contract SherlockClaimManager is ISherlockClaimManager, Manager {
   IERC20 constant TOKEN = IERC20(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48);
 
   address public override umaHaltOperator;
-  address public override sherlockProtocolClaimsCommittee;
+  address public immutable override sherlockProtocolClaimsCommittee;
 
   mapping(bytes32 => bool) public protocolClaimActive;
 
@@ -39,9 +42,14 @@ contract SherlockClaimManager is ISherlockClaimManager, Manager {
   uint256 internal lastClaimID;
 
   modifier onlyUMA(bytes32 identifier) {
-    if (umaIdentifier != identifier) revert InvalidArugment();
+    if (umaIdentifier != identifier) revert InvalidArgument();
     if (msg.sender != address(UMA)) revert InvalidSender();
     _;
+  }
+
+  constructor(address _umaho, address _spcc) {
+    umaHaltOperator = _umaho;
+    sherlockProtocolClaimsCommittee = _spcc;
   }
 
   modifier onlySPCC() {
@@ -84,7 +92,7 @@ contract SherlockClaimManager is ISherlockClaimManager, Manager {
 
   function claims(uint256 _claimID) external view override returns (Claim memory claim_) {
     bytes32 id_ = publicToInternalID[_claimID];
-    if (id == bytes32(0)) revert InvalidArgument();
+    if (id_ == bytes32(0)) revert InvalidArgument();
 
     claim_ = claims_[id_];
     if (claim_.state == State.NonExistent) revert InvalidArgument();
@@ -97,16 +105,16 @@ contract SherlockClaimManager is ISherlockClaimManager, Manager {
     uint32 _timestamp,
     bytes memory ancillaryData
   ) external override {
-    if (address(sherlockCore) == address(0)) revert InvalidConditions();
-    if (protocolClaimActive[_protocol]) revert ClaimActive();
     if (_protocol == bytes32(0)) revert ZeroArgument();
     if (_amount == uint256(0)) revert ZeroArgument();
     if (_receiver == address(0)) revert ZeroArgument();
     if (_timestamp == uint32(0)) revert ZeroArgument();
+    if (_timestamp >= block.timestamp) revert InvalidArgument();
     if (ancillaryData.length == 0) revert ZeroArgument();
+    if (address(sherlockCore) == address(0)) revert InvalidConditions();
+    if (protocolClaimActive[_protocol]) revert ClaimActive();
 
     bytes32 claimIdentifier = keccak256(ancillaryData);
-    if (claimIdentifier == bytes32(0)) revert ZeroArgument();
 
     if (claims_[claimIdentifier].state != State.NonExistent) revert InvalidArgument();
 
@@ -127,6 +135,7 @@ contract SherlockClaimManager is ISherlockClaimManager, Manager {
     claims_[claimIdentifier] = Claim(
       block.timestamp,
       block.timestamp,
+      msg.sender,
       _protocol,
       _amount,
       _receiver,
@@ -158,10 +167,7 @@ contract SherlockClaimManager is ISherlockClaimManager, Manager {
     if (claimIdentifier == bytes32(0)) revert InvalidArgument();
 
     Claim storage claim = claims_[claimIdentifier];
-
-    ISherlockProtocolManager protocolManager = sherlockCore.sherlockProtocolManager();
-    address agent = protocolManager.protocolAgent(claim.protocol);
-    if (msg.sender != agent) revert InvalidSender();
+    if (msg.sender != claim.initiator) revert InvalidSender();
 
     uint256 updated = claim.updated;
     State _oldState = _setState(claimIdentifier, State.UmaPriceProposed);
@@ -181,7 +187,7 @@ contract SherlockClaimManager is ISherlockClaimManager, Manager {
       0,
       BOND,
       LIVENESS,
-      agent,
+      msg.sender, // claim initiator
       int256(claim.amount)
     );
   }
@@ -191,6 +197,8 @@ contract SherlockClaimManager is ISherlockClaimManager, Manager {
     if (claimIdentifier == bytes32(0)) revert InvalidArgument();
 
     Claim storage claim = claims_[claimIdentifier];
+    if (msg.sender != claim.initiator) revert InvalidSender();
+
     address receiver = claim.receiver;
     uint256 amount = claim.amount;
     uint256 updated = claim.updated;
@@ -232,10 +240,9 @@ contract SherlockClaimManager is ISherlockClaimManager, Manager {
     SkinnyOptimisticOracleInterface.Request memory request
   ) external override onlyUMA(identifier) {
     bytes32 claimIdentifier = keccak256(ancillaryData);
-    if (claimIdentifier == bytes32(0)) revert InvalidArgument();
 
     Claim storage claim = claims_[claimIdentifier];
-    if (claim.updated != block.timestamp) InvalidConditions();
+    if (claim.updated != block.timestamp) revert InvalidConditions();
 
     if (_setState(claimIdentifier, State.UmaDisputeProposed) != State.UmaPriceProposed) {
       revert InvalidState();
@@ -258,10 +265,9 @@ contract SherlockClaimManager is ISherlockClaimManager, Manager {
     SkinnyOptimisticOracleInterface.Request memory request
   ) external override onlyUMA(identifier) {
     bytes32 claimIdentifier = keccak256(ancillaryData);
-    if (claimIdentifier == bytes32(0)) revert InvalidArgument();
 
     Claim storage claim = claims_[claimIdentifier];
-    if (claim.updated != block.timestamp) InvalidConditions();
+    if (claim.updated != block.timestamp) revert InvalidConditions();
 
     if (_setState(claimIdentifier, State.UmaPending) != State.UmaDisputeProposed) {
       revert InvalidState();
@@ -275,12 +281,12 @@ contract SherlockClaimManager is ISherlockClaimManager, Manager {
     SkinnyOptimisticOracleInterface.Request memory request
   ) external override onlyUMA(identifier) {
     bytes32 claimIdentifier = keccak256(ancillaryData);
-    if (claimIdentifier == bytes32(0)) revert InvalidArgument();
 
     Claim storage claim = claims_[claimIdentifier];
 
     uint256 resolvedPrice = uint256(request.resolvedPrice);
     bool umaApproved = resolvedPrice == claim.amount;
+
     if (umaApproved) {
       if (_setState(claimIdentifier, State.UmaApproved) != State.UmaPending) revert InvalidState();
     } else {

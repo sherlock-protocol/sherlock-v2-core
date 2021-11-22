@@ -48,6 +48,7 @@ interface ISherlockClaimManager is IManager, OptimisticRequester {
   struct Claim {
     uint256 created;
     uint256 updated;
+    address initiator;
     bytes32 protocol;
     uint256 amount;
     address receiver;
