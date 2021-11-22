@@ -18,8 +18,6 @@ interface ISherlockProtocolManager is IManager {
 
   error ProtocolNotExists(bytes32 protocol);
 
-  error InvalidConditions();
-
   error UnequalArrayLength();
 
   error InsufficientBalance(bytes32 protocol);
@@ -118,7 +116,7 @@ interface ISherlockProtocolManager is IManager {
   /// @notice Remove a protocol from coverage
   /// @param _protocol Protocol identifier
   /// @dev Before removing a protocol the premium must be 0
-  /// @dev Removing a protocol basically stops the `_protocolAgent` from being active (can still submit claims until claim deadline though) 
+  /// @dev Removing a protocol basically stops the `_protocolAgent` from being active (can still submit claims until claim deadline though)
   /// @dev Pays off debt + sends remaining balance to protocol agent
   /// @dev This call should be subject to a timelock
   /// @dev Only callable by governance

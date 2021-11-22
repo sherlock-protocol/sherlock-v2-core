@@ -11,7 +11,19 @@ import '../UMAprotocol/OptimisticRequester.sol';
 import './IManager.sol';
 
 interface ISherlockClaimManager is IManager, OptimisticRequester {
-  event ClaimCreated(uint256 claimID, bytes32 protocol, uint256 amount, address receiver, bool previousCoverageAmount);
+  error ClaimActive();
+
+  error InvalidSender();
+
+  error InvalidState();
+
+  event ClaimCreated(
+    uint256 claimID,
+    bytes32 protocol,
+    uint256 amount,
+    address receiver,
+    bool previousCoverageAmount
+  );
 
   event ClaimStatusChanged(uint256 claimID, State previousState, State currentState);
 

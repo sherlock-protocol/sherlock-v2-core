@@ -15,6 +15,8 @@ interface IManager {
 
   error InvalidArgument();
 
+  error InvalidConditions();
+
   event SherlockCoreSet(ISherlock sherlock);
 
   /// @notice Set sherlock core address where premiums should be send too

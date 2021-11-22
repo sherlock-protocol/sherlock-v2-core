@@ -17,45 +17,41 @@ import '../interfaces/UMAprotocol/SkinnyOptimisticOracleInterface.sol';
 contract SherlockClaimManager is ISherlockClaimManager, Manager {
   using SafeERC20 for IERC20;
 
-  uint256 constant BOND = 5 * 10**6;
-  uint256 constant BOND_USER = (BOND * 3) / 2 + 1;
+  uint256 constant BOND = 5000 * 10**6; // 5k bond
+  uint256 constant BOND_USER = (BOND * 3) / 2 + 1; // 1.5 * 5k = 7.5k
   uint256 constant UMAHO_TIME = 3 days;
   uint256 constant SPCC_TIME = 7 days;
   uint256 constant LIVENESS = 7200;
   bytes32 public constant override umaIdentifier = '0x534845524c4f434b5f434c41494d';
-  SkinnyOptimisticOracleInterface immutable uma;
-  IERC20 immutable token;
+  SkinnyOptimisticOracleInterface constant UMA =
+    SkinnyOptimisticOracleInterface(0xeE3Afe347D5C74317041E2618C49534dAf887c24);
+  IERC20 constant TOKEN = IERC20(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48);
 
   address public override umaHaltOperator;
   address public override sherlockProtocolClaimsCommittee;
 
-  mapping(bytes32 => bool) protocolClaimActive;
+  mapping(bytes32 => bool) public protocolClaimActive;
 
-  mapping(uint256 => bytes32) publicToInternalID;
-  mapping(bytes32 => uint256) internalToPublicID;
-  mapping(bytes32 => Claim) claims_;
+  mapping(uint256 => bytes32) internal publicToInternalID;
+  mapping(bytes32 => uint256) internal internalToPublicID;
+  mapping(bytes32 => Claim) internal claims_;
 
   uint256 internal lastClaimID;
 
   modifier onlyUMA(bytes32 identifier) {
-    require(umaIdentifier == identifier);
-    require(msg.sender == address(uma));
+    if (umaIdentifier != identifier) revert InvalidArugment();
+    if (msg.sender != address(UMA)) revert InvalidSender();
     _;
   }
 
   modifier onlySPCC() {
-    require(msg.sender == sherlockProtocolClaimsCommittee);
+    if (msg.sender != sherlockProtocolClaimsCommittee) revert InvalidSender();
     _;
   }
 
   modifier onlyUMAHO() {
-    require(msg.sender == umaHaltOperator);
+    if (msg.sender != umaHaltOperator) revert InvalidSender();
     _;
-  }
-
-  constructor(SkinnyOptimisticOracleInterface _uma, IERC20 _token) {
-    uma = _uma;
-    token = _token;
   }
 
   function _cleanUpClaim(bytes32 _claimIdentifier) internal {
@@ -97,21 +93,27 @@ contract SherlockClaimManager is ISherlockClaimManager, Manager {
     uint32 _timestamp,
     bytes memory ancillaryData
   ) external override {
-    require(!protocolClaimActive[_protocol]);
+    if (address(sherlockCore) == address(0)) revert InvalidConditions();
+    if (protocolClaimActive[_protocol]) revert ClaimActive();
+    if (_protocol == bytes32(0)) revert ZeroArgument();
+    if (_amount == uint256(0)) revert ZeroArgument();
+    if (_receiver == address(0)) revert ZeroArgument();
+    if (_timestamp == uint32(0)) revert ZeroArgument();
+    if (ancillaryData.length == 0) revert ZeroArgument();
+
+    bytes32 claimIdentifier = keccak256(ancillaryData);
+    if (claims_[claimIdentifier].state != State.NonExistent) revert InvalidArgument();
 
     ISherlockProtocolManager protocolManager = sherlockCore.sherlockProtocolManager();
     address agent = protocolManager.protocolAgent(_protocol);
-    require(msg.sender == agent);
+    if (msg.sender != agent) revert InvalidSender();
 
     (uint256 current, uint256 previous) = protocolManager.coverageAmounts(_protocol);
     uint256 maxClaim = current > previous ? current : previous;
     bool prevCoverage = _amount > current;
-    require(_amount <= maxClaim);
+    if (_amount > maxClaim) revert InvalidArgument();
 
-    bytes32 claimIdentifier = keccak256(ancillaryData);
-    require(claims_[claimIdentifier].state == State.NonExistent);
-
-    uint256 claimID = lastClaimID++;
+    uint256 claimID = ++lastClaimID;
     protocolClaimActive[_protocol] = true;
     publicToInternalID[claimID] = claimIdentifier;
     internalToPublicID[claimIdentifier] = claimID;
@@ -133,12 +135,12 @@ contract SherlockClaimManager is ISherlockClaimManager, Manager {
 
   function spccApprove(uint256 _claimID) external override onlySPCC {
     bytes32 claimIdentifier = publicToInternalID[_claimID];
-    require(_setState(claimIdentifier, State.SpccApproved) == State.SpccPending);
+    if (_setState(claimIdentifier, State.SpccApproved) != State.SpccPending) revert InvalidState();
   }
 
   function spccRefuse(uint256 _claimID) external override onlySPCC {
     bytes32 claimIdentifier = publicToInternalID[_claimID];
-    require(_setState(claimIdentifier, State.SpccDenied) == State.SpccPending);
+    if (_setState(claimIdentifier, State.SpccDenied) != State.SpccPending) revert InvalidState();
   }
 
   function escalate(uint256 _claimID) external override {
@@ -147,23 +149,23 @@ contract SherlockClaimManager is ISherlockClaimManager, Manager {
 
     ISherlockProtocolManager protocolManager = sherlockCore.sherlockProtocolManager();
     address agent = protocolManager.protocolAgent(claim.protocol);
-    require(msg.sender == agent);
-
-    token.safeTransferFrom(msg.sender, address(this), BOND_USER);
-    token.safeApprove(address(uma), BOND_USER);
+    if (msg.sender != agent) revert InvalidSender();
 
     uint256 updated = claim.updated;
     State _oldState = _setState(claimIdentifier, State.UmaPriceProposed);
-    require(
-      _oldState == State.SpccDenied ||
-        (_oldState == State.SpccPending && updated + SPCC_TIME >= block.timestamp)
-    );
+    if (
+      _oldState != State.SpccDenied ||
+      !(_oldState == State.SpccPending && updated + SPCC_TIME >= block.timestamp)
+    ) revert InvalidState();
 
-    uma.requestAndProposePriceFor(
+    TOKEN.safeTransferFrom(msg.sender, address(this), BOND_USER);
+    TOKEN.safeApprove(address(UMA), BOND_USER);
+
+    UMA.requestAndProposePriceFor(
       umaIdentifier,
       claim.timestamp,
       claim.ancillaryData,
-      token,
+      TOKEN,
       0,
       BOND,
       LIVENESS,
@@ -182,12 +184,12 @@ contract SherlockClaimManager is ISherlockClaimManager, Manager {
     State _oldState = _setState(claimIdentifier, State.NonExistent);
 
     if (umaHaltOperator == address(0)) {
-      require(_oldState == State.SpccApproved || _oldState == State.UmaApproved);
+      if (_oldState != State.SpccApproved || _oldState != State.UmaApproved) revert InvalidState();
     } else {
-      require(
-        _oldState == State.SpccApproved ||
-          (_oldState == State.UmaApproved && updated + UMAHO_TIME <= block.timestamp)
-      );
+      if (
+        _oldState != State.SpccApproved ||
+        !(_oldState == State.UmaApproved && updated + UMAHO_TIME <= block.timestamp)
+      ) revert InvalidState();
     }
 
     emit ClaimPayout(_claimID);
@@ -198,8 +200,8 @@ contract SherlockClaimManager is ISherlockClaimManager, Manager {
   function executeHalt(uint256 _claimID) external override onlyUMAHO {
     bytes32 claimIdentifier = publicToInternalID[_claimID];
 
-    require(_setState(claimIdentifier, State.UmaDenied) == State.UmaApproved);
-    require(_setState(claimIdentifier, State.NonExistent) == State.UmaDenied);
+    if (_setState(claimIdentifier, State.UmaDenied) != State.UmaApproved) revert InvalidState();
+    if (_setState(claimIdentifier, State.NonExistent) != State.UmaDenied) revert InvalidState();
 
     emit ClaimHalted(_claimID);
   }
@@ -216,11 +218,13 @@ contract SherlockClaimManager is ISherlockClaimManager, Manager {
   ) external override onlyUMA(identifier) {
     bytes32 claimIdentifier = keccak256(ancillaryData);
     Claim storage claim = claims_[claimIdentifier];
-    require(claim.updated == block.timestamp);
+    if (claim.updated != block.timestamp) InvalidConditions();
 
-    require(_setState(claimIdentifier, State.UmaDisputeProposed) == State.UmaPriceProposed);
+    if (_setState(claimIdentifier, State.UmaDisputeProposed) != State.UmaPriceProposed) {
+      revert InvalidState();
+    }
 
-    uma.disputePriceFor(
+    UMA.disputePriceFor(
       umaIdentifier,
       claim.timestamp,
       claim.ancillaryData,
@@ -238,9 +242,11 @@ contract SherlockClaimManager is ISherlockClaimManager, Manager {
   ) external override onlyUMA(identifier) {
     bytes32 claimIdentifier = keccak256(ancillaryData);
     Claim storage claim = claims_[claimIdentifier];
-    require(claim.updated == block.timestamp);
+    if (claim.updated != block.timestamp) InvalidConditions();
 
-    require(_setState(claimIdentifier, State.UmaPending) == State.UmaDisputeProposed);
+    if (_setState(claimIdentifier, State.UmaPending) != State.UmaDisputeProposed) {
+      revert InvalidState();
+    }
   }
 
   function priceSettled(
@@ -255,10 +261,10 @@ contract SherlockClaimManager is ISherlockClaimManager, Manager {
     uint256 resolvedPrice = uint256(request.resolvedPrice);
     bool umaApproved = resolvedPrice == claim.amount;
     if (umaApproved) {
-      require(_setState(claimIdentifier, State.UmaApproved) == State.UmaPending);
+      if (_setState(claimIdentifier, State.UmaApproved) != State.UmaPending) revert InvalidState();
     } else {
-      require(_setState(claimIdentifier, State.UmaDenied) == State.UmaPending);
-      require(_setState(claimIdentifier, State.NonExistent) == State.UmaDenied);
+      if (_setState(claimIdentifier, State.UmaDenied) != State.UmaPending) revert InvalidState();
+      if (_setState(claimIdentifier, State.NonExistent) != State.UmaDenied) revert InvalidState();
     }
   }
 }
