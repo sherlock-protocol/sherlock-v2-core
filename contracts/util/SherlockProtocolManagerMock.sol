@@ -98,5 +98,5 @@ contract SherlockProtocolManagerMock is ISherlockProtocolManager, Manager {
     returns (uint256 current, uint256 previous)
   {}
 
-  function isActive() external view returns (bool);
+  function isActive() external view override returns (bool) {}
 }
