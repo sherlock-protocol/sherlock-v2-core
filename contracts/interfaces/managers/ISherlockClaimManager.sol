@@ -34,7 +34,7 @@ interface ISherlockClaimManager is IManager, OptimisticRequester {
   event UMAHORenounced();
 
   enum State {
-    NonExistent, // Claim doesn't exist
+    NonExistent, // Claim doesn't exist (this is the default state on creation)
     SpccPending, // Claim is created, SPCC is able to set state to valid
     SpccApproved, // Final state, claim is valid
     SpccDenied, // Claim denied by SPCC, claim can be escalated within 7 days
