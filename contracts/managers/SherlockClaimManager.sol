@@ -68,6 +68,23 @@ contract SherlockClaimManager is ISherlockClaimManager, Manager {
     _;
   }
 
+  function _isEscalateState(State _oldState, uint256 updated) internal view returns (bool) {
+    if (_oldState == State.SpccDenied) return true;
+    if (_oldState == State.SpccPending && updated + SPCC_TIME < block.timestamp) return true;
+    return false;
+  }
+
+  function _isPayoutState(State _oldState, uint256 updated) internal view returns (bool) {
+    if (umaHaltOperator == address(0)) {
+      if (_oldState == State.SpccApproved) return true;
+      if (_oldState == State.UmaApproved) return true;
+    } else {
+      if (_oldState == State.SpccApproved) return true;
+      if (_oldState == State.UmaApproved && updated + UMAHO_TIME < block.timestamp) return true;
+    }
+    return false;
+  }
+
   function _cleanUpClaim(bytes32 _claimIdentifier) internal {
     delete protocolClaimActive[claims_[_claimIdentifier].protocol];
     delete claims_[_claimIdentifier];
@@ -169,12 +186,6 @@ contract SherlockClaimManager is ISherlockClaimManager, Manager {
     if (_setState(claimIdentifier, State.SpccDenied) != State.SpccPending) revert InvalidState();
   }
 
-  function _isEscalateState(State _oldState, uint256 updated) internal view returns (bool) {
-    if (_oldState == State.SpccDenied) return true;
-    if (_oldState == State.SpccPending && updated + SPCC_TIME < block.timestamp) return true;
-    return false;
-  }
-
   function escalate(uint256 _claimID, uint256 _amount) external override {
     if (_amount < BOND) revert InvalidArgument();
 
@@ -228,17 +239,6 @@ contract SherlockClaimManager is ISherlockClaimManager, Manager {
     TOKEN.safeApprove(address(UMA), 0);
     uint256 remaining = TOKEN.balanceOf(address(this));
     if (remaining != 0) TOKEN.safeTransfer(msg.sender, remaining);
-  }
-
-  function _isPayoutState(State _oldState, uint256 updated) internal view returns (bool) {
-    if (umaHaltOperator == address(0)) {
-      if (_oldState == State.SpccApproved) return true;
-      if (_oldState == State.UmaApproved) return true;
-    } else {
-      if (_oldState == State.SpccApproved) return true;
-      if (_oldState == State.UmaApproved && updated + UMAHO_TIME < block.timestamp) return true;
-    }
-    return false;
   }
 
   function payoutClaim(uint256 _claimID) external override {

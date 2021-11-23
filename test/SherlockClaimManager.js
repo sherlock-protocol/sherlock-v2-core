@@ -425,7 +425,7 @@ describe('SherlockClaimManager ─ Functional', function () {
 
     await this.mintUSDC(this.alice.address, maxTokens);
     await this.usdc.approve(this.sherlock.address, maxTokens);
-    await this.sherlock.initialStake(maxTokens, 1000, this.alice.address);
+    this.lastT = await meta(this.sherlock.initialStake(maxTokens, 1000, this.alice.address));
 
     await timeTraveler.snapshot();
   });
@@ -1086,6 +1086,87 @@ describe('SherlockClaimManager ─ Functional', function () {
   describe('priceProposed()', function () {});
   describe('priceDisputed()', function () {});
   describe('priceSettled()', function () {});
+  describe('isEscalateState() (private function)', function () {
+    before(async function () {
+      await timeTraveler.revertSnapshot();
+    });
+    it('Happy flows', async function () {
+      expect(await this.scm.isEscalateState(STATE.SpccDenied, this.lastT.time)).to.eq(true);
+      expect(await this.scm.isEscalateState(STATE.SpccDenied, 0)).to.eq(true);
+
+      expect(await this.scm.isEscalateState(STATE.SpccPending, this.lastT.time.sub(days7))).to.eq(
+        true,
+      );
+      expect(
+        await this.scm.isEscalateState(STATE.SpccPending, this.lastT.time.sub(days7).sub(days7)),
+      ).to.eq(true);
+    });
+    it('Sad flows', async function () {
+      expect(await this.scm.isEscalateState(STATE.SpccApproved, this.lastT.time)).to.eq(false);
+      expect(await this.scm.isEscalateState(STATE.NonExistent, 0)).to.eq(false);
+
+      expect(await this.scm.isEscalateState(STATE.SpccPending, this.lastT.time.sub(days3))).to.eq(
+        false,
+      );
+      expect(
+        await this.scm.isEscalateState(STATE.SpccPending, this.lastT.time.sub(days3).sub(days3)),
+      ).to.eq(false);
+    });
+  });
+  describe('isPayoutState() (private function) -UMAHO', function () {
+    before(async function () {
+      await timeTraveler.revertSnapshot();
+      await this.scm.renounceUmaHaltOperator();
+    });
+    it('Happy flows', async function () {
+      expect(await this.scm.isPayoutState(STATE.SpccApproved, this.lastT.time)).to.eq(true);
+      expect(await this.scm.isPayoutState(STATE.SpccApproved, 0)).to.eq(true);
+
+      expect(await this.scm.isPayoutState(STATE.UmaApproved, this.lastT.time)).to.eq(true);
+      expect(await this.scm.isPayoutState(STATE.UmaApproved, 0)).to.eq(true);
+    });
+    it('Sad flows', async function () {
+      expect(await this.scm.isPayoutState(STATE.SpccDenied, this.lastT.time)).to.eq(false);
+      expect(await this.scm.isPayoutState(STATE.SpccDenied, 0)).to.eq(false);
+
+      expect(await this.scm.isPayoutState(STATE.UmaDenied, this.lastT.time)).to.eq(false);
+      expect(await this.scm.isPayoutState(STATE.UmaDenied, 0)).to.eq(false);
+
+      expect(await this.scm.isPayoutState(STATE.UmaPriceProposed, this.lastT.time)).to.eq(false);
+      expect(await this.scm.isPayoutState(STATE.UmaPending, 0)).to.eq(false);
+    });
+  });
+  describe('isPayoutState() (private function) +UMAHO', function () {
+    before(async function () {
+      await timeTraveler.revertSnapshot();
+    });
+    it('Happy flows', async function () {
+      expect(await this.scm.isPayoutState(STATE.SpccApproved, this.lastT.time)).to.eq(true);
+      expect(await this.scm.isPayoutState(STATE.SpccApproved, 0)).to.eq(true);
+
+      expect(await this.scm.isPayoutState(STATE.UmaApproved, this.lastT.time.sub(days3))).to.eq(
+        true,
+      );
+      expect(await this.scm.isPayoutState(STATE.UmaApproved, this.lastT.time.sub(days7))).to.eq(
+        true,
+      );
+    });
+    it('Sad flows', async function () {
+      expect(await this.scm.isPayoutState(STATE.SpccDenied, this.lastT.time)).to.eq(false);
+      expect(await this.scm.isPayoutState(STATE.SpccDenied, 0)).to.eq(false);
+
+      expect(await this.scm.isPayoutState(STATE.UmaApproved, this.lastT.time)).to.eq(false);
+      expect(
+        await this.scm.isPayoutState(STATE.UmaApproved, this.lastT.time.sub(days3).add(1)),
+      ).to.eq(false);
+
+      expect(await this.scm.isPayoutState(STATE.UmaDenied, this.lastT.time)).to.eq(false);
+      expect(await this.scm.isPayoutState(STATE.UmaDenied, 0)).to.eq(false);
+
+      expect(await this.scm.isPayoutState(STATE.UmaPriceProposed, this.lastT.time)).to.eq(false);
+      expect(await this.scm.isPayoutState(STATE.UmaPending, 0)).to.eq(false);
+    });
+  });
   after(async function () {
     await unfork();
   });

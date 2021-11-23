@@ -27,4 +27,12 @@ contract SherlockClaimManagerTest is SherlockClaimManager {
   function viewLastClaimID() external view returns (uint256) {
     return lastClaimID;
   }
+
+  function isPayoutState(State _oldState, uint256 updated) external view returns (bool) {
+    return _isPayoutState(_oldState, updated);
+  }
+
+  function isEscalateState(State _oldState, uint256 updated) external view returns (bool) {
+    return _isEscalateState(_oldState, updated);
+  }
 }
