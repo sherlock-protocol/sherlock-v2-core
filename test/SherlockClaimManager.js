@@ -929,9 +929,10 @@ describe('SherlockClaimManager ─ Functional', function () {
       expect(await this.scm.protocolClaimActive(this.protocolX)).to.eq(true);
     });
   });
-  describe('payoutClaim(), by UMA', function () {
+  describe('payoutClaim(), by UMA, yes UMAHO', function () {
     before(async function () {
       await timeTraveler.revertSnapshot();
+      this.internalIdentifier = keccak256('0x1212');
 
       this.t0 = await meta(
         this.scm
@@ -946,7 +947,6 @@ describe('SherlockClaimManager ─ Functional', function () {
       await this.usdc.connect(this.carol).approve(this.scm.address, this.usdcAmount);
 
       this.t1 = await meta(this.scm.connect(this.carol).escalate(1, this.usdcAmount));
-      this.internalIdentifier = keccak256('0x1212');
     });
     it('Invalid sender', async function () {
       await expect(this.scm.payoutClaim(1)).to.be.revertedWith('InvalidSender()');
@@ -1009,6 +1009,62 @@ describe('SherlockClaimManager ─ Functional', function () {
       expect(this.t1.events[0].event).to.eq('ClaimStatusChanged');
       expect(this.t1.events[0].args.claimID).to.eq(1);
       expect(this.t1.events[0].args.previousState).to.eq(STATE.UmaApproved);
+      expect(this.t1.events[0].args.currentState).to.eq(STATE.NonExistent);
+      expect(this.t1.events[1].event).to.eq('ClaimPayout');
+      expect(this.t1.events[1].args.claimID).to.eq(1);
+      expect(this.t1.events[1].args.receiver).to.eq(this.bob.address);
+      expect(this.t1.events[1].args.amount).to.eq(1000);
+    });
+    it('Verify state', async function () {
+      expect(await this.usdc.balanceOf(this.bob.address)).to.eq(1000);
+
+      expect(await this.scm.protocolClaimActive(this.protocolX)).to.eq(false);
+
+      expect(await this.scm.viewPublicToInternalID(1)).to.eq(constants.HashZero);
+      expect(await this.scm.viewInternalToPublicID(this.internalIdentifier)).to.eq(0);
+
+      await expect(this.scm.claims(1)).to.be.revertedWith('InvalidArgument()');
+    });
+  });
+  describe('payoutClaim(), by SPCC, no UMAHO', function () {
+    before(async function () {
+      await timeTraveler.revertSnapshot();
+      this.internalIdentifier = keccak256('0x1212');
+
+      await this.scm.renounceUmaHaltOperator();
+      this.t0 = await meta(
+        this.scm
+          .connect(this.carol)
+          .startClaim(this.protocolX, 1000, this.bob.address, 1, '0x1212'),
+      );
+
+      this.t1 = await meta(this.scm.connect(this.spcc).spccApprove(1));
+    });
+    it('Initial state', async function () {
+      expect(await this.usdc.balanceOf(this.bob.address)).to.eq(0);
+
+      expect(await this.scm.protocolClaimActive(this.protocolX)).to.eq(true);
+
+      expect(await this.scm.viewPublicToInternalID(1)).to.eq(this.internalIdentifier);
+      expect(await this.scm.viewInternalToPublicID(this.internalIdentifier)).to.eq(1);
+
+      const claim = await this.scm.claims(1);
+      expect(claim[0]).to.eq(this.t0.time);
+      expect(claim[1]).to.eq(this.t1.time);
+      expect(claim[2]).to.eq(this.carol.address);
+      expect(claim[3]).to.eq(this.protocolX);
+      expect(claim[4]).to.eq(1000);
+      expect(claim[5]).to.eq(this.bob.address);
+      expect(claim[6]).to.eq(1);
+      expect(claim[7]).to.eq('0x1212');
+      expect(claim[8]).to.eq(STATE.SpccApproved);
+    });
+    it('Do', async function () {
+      this.t1 = await meta(this.scm.connect(this.carol).payoutClaim(1));
+      expect(this.t1.events.length).to.eq(4);
+      expect(this.t1.events[0].event).to.eq('ClaimStatusChanged');
+      expect(this.t1.events[0].args.claimID).to.eq(1);
+      expect(this.t1.events[0].args.previousState).to.eq(STATE.SpccApproved);
       expect(this.t1.events[0].args.currentState).to.eq(STATE.NonExistent);
       expect(this.t1.events[1].event).to.eq('ClaimPayout');
       expect(this.t1.events[1].args.claimID).to.eq(1);

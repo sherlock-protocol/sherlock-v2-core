@@ -169,6 +169,12 @@ contract SherlockClaimManager is ISherlockClaimManager, Manager {
     if (_setState(claimIdentifier, State.SpccDenied) != State.SpccPending) revert InvalidState();
   }
 
+  function _isEscalateState(State _oldState, uint256 updated) internal view returns (bool) {
+    if (_oldState == State.SpccDenied) return true;
+    if (_oldState == State.SpccPending && updated + SPCC_TIME < block.timestamp) return true;
+    return false;
+  }
+
   function escalate(uint256 _claimID, uint256 _amount) external override {
     if (_amount < BOND) revert InvalidArgument();
 
@@ -180,10 +186,7 @@ contract SherlockClaimManager is ISherlockClaimManager, Manager {
 
     uint256 updated = claim.updated;
     State _oldState = _setState(claimIdentifier, State.UmaPriceProposed);
-    if (
-      _oldState != State.SpccDenied &&
-      !(_oldState == State.SpccPending && updated + SPCC_TIME < block.timestamp)
-    ) revert InvalidState();
+    if (_isEscalateState(_oldState, updated) == false) revert InvalidState();
 
     TOKEN.safeTransferFrom(msg.sender, address(this), _amount);
     TOKEN.safeApprove(address(UMA), _amount);
@@ -227,6 +230,17 @@ contract SherlockClaimManager is ISherlockClaimManager, Manager {
     if (remaining != 0) TOKEN.safeTransfer(msg.sender, remaining);
   }
 
+  function _isPayoutState(State _oldState, uint256 updated) internal view returns (bool) {
+    if (umaHaltOperator == address(0)) {
+      if (_oldState == State.SpccApproved) return true;
+      if (_oldState == State.UmaApproved) return true;
+    } else {
+      if (_oldState == State.SpccApproved) return true;
+      if (_oldState == State.UmaApproved && updated + UMAHO_TIME < block.timestamp) return true;
+    }
+    return false;
+  }
+
   function payoutClaim(uint256 _claimID) external override {
     bytes32 claimIdentifier = publicToInternalID[_claimID];
     if (claimIdentifier == bytes32(0)) revert InvalidArgument();
@@ -239,15 +253,7 @@ contract SherlockClaimManager is ISherlockClaimManager, Manager {
     uint256 updated = claim.updated;
 
     State _oldState = _setState(claimIdentifier, State.NonExistent);
-
-    if (umaHaltOperator == address(0)) {
-      if (_oldState != State.SpccApproved && _oldState != State.UmaApproved) revert InvalidState();
-    } else {
-      if (
-        _oldState != State.SpccApproved &&
-        !(_oldState == State.UmaApproved && updated + UMAHO_TIME < block.timestamp)
-      ) revert InvalidState();
-    }
+    if (_isPayoutState(_oldState, updated) == false) revert InvalidState();
 
     emit ClaimPayout(_claimID, receiver, amount);
 
