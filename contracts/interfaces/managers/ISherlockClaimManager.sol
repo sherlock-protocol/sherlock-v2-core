@@ -78,7 +78,7 @@ interface ISherlockClaimManager is IManager, OptimisticRequester {
   // On price proposed callback --> call disputePriceFor with callbackdata + sherlock.strategyManager() and address(this)
 
   /// @notice `SHERLOCK_CLAIM` in utf8
-  function umaIdentifier() external view returns (bytes32);
+  function UMA_IDENTIFIER() external view returns (bytes32);
 
   function sherlockProtocolClaimsCommittee() external view returns (address);
 

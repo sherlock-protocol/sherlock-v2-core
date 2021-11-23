@@ -24,7 +24,7 @@ contract SherlockClaimManager is ISherlockClaimManager, Manager {
   uint256 constant UMAHO_TIME = 3 days;
   uint256 constant SPCC_TIME = 7 days;
   uint256 constant LIVENESS = 7200;
-  bytes32 public constant override umaIdentifier =
+  bytes32 public constant override UMA_IDENTIFIER =
     bytes32(0x534845524c4f434b5f434c41494d000000000000000000000000000000000000);
   SkinnyOptimisticOracleInterface constant UMA =
     SkinnyOptimisticOracleInterface(0xeE3Afe347D5C74317041E2618C49534dAf887c24);
@@ -44,7 +44,7 @@ contract SherlockClaimManager is ISherlockClaimManager, Manager {
   uint256 internal lastClaimID;
 
   modifier onlyUMA(bytes32 identifier) {
-    if (umaIdentifier != identifier) revert InvalidArgument();
+    if (identifier != UMA_IDENTIFIER) revert InvalidArgument();
     if (msg.sender != address(UMA)) revert InvalidSender();
     _;
   }
@@ -193,7 +193,7 @@ contract SherlockClaimManager is ISherlockClaimManager, Manager {
     // Note: the resolved price should exactly match the claim amount
     // Otherwise the `umaApproved` in our settled callback will be false.
     UMA.requestAndProposePriceFor(
-      umaIdentifier,
+      UMA_IDENTIFIER,
       claim.timestamp,
       claim.ancillaryData,
       TOKEN,
@@ -210,7 +210,7 @@ contract SherlockClaimManager is ISherlockClaimManager, Manager {
 
     // Basically the protocol agent is disputing this the proposal of SHERLOCK
     UMA.disputePriceFor(
-      umaIdentifier,
+      UMA_IDENTIFIER,
       claim.timestamp,
       claim.ancillaryData,
       umaRequest,
