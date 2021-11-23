@@ -27,7 +27,7 @@ interface ISherlockClaimManager is IManager, OptimisticRequester {
 
   event ClaimStatusChanged(uint256 claimID, State previousState, State currentState);
 
-  event ClaimPayout(uint256 claimID);
+  event ClaimPayout(uint256 claimID, address receiver, uint256 amount);
 
   event ClaimHalted(uint256 claimID);
 

@@ -15,6 +15,7 @@ import 'hardhat/console.sol';
 
 // @todo everyone can escalate and enact?
 // @todo add callback for payout
+// @todo reentry guard?
 
 /// @dev expects 6 decimals input tokens
 contract SherlockClaimManager is ISherlockClaimManager, Manager {
@@ -240,15 +241,15 @@ contract SherlockClaimManager is ISherlockClaimManager, Manager {
     State _oldState = _setState(claimIdentifier, State.NonExistent);
 
     if (umaHaltOperator == address(0)) {
-      if (_oldState != State.SpccApproved || _oldState != State.UmaApproved) revert InvalidState();
+      if (_oldState != State.SpccApproved && _oldState != State.UmaApproved) revert InvalidState();
     } else {
       if (
-        _oldState != State.SpccApproved ||
-        !(_oldState == State.UmaApproved && updated + UMAHO_TIME <= block.timestamp)
+        _oldState != State.SpccApproved &&
+        !(_oldState == State.UmaApproved && updated + UMAHO_TIME < block.timestamp)
       ) revert InvalidState();
     }
 
-    emit ClaimPayout(_claimID);
+    emit ClaimPayout(_claimID, receiver, amount);
 
     sherlockCore.payoutClaim(receiver, amount);
   }

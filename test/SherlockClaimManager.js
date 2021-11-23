@@ -15,14 +15,15 @@ const { constants, BigNumber } = require('ethers');
 const { TimeTraveler } = require('./utilities/snapshot');
 const { id, formatBytes32String, keccak256 } = require('ethers/lib/utils');
 
-const maxTokens = parseUnits('100000000000', 6);
+const maxTokens = parseUnits('1000000', 6);
 const days7 = 60 * 60 * 24 * 7;
+const days3 = 60 * 60 * 24 * 3;
 const year2035timestamp = 2079361524;
 
 const UMA_ADDRESS = '0xeE3Afe347D5C74317041E2618C49534dAf887c24';
 const USDC_ADDRESS = '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48';
 
-const SHERLOCK_IDENTIFIER = '0x534845524c4f434b5f434c41494d000000000000000000000000000000000000';
+const UMA_IDENTIFIER = '0x534845524c4f434b5f434c41494d000000000000000000000000000000000000';
 const COVERAGE_AMOUNT = parseUnits('100', 6);
 
 const STATE = {
@@ -198,7 +199,7 @@ describe('SherlockClaimManager ─ Stateless', function () {
     });
     it('Invalid sender', async function () {
       await expect(
-        this.scm.priceProposed(SHERLOCK_IDENTIFIER, 3, '0x3123', {
+        this.scm.priceProposed(UMA_IDENTIFIER, 3, '0x3123', {
           proposer: this.bob.address,
           disputer: this.bob.address,
           currency: USDC_ADDRESS,
@@ -215,7 +216,7 @@ describe('SherlockClaimManager ─ Stateless', function () {
     });
     it('Invalid claim', async function () {
       await expect(
-        this.scm.connect(this.uma).priceProposed(SHERLOCK_IDENTIFIER, 3, '0x', {
+        this.scm.connect(this.uma).priceProposed(UMA_IDENTIFIER, 3, '0x', {
           proposer: constants.AddressZero,
           disputer: constants.AddressZero,
           currency: constants.AddressZero,
@@ -251,7 +252,7 @@ describe('SherlockClaimManager ─ Stateless', function () {
     });
     it('Invalid sender', async function () {
       await expect(
-        this.scm.priceDisputed(SHERLOCK_IDENTIFIER, 3, '0x3123', {
+        this.scm.priceDisputed(UMA_IDENTIFIER, 3, '0x3123', {
           proposer: this.bob.address,
           disputer: this.bob.address,
           currency: USDC_ADDRESS,
@@ -268,7 +269,7 @@ describe('SherlockClaimManager ─ Stateless', function () {
     });
     it('Invalid claim', async function () {
       await expect(
-        this.scm.connect(this.uma).priceDisputed(SHERLOCK_IDENTIFIER, 3, '0x', {
+        this.scm.connect(this.uma).priceDisputed(UMA_IDENTIFIER, 3, '0x', {
           proposer: constants.AddressZero,
           disputer: constants.AddressZero,
           currency: constants.AddressZero,
@@ -304,7 +305,7 @@ describe('SherlockClaimManager ─ Stateless', function () {
     });
     it('Invalid sender', async function () {
       await expect(
-        this.scm.priceSettled(SHERLOCK_IDENTIFIER, 3, '0x3123', {
+        this.scm.priceSettled(UMA_IDENTIFIER, 3, '0x3123', {
           proposer: this.bob.address,
           disputer: this.bob.address,
           currency: USDC_ADDRESS,
@@ -321,7 +322,7 @@ describe('SherlockClaimManager ─ Stateless', function () {
     });
     it('Invalid state, but approved', async function () {
       await expect(
-        this.scm.connect(this.uma).priceSettled(SHERLOCK_IDENTIFIER, 3, '0x', {
+        this.scm.connect(this.uma).priceSettled(UMA_IDENTIFIER, 3, '0x', {
           proposer: constants.AddressZero,
           disputer: constants.AddressZero,
           currency: constants.AddressZero,
@@ -338,7 +339,7 @@ describe('SherlockClaimManager ─ Stateless', function () {
     });
     it('Invalid state, but denied', async function () {
       await expect(
-        this.scm.connect(this.uma).priceSettled(SHERLOCK_IDENTIFIER, 3, '0x', {
+        this.scm.connect(this.uma).priceSettled(UMA_IDENTIFIER, 3, '0x', {
           proposer: constants.AddressZero,
           disputer: constants.AddressZero,
           currency: constants.AddressZero,
@@ -382,15 +383,16 @@ describe('SherlockClaimManager ─ Functional', function () {
           'test',
           'tst',
           this.alice.address,
-          this.alice.address,
+          constants.AddressZero,
           this.alice.address,
           this.spm.address,
           this.scm.address,
-          [],
+          [1000],
         ],
       ],
     ]);
     await this.scm.setSherlockCoreAddress(this.sherlock.address);
+    await this.spm.setSherlockCoreAddress(this.sherlock.address);
 
     await this.spm.protocolAdd(this.protocolX, this.carol.address, id('x'), 0, COVERAGE_AMOUNT);
     await this.spm.protocolAdd(this.protocolY, this.carol.address, id('x'), 0, COVERAGE_AMOUNT);
@@ -405,7 +407,6 @@ describe('SherlockClaimManager ─ Functional', function () {
     });
 
     this.uma = await ethers.provider.getSigner(UMA_ADDRESS);
-    await timeTraveler.snapshot();
 
     this.usdc = await ethers.getContractAt('ERC20', USDC_ADDRESS);
     this.mintUSDC = async (target, amount) => {
@@ -415,9 +416,18 @@ describe('SherlockClaimManager ─ Functional', function () {
         params: [usdcWhaleAddress],
       });
       const usdcWhale = await ethers.provider.getSigner(usdcWhaleAddress);
-      this.usdc.connect(usdcWhale).transfer(target, amount);
+      await this.usdc.connect(usdcWhale).transfer(target, amount);
     };
-    this.uma = await ethers.getContractAt('SkinnyOptimisticOracleInterface', UMA_ADDRESS);
+    this.umaOracleInstance = await ethers.getContractAt(
+      'SkinnyOptimisticOracleInterface',
+      UMA_ADDRESS,
+    );
+
+    await this.mintUSDC(this.alice.address, maxTokens);
+    await this.usdc.approve(this.sherlock.address, maxTokens);
+    await this.sherlock.initialStake(maxTokens, 1000, this.alice.address);
+
+    await timeTraveler.snapshot();
   });
   describe('startClaim(), active', function () {
     before(async function () {
@@ -795,10 +805,10 @@ describe('SherlockClaimManager ─ Functional', function () {
 
       // on UMA request and propose price for
       expect(this.t1.events[4].address).to.eq(UMA_ADDRESS);
-      this.t1.events[4] = this.uma.interface.parseLog(this.t1.events[4]);
+      this.t1.events[4] = this.umaOracleInstance.interface.parseLog(this.t1.events[4]);
       expect(this.t1.events[4].name).to.eq('RequestPrice');
       expect(this.t1.events[4].args.requester).to.eq(this.scm.address);
-      expect(this.t1.events[4].args.identifier).to.eq(SHERLOCK_IDENTIFIER);
+      expect(this.t1.events[4].args.identifier).to.eq(UMA_IDENTIFIER);
       expect(this.t1.events[4].args.timestamp).to.eq(1);
       expect(this.t1.events[4].args.ancillaryData).to.eq('0x1212');
       const request = this.t1.events[4].args.request;
@@ -815,10 +825,10 @@ describe('SherlockClaimManager ─ Functional', function () {
       expect(request.resolvedPrice).to.eq(0);
 
       expect(this.t1.events[5].address).to.eq(UMA_ADDRESS);
-      this.t1.events[5] = this.uma.interface.parseLog(this.t1.events[5]);
+      this.t1.events[5] = this.umaOracleInstance.interface.parseLog(this.t1.events[5]);
       expect(this.t1.events[5].name).to.eq('ProposePrice');
       expect(this.t1.events[5].args.requester).to.eq(this.scm.address);
-      expect(this.t1.events[5].args.identifier).to.eq(SHERLOCK_IDENTIFIER);
+      expect(this.t1.events[5].args.identifier).to.eq(UMA_IDENTIFIER);
       expect(this.t1.events[5].args.timestamp).to.eq(1);
       expect(this.t1.events[5].args.ancillaryData).to.eq('0x1212');
       const request2 = this.t1.events[4].args.request;
@@ -848,9 +858,9 @@ describe('SherlockClaimManager ─ Functional', function () {
 
       // on UMA dispute price for
       expect(this.t1.events[12].address).to.eq(UMA_ADDRESS);
-      this.t1.events[12] = this.uma.interface.parseLog(this.t1.events[12]);
+      this.t1.events[12] = this.umaOracleInstance.interface.parseLog(this.t1.events[12]);
       expect(this.t1.events[12].args.requester).to.eq(this.scm.address);
-      expect(this.t1.events[12].args.identifier).to.eq(SHERLOCK_IDENTIFIER);
+      expect(this.t1.events[12].args.identifier).to.eq(UMA_IDENTIFIER);
       expect(this.t1.events[12].args.timestamp).to.eq(1);
       expect(this.t1.events[12].args.ancillaryData).to.eq('0x1212');
       const request3 = this.t1.events[12].args.request;
@@ -919,7 +929,103 @@ describe('SherlockClaimManager ─ Functional', function () {
       expect(await this.scm.protocolClaimActive(this.protocolX)).to.eq(true);
     });
   });
-  describe('payoutClaim()', function () {});
+  describe('payoutClaim(), by UMA', function () {
+    before(async function () {
+      await timeTraveler.revertSnapshot();
+
+      this.t0 = await meta(
+        this.scm
+          .connect(this.carol)
+          .startClaim(this.protocolX, 1000, this.bob.address, 1, '0x1212'),
+      );
+
+      await this.scm.connect(this.spcc).spccRefuse(1);
+
+      this.usdcAmount = parseUnits('20000', 6);
+      await this.mintUSDC(this.carol.address, this.usdcAmount);
+      await this.usdc.connect(this.carol).approve(this.scm.address, this.usdcAmount);
+
+      this.t1 = await meta(this.scm.connect(this.carol).escalate(1, this.usdcAmount));
+      this.internalIdentifier = keccak256('0x1212');
+    });
+    it('Invalid sender', async function () {
+      await expect(this.scm.payoutClaim(1)).to.be.revertedWith('InvalidSender()');
+    });
+    it('Invalid state', async function () {
+      await expect(this.scm.connect(this.carol).payoutClaim(1)).to.be.revertedWith(
+        'InvalidState()',
+      );
+
+      this.t2 = await meta(
+        this.scm.connect(this.uma).priceSettled(UMA_IDENTIFIER, 1, '0x1212', {
+          proposer: this.sherlock.address,
+          disputer: this.carol.address,
+          currency: USDC_ADDRESS,
+          settled: false,
+          proposedPrice: BigNumber.from(0),
+          resolvedPrice: BigNumber.from(1000),
+          expirationTime: this.t1.time.add(7200),
+          reward: BigNumber.from(0),
+          finalFee: parseUnits('400', 6),
+          bond: parseUnits('5000', 6),
+          customLiveness: BigNumber.from(7200),
+        }),
+      );
+    });
+    it('Invalid state, uma time', async function () {
+      await hre.network.provider.request({
+        method: 'evm_increaseTime',
+        params: [days3 - 10],
+      });
+
+      await expect(this.scm.connect(this.carol).payoutClaim(1)).to.be.revertedWith(
+        'InvalidState()',
+      );
+
+      await timeTraveler.mine(10);
+    });
+    it('Initial state', async function () {
+      expect(await this.usdc.balanceOf(this.bob.address)).to.eq(0);
+
+      expect(await this.scm.protocolClaimActive(this.protocolX)).to.eq(true);
+
+      expect(await this.scm.viewPublicToInternalID(1)).to.eq(this.internalIdentifier);
+      expect(await this.scm.viewInternalToPublicID(this.internalIdentifier)).to.eq(1);
+
+      const claim = await this.scm.claims(1);
+      expect(claim[0]).to.eq(this.t0.time);
+      expect(claim[1]).to.eq(this.t2.time);
+      expect(claim[2]).to.eq(this.carol.address);
+      expect(claim[3]).to.eq(this.protocolX);
+      expect(claim[4]).to.eq(1000);
+      expect(claim[5]).to.eq(this.bob.address);
+      expect(claim[6]).to.eq(1);
+      expect(claim[7]).to.eq('0x1212');
+      expect(claim[8]).to.eq(STATE.UmaApproved);
+    });
+    it('Do', async function () {
+      this.t1 = await meta(this.scm.connect(this.carol).payoutClaim(1));
+      expect(this.t1.events.length).to.eq(4);
+      expect(this.t1.events[0].event).to.eq('ClaimStatusChanged');
+      expect(this.t1.events[0].args.claimID).to.eq(1);
+      expect(this.t1.events[0].args.previousState).to.eq(STATE.UmaApproved);
+      expect(this.t1.events[0].args.currentState).to.eq(STATE.NonExistent);
+      expect(this.t1.events[1].event).to.eq('ClaimPayout');
+      expect(this.t1.events[1].args.claimID).to.eq(1);
+      expect(this.t1.events[1].args.receiver).to.eq(this.bob.address);
+      expect(this.t1.events[1].args.amount).to.eq(1000);
+    });
+    it('Verify state', async function () {
+      expect(await this.usdc.balanceOf(this.bob.address)).to.eq(1000);
+
+      expect(await this.scm.protocolClaimActive(this.protocolX)).to.eq(false);
+
+      expect(await this.scm.viewPublicToInternalID(1)).to.eq(constants.HashZero);
+      expect(await this.scm.viewInternalToPublicID(this.internalIdentifier)).to.eq(0);
+
+      await expect(this.scm.claims(1)).to.be.revertedWith('InvalidArgument()');
+    });
+  });
   describe('executeHalt()', function () {});
   describe('priceProposed()', function () {});
   describe('priceDisputed()', function () {});
