@@ -741,7 +741,9 @@ describe('Sherlock ─ Functional', function () {
       expect(await this.strategy.withdrawCalled()).to.eq(0);
     });
     it('Do zero', async function () {
-      this.t0 = await meta(this.sherlock.connect(this.claimManager).payoutClaim(this.bob.address, 0));
+      this.t0 = await meta(
+        this.sherlock.connect(this.claimManager).payoutClaim(this.bob.address, 0),
+      );
 
       expect(this.t0.events.length).to.eq(1);
       expect(this.t0.events[0].event).to.eq('ClaimPayout');
@@ -862,7 +864,9 @@ describe('Sherlock ─ Functional', function () {
       await this.sherdist.setReward(parseEther('2'));
       await this.sherdist.setCustomRewardReturnValue(parseEther('2').sub(1));
 
-      await expect(this.sherlock.initialStake(this.amount, 20, this.bob.address)).to.be.revertedWith(
+      await expect(
+        this.sherlock.initialStake(this.amount, 20, this.bob.address),
+      ).to.be.revertedWith(
         'InvalidSherAmount(' + parseEther('2').sub(1) + ', ' + parseEther('2') + ')',
       );
     });
@@ -962,7 +966,9 @@ describe('Sherlock ─ Functional', function () {
       expect(await this.sherlock.sherRewards(1)).to.eq(0);
     });
     it('Non owner', async function () {
-      await expect(this.sherlock.connect(this.bob).redeemNFT(1)).to.be.revertedWith('Unauthorized()');
+      await expect(this.sherlock.connect(this.bob).redeemNFT(1)).to.be.revertedWith(
+        'Unauthorized()',
+      );
     });
     it('invalid conditions', async function () {
       await expect(this.sherlock.connect(this.carol).redeemNFT(1)).to.be.revertedWith(
@@ -1170,10 +1176,7 @@ describe('Sherlock ─ Functional', function () {
       );
     });
     it('Fail, block before deadline', async function () {
-      await hre.network.provider.request({
-        method: 'evm_setNextBlockTimestamp',
-        params: [Number(this.t1.time.add(10).add(weeks2).sub(2))],
-      });
+      await timeTraveler.setNextBlockTimestamp(Number(this.t1.time.add(10).add(weeks2).sub(2)));
       await timeTraveler.mine(1);
 
       const res = await this.sherlock.connect(this.bob).viewRewardForArbRestake(1);
@@ -1192,10 +1195,7 @@ describe('Sherlock ─ Functional', function () {
       expect(res[1]).to.eq(true);
     });
     it('10 percent', async function () {
-      await hre.network.provider.request({
-        method: 'evm_increaseTime',
-        params: [weeks2 / 10],
-      });
+      await timeTraveler.increaseTime(weeks2 / 10);
       await timeTraveler.mine(1);
 
       const res = await this.sherlock.connect(this.bob).viewRewardForArbRestake(1);
@@ -1205,10 +1205,7 @@ describe('Sherlock ─ Functional', function () {
       expect(res[1]).to.eq(true);
     });
     it('20 percent', async function () {
-      await hre.network.provider.request({
-        method: 'evm_increaseTime',
-        params: [weeks2 / 10],
-      });
+      await timeTraveler.increaseTime(weeks2 / 10);
       await timeTraveler.mine(1);
 
       const res = await this.sherlock.connect(this.bob).viewRewardForArbRestake(1);
@@ -1218,10 +1215,7 @@ describe('Sherlock ─ Functional', function () {
       expect(res[1]).to.eq(true);
     });
     it('90 percent', async function () {
-      await hre.network.provider.request({
-        method: 'evm_increaseTime',
-        params: [(weeks2 / 10) * 7],
-      });
+      await timeTraveler.increaseTime((weeks2 / 10) * 7);
       await timeTraveler.mine(1);
 
       const res = await this.sherlock.connect(this.bob).viewRewardForArbRestake(1);
@@ -1231,10 +1225,7 @@ describe('Sherlock ─ Functional', function () {
       expect(res[1]).to.eq(true);
     });
     it('100 percent', async function () {
-      await hre.network.provider.request({
-        method: 'evm_increaseTime',
-        params: [weeks2 / 10],
-      });
+      await timeTraveler.increaseTime(weeks2 / 10);
       await timeTraveler.mine(1);
 
       const res = await this.sherlock.connect(this.bob).viewRewardForArbRestake(1);
@@ -1244,10 +1235,7 @@ describe('Sherlock ─ Functional', function () {
       expect(res[1]).to.eq(true);
     });
     it('Stays 100 percent', async function () {
-      await hre.network.provider.request({
-        method: 'evm_increaseTime',
-        params: [weeks2 / 10],
-      });
+      await timeTraveler.increaseTime(weeks2 / 10);
       await timeTraveler.mine(1);
 
       const res = await this.sherlock.connect(this.bob).viewRewardForArbRestake(1);
@@ -1322,18 +1310,16 @@ describe('Sherlock ─ Functional', function () {
       expect(await this.sherlock.sherRewards(1)).to.eq(this.reward);
     });
     it('Fail, block before deadline', async function () {
-      await hre.network.provider.request({
-        method: 'evm_setNextBlockTimestamp',
-        params: [
-          Number(
-            this.t1.time
-              .add(10)
-              .add(weeks2)
-              .add(weeks2 / 2)
-              .sub(1),
-          ),
-        ],
-      });
+      await timeTraveler.setNextBlockTimestamp(
+        Number(
+          this.t1.time
+            .add(10)
+            .add(weeks2)
+            .add(weeks2 / 2)
+            .sub(1),
+        ),
+      );
+
       await timeTraveler.mine(1);
 
       // 50% of total rewards = 10% of total amount

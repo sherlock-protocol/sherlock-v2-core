@@ -552,7 +552,9 @@ describe('SherlockProtocolManager ─ Functional', function () {
       expect(await this.spm.viewRemovedProtocolClaimDeadline(this.protocolX)).to.eq(0);
 
       expect(await this.spm.protocolAgent(this.protocolX)).to.eq(this.alice.address);
-      expect(await this.spm.activeBalance(this.protocolX)).to.eq(maxTokens.sub(this.premium.mul(10)));
+      expect(await this.spm.activeBalance(this.protocolX)).to.eq(
+        maxTokens.sub(this.premium.mul(10)),
+      );
       expect(await this.spm.nonStakersClaimable(this.protocolX)).to.eq(
         this.premiumNonStakers.mul(10),
       );
@@ -596,14 +598,18 @@ describe('SherlockProtocolManager ─ Functional', function () {
 
       expect(await this.spm.viewAllPremiumsPerSecToStakers()).to.eq(this.newPremiumStakers);
       expect(await this.spm.viewLastAccountedGlobal()).to.eq(this.t2.time);
-      expect(await this.spm.viewLastClaimablePremiumsForStakers()).to.eq(this.premiumStakers.mul(11));
+      expect(await this.spm.viewLastClaimablePremiumsForStakers()).to.eq(
+        this.premiumStakers.mul(11),
+      );
 
       expect(await this.spm.viewProtocolAgent(this.protocolX)).to.eq(this.alice.address);
       expect(await this.spm.viewRemovedProtocolAgent(this.protocolX)).to.eq(constants.AddressZero);
       expect(await this.spm.viewRemovedProtocolClaimDeadline(this.protocolX)).to.eq(0);
 
       expect(await this.spm.protocolAgent(this.protocolX)).to.eq(this.alice.address);
-      expect(await this.spm.activeBalance(this.protocolX)).to.eq(maxTokens.sub(this.premium.mul(11)));
+      expect(await this.spm.activeBalance(this.protocolX)).to.eq(
+        maxTokens.sub(this.premium.mul(11)),
+      );
       expect(await this.spm.nonStakersClaimable(this.protocolX)).to.eq(
         this.premiumNonStakers.mul(11),
       );
@@ -633,7 +639,9 @@ describe('SherlockProtocolManager ─ Functional', function () {
 
       expect(await this.spm.viewAllPremiumsPerSecToStakers()).to.eq(this.newPremiumStakers);
       expect(await this.spm.viewLastAccountedGlobal()).to.eq(this.t2.time);
-      expect(await this.spm.viewLastClaimablePremiumsForStakers()).to.eq(this.premiumStakers.mul(11));
+      expect(await this.spm.viewLastClaimablePremiumsForStakers()).to.eq(
+        this.premiumStakers.mul(11),
+      );
 
       expect(await this.spm.viewProtocolAgent(this.protocolX)).to.eq(this.alice.address);
       expect(await this.spm.viewRemovedProtocolAgent(this.protocolX)).to.eq(constants.AddressZero);
@@ -741,10 +749,7 @@ describe('SherlockProtocolManager ─ Functional', function () {
       expect(await this.spm.claimablePremiums()).to.eq(0);
     });
     it('After 7 days', async function () {
-      await hre.network.provider.request({
-        method: 'evm_increaseTime',
-        params: [days7],
-      });
+      await timeTraveler.increaseTime(days7);
       await timeTraveler.mine(2);
 
       expect(await this.spm.viewActiveBalance(this.protocolX)).to.eq(0);
@@ -988,10 +993,7 @@ describe('SherlockProtocolManager ─ Functional', function () {
       await this.spm.depositToActiveBalance(this.protocolX, this.balance);
 
       this.t1 = await meta(this.spm.setProtocolPremium(this.protocolX, this.premium));
-      await hre.network.provider.request({
-        method: 'evm_increaseTime',
-        params: [this.time],
-      });
+      await timeTraveler.increaseTime(this.time);
       await timeTraveler.mine(1);
     });
     it('Initial state', async function () {
@@ -1066,7 +1068,9 @@ describe('SherlockProtocolManager ─ Functional', function () {
 
       expect(await this.spm.viewAllPremiumsPerSecToStakers()).to.eq(0);
       expect(await this.spm.viewLastAccountedGlobal()).to.eq(this.t2.time);
-      expect(await this.spm.viewLastClaimablePremiumsForStakers()).to.eq(this.balance.div(10).mul(9));
+      expect(await this.spm.viewLastClaimablePremiumsForStakers()).to.eq(
+        this.balance.div(10).mul(9),
+      );
 
       expect(await this.spm.viewProtocolAgent(this.protocolX)).to.eq(constants.AddressZero);
       expect(await this.spm.viewRemovedProtocolAgent(this.protocolX)).to.eq(this.alice.address);
@@ -1150,10 +1154,8 @@ describe('SherlockProtocolManager ─ Functional', function () {
       );
 
       this.skippedSeconds = this.minActiveBalance.mul(10).div(this.premium).add(1);
-      await hre.network.provider.request({
-        method: 'evm_increaseTime',
-        params: [Number(this.skippedSeconds - 2)], // minus two because of 2 blocks mined
-      });
+
+      await timeTraveler.increaseTime(Number(this.skippedSeconds - 2));
       await timeTraveler.mine(1);
     });
     it('Do', async function () {
@@ -1227,10 +1229,7 @@ describe('SherlockProtocolManager ─ Functional', function () {
       );
     });
     it('After 7 days', async function () {
-      await hre.network.provider.request({
-        method: 'evm_increaseTime',
-        params: [days7],
-      });
+      await timeTraveler.increaseTime(days7);
       await timeTraveler.mine(2);
 
       expect(await this.spm.viewActiveBalance(this.protocolX)).to.eq(0);
@@ -1333,10 +1332,8 @@ describe('SherlockProtocolManager ─ Functional', function () {
     });
     it('Do', async function () {
       this.skippedSeconds = this.minActiveBalance.mul(11).div(this.premium).add(1);
-      await hre.network.provider.request({
-        method: 'evm_increaseTime',
-        params: [Number(this.skippedSeconds - 2)], // minus two because of 2 blocks mined
-      });
+
+      await timeTraveler.increaseTime(Number(this.skippedSeconds - 2));
       await timeTraveler.mine(1);
 
       this.t2 = await meta(this.spm.connect(this.bob).forceRemoveByActiveBalance(this.protocolX));
@@ -1468,10 +1465,8 @@ describe('SherlockProtocolManager ─ Functional', function () {
     });
     it('Do', async function () {
       this.skipSeconds = (this.minCoverageSeconds + 1) / 2;
-      await hre.network.provider.request({
-        method: 'evm_increaseTime',
-        params: [Number(this.skipSeconds)],
-      });
+
+      await timeTraveler.increaseTime(Number(this.skipSeconds));
       await timeTraveler.mine(1);
       // check state pre removal
 
@@ -1648,10 +1643,7 @@ describe('SherlockProtocolManager ─ Functional', function () {
     });
     it('Do', async function () {
       this.skipSeconds = this.minCoverageSeconds + 100;
-      await hre.network.provider.request({
-        method: 'evm_increaseTime',
-        params: [Number(this.skipSeconds)],
-      });
+      await timeTraveler.increaseTime(Number(this.skipSeconds));
       await timeTraveler.mine(1);
       // check state pre removal
 
@@ -1826,7 +1818,9 @@ describe('SherlockProtocolManager ─ Functional', function () {
       expect(await this.spm.minActiveBalance()).to.eq(0);
     });
     it('do fail', async function () {
-      await expect(this.spm.setMinActiveBalance(parseUnits('20001', 6))).to.be.revertedWith('INSANE');
+      await expect(this.spm.setMinActiveBalance(parseUnits('20001', 6))).to.be.revertedWith(
+        'INSANE',
+      );
     });
     it('do', async function () {
       this.b1 = parseUnits('300', 6);
@@ -2055,14 +2049,18 @@ describe('SherlockProtocolManager ─ Functional', function () {
 
       expect(await this.spm.viewAllPremiumsPerSecToStakers()).to.eq(this.newPremiumStakers);
       expect(await this.spm.viewLastAccountedGlobal()).to.eq(this.t3.time);
-      expect(await this.spm.viewLastClaimablePremiumsForStakers()).to.eq(this.premiumStakers.mul(2));
+      expect(await this.spm.viewLastClaimablePremiumsForStakers()).to.eq(
+        this.premiumStakers.mul(2),
+      );
 
       expect(await this.spm.viewProtocolAgent(this.protocolX)).to.eq(this.alice.address);
       expect(await this.spm.viewRemovedProtocolAgent(this.protocolX)).to.eq(constants.AddressZero);
       expect(await this.spm.viewRemovedProtocolClaimDeadline(this.protocolX)).to.eq(0);
 
       expect(await this.spm.protocolAgent(this.protocolX)).to.eq(this.alice.address);
-      expect(await this.spm.activeBalance(this.protocolX)).to.eq(maxTokens.sub(this.premium.mul(2)));
+      expect(await this.spm.activeBalance(this.protocolX)).to.eq(
+        maxTokens.sub(this.premium.mul(2)),
+      );
       expect(await this.spm.nonStakersClaimable(this.protocolX)).to.eq(
         this.premiumNonStakers.mul(2),
       );
@@ -2092,7 +2090,9 @@ describe('SherlockProtocolManager ─ Functional', function () {
 
       expect(await this.spm.viewAllPremiumsPerSecToStakers()).to.eq(this.newPremiumStakers);
       expect(await this.spm.viewLastAccountedGlobal()).to.eq(this.t3.time);
-      expect(await this.spm.viewLastClaimablePremiumsForStakers()).to.eq(this.premiumStakers.mul(2));
+      expect(await this.spm.viewLastClaimablePremiumsForStakers()).to.eq(
+        this.premiumStakers.mul(2),
+      );
 
       expect(await this.spm.viewProtocolAgent(this.protocolX)).to.eq(this.alice.address);
       expect(await this.spm.viewRemovedProtocolAgent(this.protocolX)).to.eq(constants.AddressZero);
@@ -2119,11 +2119,7 @@ describe('SherlockProtocolManager ─ Functional', function () {
     });
     it('Accounting error', async function () {
       this.seconds = Number(maxTokens.div(this.newPremium).sub(2)) + 1;
-      await hre.network.provider.request({
-        method: 'evm_increaseTime',
-        params: [this.seconds],
-      });
-
+      await timeTraveler.increaseTime(this.seconds);
       this.t5 = await meta(this.spm.setProtocolPremium(this.protocolX, 0));
 
       // prev internal balance - accrued debt because of evm_mine + set call
@@ -2653,9 +2649,7 @@ describe('SherlockProtocolManager ─ Functional', function () {
       expect(this.t2.events[2].args.protocol).to.eq(this.protocolX);
       expect(this.t2.events[2].args.amount).to.eq(this.amount2);
 
-      expect(await this.spm.viewActiveBalance(this.protocolX)).to.eq(
-        this.amount.add(this.amount2),
-      );
+      expect(await this.spm.viewActiveBalance(this.protocolX)).to.eq(this.amount.add(this.amount2));
       expect(await this.spm.activeBalance(this.protocolX)).to.eq(this.amount.add(this.amount2));
 
       expect(await this.ERC20Mock6d.balanceOf(this.alice.address)).to.eq(
@@ -2699,9 +2693,9 @@ describe('SherlockProtocolManager ─ Functional', function () {
       expect(await this.ERC20Mock6d.balanceOf(this.spm.address)).to.eq(this.amount);
     });
     it('Do insufficient time', async function () {
-      await expect(
-        this.spm.withdrawActiveBalance(this.protocolX, 60 * 60 * 25),
-      ).to.be.revertedWith('InsufficientBalance("' + this.protocolX + '")');
+      await expect(this.spm.withdrawActiveBalance(this.protocolX, 60 * 60 * 25)).to.be.revertedWith(
+        'InsufficientBalance("' + this.protocolX + '")',
+      );
     });
     it('Do', async function () {
       this.withdraw = 60 * 60 * 23;
@@ -2889,10 +2883,7 @@ describe('SherlockProtocolManager ─ Functional', function () {
       await this.spm.depositToActiveBalance(this.protocolY, this.balance.mul(10));
 
       this.t1 = await meta(this.spm.setProtocolPremium(this.protocolX, this.premium));
-      await hre.network.provider.request({
-        method: 'evm_increaseTime',
-        params: [this.time],
-      });
+      await timeTraveler.increaseTime(this.time);
       await timeTraveler.mine(1);
     });
     it('Initial state', async function () {

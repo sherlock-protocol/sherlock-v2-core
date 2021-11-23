@@ -75,11 +75,11 @@ contract SherlockClaimManager is ISherlockClaimManager, Manager {
   }
 
   function _isPayoutState(State _oldState, uint256 updated) internal view returns (bool) {
+    if (_oldState == State.SpccApproved) return true;
+
     if (umaHaltOperator == address(0)) {
-      if (_oldState == State.SpccApproved) return true;
       if (_oldState == State.UmaApproved) return true;
     } else {
-      if (_oldState == State.SpccApproved) return true;
       if (_oldState == State.UmaApproved && updated + UMAHO_TIME < block.timestamp) return true;
     }
     return false;

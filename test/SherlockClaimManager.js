@@ -359,9 +359,8 @@ describe('SherlockClaimManager ─ Stateless', function () {
 
 describe('SherlockClaimManager ─ Functional', function () {
   before(async function () {
-    await fork(13671132);
-
     timeTraveler = new TimeTraveler(network.provider);
+    await timeTraveler.fork(13671132);
 
     await prepare(this, ['SherlockClaimManagerTest', 'Sherlock', 'SherlockProtocolManager']);
 
@@ -425,7 +424,7 @@ describe('SherlockClaimManager ─ Functional', function () {
 
     await this.mintUSDC(this.alice.address, maxTokens);
     await this.usdc.approve(this.sherlock.address, maxTokens);
-    this.lastT = await meta(this.sherlock.initialStake(maxTokens, 1000, this.alice.address));
+    await this.sherlock.initialStake(maxTokens, 1000, this.alice.address);
 
     await timeTraveler.snapshot();
   });
@@ -903,10 +902,7 @@ describe('SherlockClaimManager ─ Functional', function () {
         .connect(this.carol)
         .startClaim(this.protocolX, 1, this.alice.address, 1, '0x1212');
 
-      await hre.network.provider.request({
-        method: 'evm_increaseTime',
-        params: [days7],
-      });
+      await timeTraveler.increaseTime(days7);
       await timeTraveler.mine(1);
     });
     it('Initial state', async function () {
@@ -973,10 +969,7 @@ describe('SherlockClaimManager ─ Functional', function () {
       );
     });
     it('Invalid state, uma time', async function () {
-      await hre.network.provider.request({
-        method: 'evm_increaseTime',
-        params: [days3 - 10],
-      });
+      await timeTraveler.increaseTime(days3 - 10);
 
       await expect(this.scm.connect(this.carol).payoutClaim(1)).to.be.revertedWith(
         'InvalidState()',
@@ -1204,10 +1197,7 @@ describe('SherlockClaimManager ─ Functional', function () {
     it('Invalid state', async function () {
       this.target = this.t1.time.add(100);
       await this.scm._setClaimUpdate(1, this.target);
-      await hre.network.provider.request({
-        method: 'evm_setNextBlockTimestamp',
-        params: [Number(this.target)],
-      });
+      await timeTraveler.setNextBlockTimestamp(Number(this.target));
 
       await expect(
         this.scm.connect(this.uma).priceProposed(UMA_IDENTIFIER, 1, '0x1212', this.requestData),
@@ -1259,10 +1249,7 @@ describe('SherlockClaimManager ─ Functional', function () {
     it('Invalid state', async function () {
       this.target = this.t1.time.add(100);
       await this.scm._setClaimUpdate(1, this.target);
-      await hre.network.provider.request({
-        method: 'evm_setNextBlockTimestamp',
-        params: [Number(this.target)],
-      });
+      await timeTraveler.setNextBlockTimestamp(Number(this.target));
 
       await expect(
         this.scm.connect(this.uma).priceDisputed(UMA_IDENTIFIER, 1, '0x1212', this.requestData),
@@ -1397,14 +1384,17 @@ describe('SherlockClaimManager ─ Functional', function () {
   describe('isEscalateState() (private function)', function () {
     before(async function () {
       await timeTraveler.revertSnapshot();
+
+      // irrelevant tx
+      this.lastT = await meta(this.usdc.approve(this.sherlock.address, maxTokens));
     });
     it('Happy flows', async function () {
       expect(await this.scm.isEscalateState(STATE.SpccDenied, this.lastT.time)).to.eq(true);
       expect(await this.scm.isEscalateState(STATE.SpccDenied, 0)).to.eq(true);
 
-      expect(await this.scm.isEscalateState(STATE.SpccPending, this.lastT.time.sub(days7))).to.eq(
-        true,
-      );
+      expect(
+        await this.scm.isEscalateState(STATE.SpccPending, this.lastT.time.sub(days7).sub(1)),
+      ).to.eq(true);
       expect(
         await this.scm.isEscalateState(STATE.SpccPending, this.lastT.time.sub(days7).sub(days7)),
       ).to.eq(true);
@@ -1425,6 +1415,9 @@ describe('SherlockClaimManager ─ Functional', function () {
     before(async function () {
       await timeTraveler.revertSnapshot();
       await this.scm.renounceUmaHaltOperator();
+
+      // irrelevant tx
+      this.lastT = await meta(this.usdc.approve(this.sherlock.address, maxTokens));
     });
     it('Happy flows', async function () {
       expect(await this.scm.isPayoutState(STATE.SpccApproved, this.lastT.time)).to.eq(true);
@@ -1449,15 +1442,15 @@ describe('SherlockClaimManager ─ Functional', function () {
       await timeTraveler.revertSnapshot();
 
       // irrelevant tx
-      this.lastT = await this.usdc.approve(this.sherlock.address, maxTokens);
+      this.lastT = await meta(this.usdc.approve(this.sherlock.address, maxTokens));
     });
     it('Happy flows', async function () {
       expect(await this.scm.isPayoutState(STATE.SpccApproved, this.lastT.time)).to.eq(true);
       expect(await this.scm.isPayoutState(STATE.SpccApproved, 0)).to.eq(true);
 
-      expect(await this.scm.isPayoutState(STATE.UmaApproved, this.lastT.time.sub(days3))).to.eq(
-        true,
-      );
+      expect(
+        await this.scm.isPayoutState(STATE.UmaApproved, this.lastT.time.sub(days3).sub(1)),
+      ).to.eq(true);
       expect(await this.scm.isPayoutState(STATE.UmaApproved, this.lastT.time.sub(days7))).to.eq(
         true,
       );
@@ -1467,9 +1460,9 @@ describe('SherlockClaimManager ─ Functional', function () {
       expect(await this.scm.isPayoutState(STATE.SpccDenied, 0)).to.eq(false);
 
       expect(await this.scm.isPayoutState(STATE.UmaApproved, this.lastT.time)).to.eq(false);
-      expect(
-        await this.scm.isPayoutState(STATE.UmaApproved, this.lastT.time.sub(days3).add(1)),
-      ).to.eq(false);
+      expect(await this.scm.isPayoutState(STATE.UmaApproved, this.lastT.time.sub(days3))).to.eq(
+        false,
+      );
 
       expect(await this.scm.isPayoutState(STATE.UmaDenied, this.lastT.time)).to.eq(false);
       expect(await this.scm.isPayoutState(STATE.UmaDenied, 0)).to.eq(false);
@@ -1479,6 +1472,6 @@ describe('SherlockClaimManager ─ Functional', function () {
     });
   });
   after(async function () {
-    await unfork();
+    await timeTraveler.unfork();
   });
 });
