@@ -264,8 +264,7 @@ contract SherlockClaimManager is ISherlockClaimManager, Manager {
     bytes32 claimIdentifier = publicToInternalID[_claimID];
     if (claimIdentifier == bytes32(0)) revert InvalidArgument();
 
-    if (_setState(claimIdentifier, State.UmaDenied) != State.UmaApproved) revert InvalidState();
-    if (_setState(claimIdentifier, State.NonExistent) != State.UmaDenied) revert InvalidState();
+    if (_setState(claimIdentifier, State.NonExistent) != State.UmaApproved) revert InvalidState();
 
     emit ClaimHalted(_claimID);
   }

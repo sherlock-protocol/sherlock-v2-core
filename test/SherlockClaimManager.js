@@ -24,7 +24,7 @@ const UMA_ADDRESS = '0xeE3Afe347D5C74317041E2618C49534dAf887c24';
 const USDC_ADDRESS = '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48';
 
 const UMA_IDENTIFIER = '0x534845524c4f434b5f434c41494d000000000000000000000000000000000000';
-const COVERAGE_AMOUNT = parseUnits('100', 6);
+const COVERAGE_AMOUNT = parseUnits('10000000000', 6);
 
 const STATE = {
   NonExistent: 0,
@@ -397,6 +397,7 @@ describe('SherlockClaimManager ─ Functional', function () {
     await this.spm.protocolAdd(this.protocolX, this.carol.address, id('x'), 0, COVERAGE_AMOUNT);
     await this.spm.protocolAdd(this.protocolY, this.carol.address, id('x'), 0, COVERAGE_AMOUNT);
 
+    const usdcWhaleAddress = '0xe78388b4ce79068e89bf8aa7f218ef6b9ab0e9d0';
     await timeTraveler.request({
       method: 'hardhat_impersonateAccount',
       params: [UMA_ADDRESS],
@@ -405,16 +406,15 @@ describe('SherlockClaimManager ─ Functional', function () {
       method: 'hardhat_setBalance',
       params: [UMA_ADDRESS, '0x100000000000000000000000000'],
     });
+    await timeTraveler.request({
+      method: 'hardhat_impersonateAccount',
+      params: [usdcWhaleAddress],
+    });
 
     this.uma = await ethers.provider.getSigner(UMA_ADDRESS);
 
     this.usdc = await ethers.getContractAt('ERC20', USDC_ADDRESS);
     this.mintUSDC = async (target, amount) => {
-      const usdcWhaleAddress = '0xe78388b4ce79068e89bf8aa7f218ef6b9ab0e9d0';
-      await timeTraveler.request({
-        method: 'hardhat_impersonateAccount',
-        params: [usdcWhaleAddress],
-      });
       const usdcWhale = await ethers.provider.getSigner(usdcWhaleAddress);
       await this.usdc.connect(usdcWhale).transfer(target, amount);
     };
@@ -1082,10 +1082,318 @@ describe('SherlockClaimManager ─ Functional', function () {
       await expect(this.scm.claims(1)).to.be.revertedWith('InvalidArgument()');
     });
   });
-  describe('executeHalt()', function () {});
-  describe('priceProposed()', function () {});
-  describe('priceDisputed()', function () {});
-  describe('priceSettled()', function () {});
+  describe('executeHalt()', function () {
+    before(async function () {
+      await timeTraveler.revertSnapshot();
+      this.internalIdentifier = keccak256('0x1212');
+
+      this.t0 = await meta(
+        this.scm
+          .connect(this.carol)
+          .startClaim(this.protocolX, 1000, this.bob.address, 1, '0x1212'),
+      );
+
+      await this.scm.connect(this.spcc).spccRefuse(1);
+
+      this.usdcAmount = parseUnits('20000', 6);
+      await this.mintUSDC(this.carol.address, this.usdcAmount);
+      await this.usdc.connect(this.carol).approve(this.scm.address, this.usdcAmount);
+
+      this.t1 = await meta(this.scm.connect(this.carol).escalate(1, this.usdcAmount));
+    });
+    it('Invalid state', async function () {
+      await expect(this.scm.connect(this.umaho).executeHalt(1)).to.be.revertedWith(
+        'InvalidState()',
+      );
+
+      this.t2 = await meta(
+        this.scm.connect(this.uma).priceSettled(UMA_IDENTIFIER, 1, '0x1212', {
+          proposer: this.sherlock.address,
+          disputer: this.carol.address,
+          currency: USDC_ADDRESS,
+          settled: false,
+          proposedPrice: BigNumber.from(0),
+          resolvedPrice: BigNumber.from(1000),
+          expirationTime: this.t1.time.add(7200),
+          reward: BigNumber.from(0),
+          finalFee: parseUnits('400', 6),
+          bond: parseUnits('5000', 6),
+          customLiveness: BigNumber.from(7200),
+        }),
+      );
+    });
+    it('Initial state', async function () {
+      expect(await this.scm.protocolClaimActive(this.protocolX)).to.eq(true);
+
+      expect(await this.scm.viewPublicToInternalID(1)).to.eq(this.internalIdentifier);
+      expect(await this.scm.viewInternalToPublicID(this.internalIdentifier)).to.eq(1);
+
+      const claim = await this.scm.claims(1);
+      expect(claim[0]).to.eq(this.t0.time);
+      expect(claim[1]).to.eq(this.t2.time);
+      expect(claim[2]).to.eq(this.carol.address);
+      expect(claim[3]).to.eq(this.protocolX);
+      expect(claim[4]).to.eq(1000);
+      expect(claim[5]).to.eq(this.bob.address);
+      expect(claim[6]).to.eq(1);
+      expect(claim[7]).to.eq('0x1212');
+      expect(claim[8]).to.eq(STATE.UmaApproved);
+    });
+    it('Do', async function () {
+      this.t3 = await meta(this.scm.connect(this.umaho).executeHalt(1));
+
+      expect(this.t3.events.length).to.eq(2);
+      expect(this.t3.events[0].event).to.eq('ClaimStatusChanged');
+      expect(this.t3.events[0].args.claimID).to.eq(1);
+      expect(this.t3.events[0].args.previousState).to.eq(STATE.UmaApproved);
+      expect(this.t3.events[0].args.currentState).to.eq(STATE.NonExistent);
+      expect(this.t3.events[1].event).to.eq('ClaimHalted');
+      expect(this.t3.events[1].args.claimID).to.eq(1);
+    });
+    it('Verify state', async function () {
+      expect(await this.scm.protocolClaimActive(this.protocolX)).to.eq(false);
+
+      expect(await this.scm.viewPublicToInternalID(1)).to.eq(constants.HashZero);
+      expect(await this.scm.viewInternalToPublicID(this.internalIdentifier)).to.eq(0);
+
+      await expect(this.scm.claims(1)).to.be.revertedWith('InvalidArgument()');
+    });
+  });
+  describe('priceProposed()', function () {
+    before(async function () {
+      await timeTraveler.revertSnapshot();
+      this.internalIdentifier = keccak256('0x1212');
+
+      this.t0 = await meta(
+        this.scm
+          .connect(this.carol)
+          .startClaim(this.protocolX, 1000, this.bob.address, 1, '0x1212'),
+      );
+
+      await this.scm.connect(this.spcc).spccRefuse(1);
+
+      this.usdcAmount = parseUnits('20000', 6);
+      await this.mintUSDC(this.carol.address, this.usdcAmount);
+      await this.usdc.connect(this.carol).approve(this.scm.address, this.usdcAmount);
+
+      this.t1 = await meta(this.scm.connect(this.carol).escalate(1, this.usdcAmount));
+
+      this.requestData = {
+        proposer: this.sherlock.address,
+        disputer: this.carol.address,
+        currency: USDC_ADDRESS,
+        settled: false,
+        proposedPrice: BigNumber.from(0),
+        resolvedPrice: BigNumber.from(1000),
+        expirationTime: this.t1.time.add(7200),
+        reward: BigNumber.from(0),
+        finalFee: parseUnits('400', 6),
+        bond: parseUnits('5000', 6),
+        customLiveness: BigNumber.from(7200),
+      };
+    });
+    it('Initial state', async function () {
+      const claim = await this.scm.claims(1);
+      expect(claim[8]).to.eq(STATE.UmaPending);
+    });
+    it('Invalid time', async function () {
+      await expect(
+        this.scm.connect(this.uma).priceProposed(UMA_IDENTIFIER, 1, '0x1212', this.requestData),
+      ).to.be.revertedWith('InvalidConditions()');
+    });
+    it('Invalid state', async function () {
+      this.target = this.t1.time.add(100);
+      await this.scm._setClaimUpdate(1, this.target);
+      await hre.network.provider.request({
+        method: 'evm_setNextBlockTimestamp',
+        params: [Number(this.target)],
+      });
+
+      await expect(
+        this.scm.connect(this.uma).priceProposed(UMA_IDENTIFIER, 1, '0x1212', this.requestData),
+      ).to.be.revertedWith('InvalidState()');
+    });
+  });
+  describe('priceDisputed()', function () {
+    before(async function () {
+      await timeTraveler.revertSnapshot();
+      this.internalIdentifier = keccak256('0x1212');
+
+      this.t0 = await meta(
+        this.scm
+          .connect(this.carol)
+          .startClaim(this.protocolX, 1000, this.bob.address, 1, '0x1212'),
+      );
+
+      await this.scm.connect(this.spcc).spccRefuse(1);
+
+      this.usdcAmount = parseUnits('20000', 6);
+      await this.mintUSDC(this.carol.address, this.usdcAmount);
+      await this.usdc.connect(this.carol).approve(this.scm.address, this.usdcAmount);
+
+      this.t1 = await meta(this.scm.connect(this.carol).escalate(1, this.usdcAmount));
+
+      this.requestData = {
+        proposer: this.sherlock.address,
+        disputer: this.carol.address,
+        currency: USDC_ADDRESS,
+        settled: false,
+        proposedPrice: BigNumber.from(0),
+        resolvedPrice: BigNumber.from(1000),
+        expirationTime: this.t1.time.add(7200),
+        reward: BigNumber.from(0),
+        finalFee: parseUnits('400', 6),
+        bond: parseUnits('5000', 6),
+        customLiveness: BigNumber.from(7200),
+      };
+    });
+    it('Initial state', async function () {
+      const claim = await this.scm.claims(1);
+      expect(claim[8]).to.eq(STATE.UmaPending);
+    });
+    it('Invalid time', async function () {
+      await expect(
+        this.scm.connect(this.uma).priceDisputed(UMA_IDENTIFIER, 1, '0x1212', this.requestData),
+      ).to.be.revertedWith('InvalidConditions()');
+    });
+    it('Invalid state', async function () {
+      this.target = this.t1.time.add(100);
+      await this.scm._setClaimUpdate(1, this.target);
+      await hre.network.provider.request({
+        method: 'evm_setNextBlockTimestamp',
+        params: [Number(this.target)],
+      });
+
+      await expect(
+        this.scm.connect(this.uma).priceDisputed(UMA_IDENTIFIER, 1, '0x1212', this.requestData),
+      ).to.be.revertedWith('InvalidState()');
+    });
+  });
+  describe('priceSettled(), approved', function () {
+    before(async function () {
+      await timeTraveler.revertSnapshot();
+      this.internalIdentifier = keccak256('0x1212');
+
+      this.amount = parseUnits('10000000000', 6);
+      this.t0 = await meta(
+        this.scm
+          .connect(this.carol)
+          .startClaim(this.protocolX, this.amount, this.bob.address, 1, '0x1212'),
+      );
+
+      await this.scm.connect(this.spcc).spccRefuse(1);
+
+      this.usdcAmount = parseUnits('20000', 6);
+      await this.mintUSDC(this.carol.address, this.usdcAmount);
+      await this.usdc.connect(this.carol).approve(this.scm.address, this.usdcAmount);
+
+      this.t1 = await meta(this.scm.connect(this.carol).escalate(1, this.usdcAmount));
+
+      this.requestData = {
+        proposer: this.sherlock.address,
+        disputer: this.carol.address,
+        currency: USDC_ADDRESS,
+        settled: false,
+        proposedPrice: BigNumber.from(0),
+        resolvedPrice: undefined,
+        expirationTime: this.t1.time.add(7200),
+        reward: BigNumber.from(0),
+        finalFee: parseUnits('400', 6),
+        bond: parseUnits('5000', 6),
+        customLiveness: BigNumber.from(7200),
+      };
+    });
+    it('Initial state', async function () {
+      const claim = await this.scm.claims(1);
+      expect(claim[8]).to.eq(STATE.UmaPending);
+    });
+    it('Do', async function () {
+      this.requestData.resolvedPrice = this.amount;
+
+      this.t1 = await meta(
+        this.scm.connect(this.uma).priceSettled(UMA_IDENTIFIER, 1, '0x1212', this.requestData),
+      );
+
+      await expect(this.t1.events.length).to.eq(1);
+      expect(this.t1.events[0].event).to.eq('ClaimStatusChanged');
+      expect(this.t1.events[0].args.claimID).to.eq(1);
+      expect(this.t1.events[0].args.previousState).to.eq(STATE.UmaPending);
+      expect(this.t1.events[0].args.currentState).to.eq(STATE.UmaApproved);
+    });
+    it('Verify state', async function () {
+      const claim = await this.scm.claims(1);
+      expect(claim[8]).to.eq(STATE.UmaApproved);
+    });
+    it('Do again', async function () {
+      await expect(
+        this.scm.connect(this.uma).priceSettled(UMA_IDENTIFIER, 1, '0x1212', this.requestData),
+      ).to.be.revertedWith('InvalidState()');
+    });
+  });
+  describe('priceSettled(), denied', function () {
+    before(async function () {
+      await timeTraveler.revertSnapshot();
+      this.internalIdentifier = keccak256('0x1212');
+
+      this.amount = parseUnits('10000000000', 6);
+      this.t0 = await meta(
+        this.scm
+          .connect(this.carol)
+          .startClaim(this.protocolX, this.amount, this.bob.address, 1, '0x1212'),
+      );
+
+      await this.scm.connect(this.spcc).spccRefuse(1);
+
+      this.usdcAmount = parseUnits('20000', 6);
+      await this.mintUSDC(this.carol.address, this.usdcAmount);
+      await this.usdc.connect(this.carol).approve(this.scm.address, this.usdcAmount);
+
+      this.t1 = await meta(this.scm.connect(this.carol).escalate(1, this.usdcAmount));
+
+      this.requestData = {
+        proposer: this.sherlock.address,
+        disputer: this.carol.address,
+        currency: USDC_ADDRESS,
+        settled: false,
+        proposedPrice: BigNumber.from(0),
+        resolvedPrice: undefined,
+        expirationTime: this.t1.time.add(7200),
+        reward: BigNumber.from(0),
+        finalFee: parseUnits('400', 6),
+        bond: parseUnits('5000', 6),
+        customLiveness: BigNumber.from(7200),
+      };
+    });
+    it('Initial state', async function () {
+      const claim = await this.scm.claims(1);
+      expect(claim[8]).to.eq(STATE.UmaPending);
+    });
+    it('Do', async function () {
+      this.requestData.resolvedPrice = this.amount.sub(1); // or 0
+
+      this.t1 = await meta(
+        this.scm.connect(this.uma).priceSettled(UMA_IDENTIFIER, 1, '0x1212', this.requestData),
+      );
+
+      await expect(this.t1.events.length).to.eq(2);
+      expect(this.t1.events[0].event).to.eq('ClaimStatusChanged');
+      expect(this.t1.events[0].args.claimID).to.eq(1);
+      expect(this.t1.events[0].args.previousState).to.eq(STATE.UmaPending);
+      expect(this.t1.events[0].args.currentState).to.eq(STATE.UmaDenied);
+      expect(this.t1.events[1].event).to.eq('ClaimStatusChanged');
+      expect(this.t1.events[1].args.claimID).to.eq(1);
+      expect(this.t1.events[1].args.previousState).to.eq(STATE.UmaDenied);
+      expect(this.t1.events[1].args.currentState).to.eq(STATE.NonExistent);
+    });
+    it('Verify state', async function () {
+      await expect(this.scm.claims(1)).to.be.revertedWith('InvalidArgument()');
+    });
+    it('Do again', async function () {
+      await expect(
+        this.scm.connect(this.uma).priceSettled(UMA_IDENTIFIER, 1, '0x1212', this.requestData),
+      ).to.be.revertedWith('InvalidState()');
+    });
+  });
   describe('isEscalateState() (private function)', function () {
     before(async function () {
       await timeTraveler.revertSnapshot();
@@ -1139,6 +1447,9 @@ describe('SherlockClaimManager ─ Functional', function () {
   describe('isPayoutState() (private function) +UMAHO', function () {
     before(async function () {
       await timeTraveler.revertSnapshot();
+
+      // irrelevant tx
+      this.lastT = await this.usdc.approve(this.sherlock.address, maxTokens);
     });
     it('Happy flows', async function () {
       expect(await this.scm.isPayoutState(STATE.SpccApproved, this.lastT.time)).to.eq(true);
