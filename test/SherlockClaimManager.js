@@ -807,8 +807,8 @@ describe('SherlockClaimManager ─ Functional', function () {
       expect(request.finalFee).to.eq(parseUnits('400', 6));
       expect(request.bond).to.eq(parseUnits('5000', 6));
       expect(request.customLiveness).to.eq(7200);
-      expect(request.proposer).to.eq(this.carol.address);
-      expect(request.proposedPrice).to.eq(1);
+      expect(request.proposer).to.eq(this.sherlock.address);
+      expect(request.proposedPrice).to.eq(0);
       expect(request.expirationTime).to.eq(this.t1.time.add(7200));
       expect(request.disputer).to.eq(constants.AddressZero);
       expect(request.settled).to.eq(false);
@@ -827,8 +827,8 @@ describe('SherlockClaimManager ─ Functional', function () {
       expect(request2.finalFee).to.eq(parseUnits('400', 6));
       expect(request2.bond).to.eq(parseUnits('5000', 6));
       expect(request2.customLiveness).to.eq(7200);
-      expect(request2.proposer).to.eq(this.carol.address);
-      expect(request2.proposedPrice).to.eq(1);
+      expect(request2.proposer).to.eq(this.sherlock.address);
+      expect(request2.proposedPrice).to.eq(0);
       expect(request2.expirationTime).to.eq(this.t1.time.add(7200));
       expect(request2.disputer).to.eq(constants.AddressZero);
       expect(request2.settled).to.eq(false);
@@ -859,10 +859,10 @@ describe('SherlockClaimManager ─ Functional', function () {
       expect(request3.finalFee).to.eq(parseUnits('400', 6));
       expect(request3.bond).to.eq(parseUnits('5000', 6));
       expect(request3.customLiveness).to.eq(7200);
-      expect(request3.proposer).to.eq(this.carol.address);
-      expect(request3.proposedPrice).to.eq(1);
+      expect(request3.proposer).to.eq(this.sherlock.address);
+      expect(request3.proposedPrice).to.eq(0);
       expect(request3.expirationTime).to.eq(this.t1.time.add(7200));
-      expect(request3.disputer).to.eq(this.sherlock.address);
+      expect(request3.disputer).to.eq(this.carol.address);
       expect(request3.settled).to.eq(false);
       expect(request3.resolvedPrice).to.eq(0);
 

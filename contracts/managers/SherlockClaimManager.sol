@@ -187,6 +187,11 @@ contract SherlockClaimManager is ISherlockClaimManager, Manager {
     TOKEN.safeTransferFrom(msg.sender, address(this), _amount);
     TOKEN.safeApprove(address(UMA), _amount);
 
+    // Bascially SHERLOCK protocol is proposing a 0 amount being hacked
+    // This way https://github.com/UMAprotocol/protocol/blob/master/packages/core/contracts/oracle/implementation/SkinnyOptimisticOracle.sol#L585
+    // Will result in disputeSuccess=true if the DVM resolved price != 0
+    // Note: the resolved price should exactly match the claim amount
+    // Otherwise the `umaApproved` in our settled callback will be false.
     UMA.requestAndProposePriceFor(
       umaIdentifier,
       claim.timestamp,
@@ -195,20 +200,21 @@ contract SherlockClaimManager is ISherlockClaimManager, Manager {
       0,
       BOND,
       LIVENESS,
-      msg.sender, // claim initiator
-      int256(claim.amount)
+      address(sherlockCore), // UMA proposer
+      0
     );
 
     if (_setState(claimIdentifier, State.UmaDisputeProposed) != State.ReadyToProposeUmaDispute) {
       revert InvalidState();
     }
 
+    // Basically the protocol agent is disputing this the proposal of SHERLOCK
     UMA.disputePriceFor(
       umaIdentifier,
       claim.timestamp,
       claim.ancillaryData,
       umaRequest,
-      address(sherlockCore), // disputor
+      msg.sender, // UMA disputor (claim initiator)
       address(this)
     );
 
