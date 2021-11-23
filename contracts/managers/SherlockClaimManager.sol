@@ -21,11 +21,11 @@ contract SherlockClaimManager is ISherlockClaimManager, Manager {
   using SafeERC20 for IERC20;
 
   uint256 constant BOND = 5000 * 10**6; // 5k bond
-  uint256 constant BOND_USER = (BOND * 3) / 2 + 1; // 1.5 * 5k = 7.5k
   uint256 constant UMAHO_TIME = 3 days;
   uint256 constant SPCC_TIME = 7 days;
   uint256 constant LIVENESS = 7200;
-  bytes32 public constant override umaIdentifier = '0x534845524c4f434b5f434c41494d';
+  bytes32 public constant override umaIdentifier =
+    bytes32(0x534845524c4f434b5f434c41494d000000000000000000000000000000000000);
   SkinnyOptimisticOracleInterface constant UMA =
     SkinnyOptimisticOracleInterface(0xeE3Afe347D5C74317041E2618C49534dAf887c24);
   IERC20 constant TOKEN = IERC20(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48);
@@ -39,6 +39,8 @@ contract SherlockClaimManager is ISherlockClaimManager, Manager {
   mapping(bytes32 => uint256) internal internalToPublicID;
   mapping(bytes32 => Claim) internal claims_;
 
+  SkinnyOptimisticOracleInterface.Request private umaRequest;
+
   uint256 internal lastClaimID;
 
   modifier onlyUMA(bytes32 identifier) {
@@ -48,6 +50,9 @@ contract SherlockClaimManager is ISherlockClaimManager, Manager {
   }
 
   constructor(address _umaho, address _spcc) {
+    if (_umaho == address(0)) revert ZeroArgument();
+    if (_spcc == address(0)) revert ZeroArgument();
+
     umaHaltOperator = _umaho;
     sherlockProtocolClaimsCommittee = _spcc;
   }
@@ -86,6 +91,8 @@ contract SherlockClaimManager is ISherlockClaimManager, Manager {
   }
 
   function renounceUmaHaltOperator() external override onlyOwner {
+    if (umaHaltOperator == address(0)) revert InvalidConditions();
+
     delete umaHaltOperator;
     emit UMAHORenounced();
   }
@@ -115,7 +122,6 @@ contract SherlockClaimManager is ISherlockClaimManager, Manager {
     if (protocolClaimActive[_protocol]) revert ClaimActive();
 
     bytes32 claimIdentifier = keccak256(ancillaryData);
-
     if (claims_[claimIdentifier].state != State.NonExistent) revert InvalidArgument();
 
     ISherlockProtocolManager protocolManager = sherlockCore.sherlockProtocolManager();
@@ -162,7 +168,9 @@ contract SherlockClaimManager is ISherlockClaimManager, Manager {
     if (_setState(claimIdentifier, State.SpccDenied) != State.SpccPending) revert InvalidState();
   }
 
-  function escalate(uint256 _claimID) external override {
+  function escalate(uint256 _claimID, uint256 _amount) external override {
+    if (_amount < BOND) revert InvalidArgument();
+
     bytes32 claimIdentifier = publicToInternalID[_claimID];
     if (claimIdentifier == bytes32(0)) revert InvalidArgument();
 
@@ -172,12 +180,12 @@ contract SherlockClaimManager is ISherlockClaimManager, Manager {
     uint256 updated = claim.updated;
     State _oldState = _setState(claimIdentifier, State.UmaPriceProposed);
     if (
-      _oldState != State.SpccDenied ||
-      !(_oldState == State.SpccPending && updated + SPCC_TIME >= block.timestamp)
+      _oldState != State.SpccDenied &&
+      !(_oldState == State.SpccPending && updated + SPCC_TIME < block.timestamp)
     ) revert InvalidState();
 
-    TOKEN.safeTransferFrom(msg.sender, address(this), BOND_USER);
-    TOKEN.safeApprove(address(UMA), BOND_USER);
+    TOKEN.safeTransferFrom(msg.sender, address(this), _amount);
+    TOKEN.safeApprove(address(UMA), _amount);
 
     UMA.requestAndProposePriceFor(
       umaIdentifier,
@@ -190,6 +198,26 @@ contract SherlockClaimManager is ISherlockClaimManager, Manager {
       msg.sender, // claim initiator
       int256(claim.amount)
     );
+
+    if (_setState(claimIdentifier, State.UmaDisputeProposed) != State.ReadyToProposeUmaDispute) {
+      revert InvalidState();
+    }
+
+    UMA.disputePriceFor(
+      umaIdentifier,
+      claim.timestamp,
+      claim.ancillaryData,
+      umaRequest,
+      address(sherlockCore), // disputor
+      address(this)
+    );
+
+    if (claim.state != State.UmaPending) revert InvalidState();
+
+    delete umaRequest;
+    TOKEN.safeApprove(address(UMA), 0);
+    uint256 remaining = TOKEN.balanceOf(address(this));
+    if (remaining != 0) TOKEN.safeTransfer(msg.sender, remaining);
   }
 
   function payoutClaim(uint256 _claimID) external override {
@@ -244,18 +272,11 @@ contract SherlockClaimManager is ISherlockClaimManager, Manager {
     Claim storage claim = claims_[claimIdentifier];
     if (claim.updated != block.timestamp) revert InvalidConditions();
 
-    if (_setState(claimIdentifier, State.UmaDisputeProposed) != State.UmaPriceProposed) {
+    if (_setState(claimIdentifier, State.ReadyToProposeUmaDispute) != State.UmaPriceProposed) {
       revert InvalidState();
     }
 
-    UMA.disputePriceFor(
-      umaIdentifier,
-      claim.timestamp,
-      claim.ancillaryData,
-      request,
-      address(sherlockCore),
-      address(this)
-    );
+    umaRequest = request;
   }
 
   function priceDisputed(

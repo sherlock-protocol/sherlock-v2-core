@@ -39,6 +39,7 @@ interface ISherlockClaimManager is IManager, OptimisticRequester {
     SpccApproved, // Final state, claim is valid
     SpccDenied, // Claim denied by SPCC, claim can be escalated within 7 days
     UmaPriceProposed, // Price is proposed by not escalated
+    ReadyToProposeUmaDispute, // Price is proposed, callback receiver, ready to submit dispute
     UmaDisputeProposed, // Escaltion is done, waiting for confirmation
     UmaPending, // Claim is escalated, in case Spcc denied or didn't act within 7 days.
     UmaApproved, // Final state, claim is valid, claim can be enacted after 3 day, umaHaltOperator has 3 day to change to denied
@@ -108,7 +109,8 @@ interface ISherlockClaimManager is IManager, OptimisticRequester {
   /// @dev use hardcoded liveness 7200
   /// @dev proposer = current protocl agent (could differ from protocol agent when claim was started)
   /// @dev proposedPrice = _amount
-  function escalate(uint256 _claimID) external;
+  /// @param _amount maximum amount to use to escaltion, remaining will be send back
+  function escalate(uint256 _claimID, uint256 _amount) external;
 
   /// @notice execute claim, storage will be removed after
   /// @dev needs to be SpccApproved or UmaApproved && >1 day
