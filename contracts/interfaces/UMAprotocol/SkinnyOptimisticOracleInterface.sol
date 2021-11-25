@@ -20,6 +20,34 @@ import './OptimisticOracleInterface.sol';
  * @dev Interface used by financial contracts to interact with the Oracle. Voters will use a different interface.
  */
 abstract contract SkinnyOptimisticOracleInterface {
+  event RequestPrice(
+    address indexed requester,
+    bytes32 indexed identifier,
+    uint32 timestamp,
+    bytes ancillaryData,
+    Request request
+  );
+  event ProposePrice(
+    address indexed requester,
+    bytes32 indexed identifier,
+    uint32 timestamp,
+    bytes ancillaryData,
+    Request request
+  );
+  event DisputePrice(
+    address indexed requester,
+    bytes32 indexed identifier,
+    uint32 timestamp,
+    bytes ancillaryData,
+    Request request
+  );
+  event Settle(
+    address indexed requester,
+    bytes32 indexed identifier,
+    uint32 timestamp,
+    bytes ancillaryData,
+    Request request
+  );
   // Struct representing a price request. Note that this differs from the OptimisticOracleInterface's Request struct
   // in that refundOnDispute is removed.
   struct Request {

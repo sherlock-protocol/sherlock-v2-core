@@ -34,6 +34,21 @@ class TimeTraveler {
   async request(request) {
     await this.ethereum.request(request);
   }
+
+  async fork(block) {
+    await this.ethereum.send('hardhat_reset', [
+      {
+        forking: {
+          jsonRpcUrl: `https://eth-mainnet.alchemyapi.io/v2/${process.env.ALCHEMY_KEY}`,
+          blockNumber: block,
+        },
+      },
+    ]);
+  }
+
+  async unfork() {
+    await this.ethereum.send('hardhat_reset', []);
+  }
 }
 
 module.exports.TimeTraveler = TimeTraveler;

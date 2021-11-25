@@ -11,11 +11,23 @@ import '../UMAprotocol/OptimisticRequester.sol';
 import './IManager.sol';
 
 interface ISherlockClaimManager is IManager, OptimisticRequester {
-  event ClaimCreated(uint256 claimID, bytes32 protocol, uint256 amount, address receiver, bool previousCoverageAmount);
+  error ClaimActive();
+
+  error InvalidSender();
+
+  error InvalidState();
+
+  event ClaimCreated(
+    uint256 claimID,
+    bytes32 protocol,
+    uint256 amount,
+    address receiver,
+    bool previousCoverageAmount
+  );
 
   event ClaimStatusChanged(uint256 claimID, State previousState, State currentState);
 
-  event ClaimPayout(uint256 claimID);
+  event ClaimPayout(uint256 claimID, address receiver, uint256 amount);
 
   event ClaimHalted(uint256 claimID);
 
@@ -27,6 +39,7 @@ interface ISherlockClaimManager is IManager, OptimisticRequester {
     SpccApproved, // Final state, claim is valid
     SpccDenied, // Claim denied by SPCC, claim can be escalated within 7 days
     UmaPriceProposed, // Price is proposed by not escalated
+    ReadyToProposeUmaDispute, // Price is proposed, callback receiver, ready to submit dispute
     UmaDisputeProposed, // Escaltion is done, waiting for confirmation
     UmaPending, // Claim is escalated, in case Spcc denied or didn't act within 7 days.
     UmaApproved, // Final state, claim is valid, claim can be enacted after 3 day, umaHaltOperator has 3 day to change to denied
@@ -36,6 +49,7 @@ interface ISherlockClaimManager is IManager, OptimisticRequester {
   struct Claim {
     uint256 created;
     uint256 updated;
+    address initiator;
     bytes32 protocol;
     uint256 amount;
     address receiver;
@@ -64,7 +78,7 @@ interface ISherlockClaimManager is IManager, OptimisticRequester {
   // On price proposed callback --> call disputePriceFor with callbackdata + sherlock.strategyManager() and address(this)
 
   /// @notice `SHERLOCK_CLAIM` in utf8
-  function umaIdentifier() external view returns (bytes32);
+  function UMA_IDENTIFIER() external view returns (bytes32);
 
   function sherlockProtocolClaimsCommittee() external view returns (address);
 
@@ -96,7 +110,8 @@ interface ISherlockClaimManager is IManager, OptimisticRequester {
   /// @dev Use hardcoded liveness 7200
   /// @dev Proposer = current protocl agent (could differ from protocol agent when claim was started)
   /// @dev proposedPrice = _amount
-  function escalate(uint256 _claimID) external;
+  /// @param _amount maximum amount to use to escaltion, remaining will be send back
+  function escalate(uint256 _claimID, uint256 _amount) external;
 
   /// @notice Execute claim, storage will be removed after
   /// @param _claimID Public ID of the claim
