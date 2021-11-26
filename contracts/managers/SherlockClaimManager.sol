@@ -11,14 +11,14 @@ import '../interfaces/managers/ISherlockClaimManager.sol';
 import '../interfaces/managers/ISherlockProtocolManager.sol';
 import '../interfaces/UMAprotocol/SkinnyOptimisticOracleInterface.sol';
 
+import '@openzeppelin/contracts/security/ReentrancyGuard.sol';
+
 import 'hardhat/console.sol';
 
-// @todo everyone can escalate and enact?
 // @todo add callback for payout
-// @todo reentry guard?
 
 /// @dev expects 6 decimals input tokens
-contract SherlockClaimManager is ISherlockClaimManager, Manager {
+contract SherlockClaimManager is ISherlockClaimManager, ReentrancyGuard, Manager {
   using SafeERC20 for IERC20;
 
   uint256 constant BOND = 5000 * 10**6; // 5k bond
@@ -129,7 +129,7 @@ contract SherlockClaimManager is ISherlockClaimManager, Manager {
     address _receiver,
     uint32 _timestamp,
     bytes memory ancillaryData
-  ) external override {
+  ) external override nonReentrant {
     if (_protocol == bytes32(0)) revert ZeroArgument();
     if (_amount == uint256(0)) revert ZeroArgument();
     if (_receiver == address(0)) revert ZeroArgument();
@@ -172,21 +172,21 @@ contract SherlockClaimManager is ISherlockClaimManager, Manager {
     emit ClaimStatusChanged(claimID, State.NonExistent, State.SpccPending);
   }
 
-  function spccApprove(uint256 _claimID) external override onlySPCC {
+  function spccApprove(uint256 _claimID) external override onlySPCC nonReentrant {
     bytes32 claimIdentifier = publicToInternalID[_claimID];
     if (claimIdentifier == bytes32(0)) revert InvalidArgument();
 
     if (_setState(claimIdentifier, State.SpccApproved) != State.SpccPending) revert InvalidState();
   }
 
-  function spccRefuse(uint256 _claimID) external override onlySPCC {
+  function spccRefuse(uint256 _claimID) external override onlySPCC nonReentrant {
     bytes32 claimIdentifier = publicToInternalID[_claimID];
     if (claimIdentifier == bytes32(0)) revert InvalidArgument();
 
     if (_setState(claimIdentifier, State.SpccDenied) != State.SpccPending) revert InvalidState();
   }
 
-  function escalate(uint256 _claimID, uint256 _amount) external override {
+  function escalate(uint256 _claimID, uint256 _amount) external override nonReentrant {
     if (_amount < BOND) revert InvalidArgument();
 
     bytes32 claimIdentifier = publicToInternalID[_claimID];
@@ -241,7 +241,7 @@ contract SherlockClaimManager is ISherlockClaimManager, Manager {
     if (remaining != 0) TOKEN.safeTransfer(msg.sender, remaining);
   }
 
-  function payoutClaim(uint256 _claimID) external override {
+  function payoutClaim(uint256 _claimID) external override nonReentrant {
     bytes32 claimIdentifier = publicToInternalID[_claimID];
     if (claimIdentifier == bytes32(0)) revert InvalidArgument();
 
@@ -260,7 +260,7 @@ contract SherlockClaimManager is ISherlockClaimManager, Manager {
     sherlockCore.payoutClaim(receiver, amount);
   }
 
-  function executeHalt(uint256 _claimID) external override onlyUMAHO {
+  function executeHalt(uint256 _claimID) external override onlyUMAHO nonReentrant {
     bytes32 claimIdentifier = publicToInternalID[_claimID];
     if (claimIdentifier == bytes32(0)) revert InvalidArgument();
 
@@ -273,6 +273,7 @@ contract SherlockClaimManager is ISherlockClaimManager, Manager {
   // UMA callbacks
   //
 
+  // @note reentrancy is allowed for this call
   function priceProposed(
     bytes32 identifier,
     uint32 timestamp,
@@ -291,6 +292,7 @@ contract SherlockClaimManager is ISherlockClaimManager, Manager {
     umaRequest = request;
   }
 
+  // @note reentrancy is allowed for this call
   function priceDisputed(
     bytes32 identifier,
     uint32 timestamp,
@@ -312,7 +314,7 @@ contract SherlockClaimManager is ISherlockClaimManager, Manager {
     uint32 timestamp,
     bytes memory ancillaryData,
     SkinnyOptimisticOracleInterface.Request memory request
-  ) external override onlyUMA(identifier) {
+  ) external override onlyUMA(identifier) nonReentrant {
     bytes32 claimIdentifier = keccak256(ancillaryData);
 
     Claim storage claim = claims_[claimIdentifier];
