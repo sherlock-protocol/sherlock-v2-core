@@ -37,7 +37,7 @@ abstract contract Manager is IManager, Ownable {
       token.safeTransfer(_receiver, token.balanceOf(address(this)));
     }
     // Sends any remaining ETH to the receiver address (as long as receiver address is payable)
-    (bool success, ) = _receiver.call.value(address(this).balance)('');
+    (bool success, ) = _receiver.call{ value: address(this).balance }('');
     require(success, 'SWEEP');
   }
 }
