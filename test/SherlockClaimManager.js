@@ -485,6 +485,12 @@ describe('SherlockClaimManager ─ Functional', function () {
         'InvalidArgument()',
       );
     });
+    it('Do max exceed', async function () {
+      await this.scm.addCallback(this.bob.address);
+      await this.scm.addCallback(this.carol.address);
+      await this.scm.addCallback(this.gov.address);
+      await expect(this.scm.addCallback(USDC_ADDRESS)).to.be.revertedWith('InvalidState()');
+    });
   });
   describe('removeCallback()', function () {
     before(async function () {

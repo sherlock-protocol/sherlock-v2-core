@@ -25,6 +25,7 @@ contract SherlockClaimManager is ISherlockClaimManager, ReentrancyGuard, Manager
   uint256 constant UMAHO_TIME = 3 days;
   uint256 constant SPCC_TIME = 7 days;
   uint256 constant LIVENESS = 7200;
+  uint256 MAX_CALLBACKS = 4;
   bytes32 public constant override UMA_IDENTIFIER =
     bytes32(0x534845524c4f434b5f434c41494d000000000000000000000000000000000000);
   SkinnyOptimisticOracleInterface constant UMA =
@@ -125,6 +126,7 @@ contract SherlockClaimManager is ISherlockClaimManager, ReentrancyGuard, Manager
     if (claim_.state == State.NonExistent) revert InvalidArgument();
   }
 
+  /// @dev only add trusted and gas verified callbacks.
   function addCallback(ISherlockClaimManagerCallbackReceiver _callback)
     external
     onlyOwner
@@ -134,6 +136,7 @@ contract SherlockClaimManager is ISherlockClaimManager, ReentrancyGuard, Manager
     for (uint256 i; i < claimCallbacks.length; i++) {
       if (claimCallbacks[i] == _callback) revert InvalidArgument();
     }
+    if (claimCallbacks.length == MAX_CALLBACKS) revert InvalidState();
 
     claimCallbacks.push(_callback);
     emit CallbackAdded(_callback);
