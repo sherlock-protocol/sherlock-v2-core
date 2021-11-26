@@ -882,7 +882,7 @@ describe('SherlockClaimManager ─ Functional', function () {
       expect(this.t1.events[13].args.currentState).to.eq(STATE.UmaPending);
     });
     it('Verify state', async function () {
-      expect(await this.usdc.balanceOf(this.carol.address)).to.eq(parseUnits('9220', 6));
+      expect(await this.usdc.balanceOf(this.carol.address)).to.eq(parseUnits('9200', 6));
 
       const claim = await this.scm.claims(1);
       expect(claim[8]).to.eq(STATE.UmaPending);
@@ -917,7 +917,7 @@ describe('SherlockClaimManager ─ Functional', function () {
       await this.scm.connect(this.carol).escalate(1, this.usdcAmount);
     });
     it('Verify state', async function () {
-      expect(await this.usdc.balanceOf(this.carol.address)).to.eq(parseUnits('9220', 6));
+      expect(await this.usdc.balanceOf(this.carol.address)).to.eq(parseUnits('9200', 6));
 
       const claim = await this.scm.claims(1);
       expect(claim[8]).to.eq(STATE.UmaPending);

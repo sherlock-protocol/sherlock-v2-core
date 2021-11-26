@@ -16,6 +16,14 @@ module.exports = {
       },
     },
   },
+  networks: {
+    hardhat: {
+      accounts: {
+        mnemonic:
+          'apart turn peace asthma useful mother tank math engine usage prefer orphan exile fold squirrel',
+      },
+    },
+  },
   gasReporter: {
     enabled: process.env.REPORT_GAS ? true : false,
     currency: 'USD',
