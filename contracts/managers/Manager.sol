@@ -21,6 +21,7 @@ abstract contract Manager is IManager, Ownable {
     _;
   }
 
+  // @todo restrict by hardcoded deployer address
   function setSherlockCoreAddress(ISherlock _sherlock) external override {
     require(address(sherlockCore) == address(0), 'SET');
     sherlockCore = _sherlock;
@@ -36,6 +37,7 @@ abstract contract Manager is IManager, Ownable {
       token.safeTransfer(_receiver, token.balanceOf(address(this)));
     }
     // Sends any remaining ETH to the receiver address (as long as receiver address is payable)
-    payable(_receiver).transfer(address(this).balance);
+    (bool success, ) = _receiver.call.value(address(this).balance)('');
+    require(success, 'SWEEP');
   }
 }
