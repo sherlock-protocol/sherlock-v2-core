@@ -87,6 +87,7 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
 
   // Setting the token to USDC
   constructor(IERC20 _token) {
+    if (address(_token) == address(0)) revert ZeroArgument();
     token = _token;
   }
 
