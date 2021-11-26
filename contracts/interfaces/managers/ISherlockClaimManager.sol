@@ -7,6 +7,8 @@ pragma solidity 0.8.9;
 /******************************************************************************/
 
 import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
+
+import './callbacks/ISherlockClaimManagerCallbackReceiver.sol';
 import '../UMAprotocol/OptimisticRequester.sol';
 import './IManager.sol';
 
@@ -24,6 +26,10 @@ interface ISherlockClaimManager is IManager, OptimisticRequester {
     address receiver,
     bool previousCoverageAmount
   );
+
+  event CallbackAdded(ISherlockClaimManagerCallbackReceiver callback);
+
+  event CallbackRemoved(ISherlockClaimManagerCallbackReceiver callback);
 
   event ClaimStatusChanged(uint256 claimID, State previousState, State currentState);
 

@@ -44,6 +44,8 @@ contract SherlockClaimManager is ISherlockClaimManager, ReentrancyGuard, Manager
 
   uint256 internal lastClaimID;
 
+  ISherlockClaimManagerCallbackReceiver[] public claimCallbacks;
+
   modifier onlyUMA(bytes32 identifier) {
     if (identifier != UMA_IDENTIFIER) revert InvalidArgument();
     if (msg.sender != address(UMA)) revert InvalidSender();
@@ -121,6 +123,35 @@ contract SherlockClaimManager is ISherlockClaimManager, ReentrancyGuard, Manager
 
     claim_ = claims_[id_];
     if (claim_.state == State.NonExistent) revert InvalidArgument();
+  }
+
+  function addCallback(ISherlockClaimManagerCallbackReceiver _callback)
+    external
+    onlyOwner
+    nonReentrant
+  {
+    if (address(_callback) == address(0)) revert ZeroArgument();
+    for (uint256 i; i < claimCallbacks.length; i++) {
+      if (claimCallbacks[i] == _callback) revert InvalidArgument();
+    }
+
+    claimCallbacks.push(_callback);
+    emit CallbackAdded(_callback);
+  }
+
+  function removeCallback(ISherlockClaimManagerCallbackReceiver _callback, uint256 _index)
+    external
+    onlyOwner
+    nonReentrant
+  {
+    if (address(_callback) == address(0)) revert ZeroArgument();
+    if (claimCallbacks[_index] != _callback) revert InvalidArgument();
+
+    // move last index to index of _callback
+    claimCallbacks[_index] = claimCallbacks[claimCallbacks.length - 1];
+    // remove last index
+    claimCallbacks.pop();
+    emit CallbackRemoved(_callback);
   }
 
   function startClaim(
@@ -248,6 +279,7 @@ contract SherlockClaimManager is ISherlockClaimManager, ReentrancyGuard, Manager
     Claim storage claim = claims_[claimIdentifier];
     if (msg.sender != claim.initiator) revert InvalidSender();
 
+    bytes32 protocol = claim.protocol;
     address receiver = claim.receiver;
     uint256 amount = claim.amount;
     uint256 updated = claim.updated;
@@ -255,9 +287,16 @@ contract SherlockClaimManager is ISherlockClaimManager, ReentrancyGuard, Manager
     State _oldState = _setState(claimIdentifier, State.NonExistent);
     if (_isPayoutState(_oldState, updated) == false) revert InvalidState();
 
+    for (uint256 i; i < claimCallbacks.length; i++) {
+      claimCallbacks[i].PreCorePayoutCallback(protocol, _claimID, amount);
+    }
+
     emit ClaimPayout(_claimID, receiver, amount);
 
-    sherlockCore.payoutClaim(receiver, amount);
+    // We could potentially transfer more than `amount` in case balance > amount
+    uint256 balance = TOKEN.balanceOf(address(this));
+    if (balance != 0) TOKEN.safeTransfer(receiver, balance);
+    if (balance < amount) sherlockCore.payoutClaim(receiver, amount - balance);
   }
 
   function executeHalt(uint256 _claimID) external override onlyUMAHO nonReentrant {
