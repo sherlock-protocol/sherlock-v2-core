@@ -2998,7 +2998,9 @@ describe('SherlockProtocolManager ─ Functional', function () {
       await this.spm.setSherlockCoreAddress(this.sherlock.address);
 
       expect(await this.spm.isActive()).to.eq(true);
-      await expect(this.spm.sweep(this.bob.address, [this.ERC20Mock6d.address])).to.be.reverted;
+      await expect(this.spm.sweep(this.bob.address, [this.ERC20Mock6d.address])).to.be.revertedWith(
+        'InvalidConditions()',
+      );
     });
     it('Do', async function () {
       await this.sherlock.updateSherlockProtocolManager(constants.AddressZero);
