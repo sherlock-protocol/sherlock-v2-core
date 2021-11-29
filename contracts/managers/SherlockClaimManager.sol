@@ -16,14 +16,14 @@ import '../interfaces/managers/ISherlockClaimManager.sol';
 import '../interfaces/managers/ISherlockProtocolManager.sol';
 import '../interfaces/UMAprotocol/SkinnyOptimisticOracleInterface.sol';
 
+import '@openzeppelin/contracts/security/ReentrancyGuard.sol';
+
 import 'hardhat/console.sol';
 
-// @todo everyone can escalate and enact?
 // @todo add callback for payout
-// @todo reentry guard?
 
 /// @dev expects 6 decimals input tokens
-contract SherlockClaimManager is ISherlockClaimManager, Manager {
+contract SherlockClaimManager is ISherlockClaimManager, ReentrancyGuard, Manager {
   using SafeERC20 for IERC20;
 
   // The bond required for a protocol agent to escalate a claim to UMA Optimistic Oracle (OO)
@@ -48,6 +48,8 @@ contract SherlockClaimManager is ISherlockClaimManager, Manager {
   // Question Why did we change this to a different value? What is this new value?
   bytes32 public constant override UMA_IDENTIFIER =
     bytes32(0x534845524c4f434b5f434c41494d000000000000000000000000000000000000);
+
+  uint256 MAX_CALLBACKS = 4;
 
   // The Optimistic Oracle contract that we interact with
   // Question Why do we create the instance a different way now? What is the hex string? Why not pass during constructor anymore?
@@ -89,6 +91,8 @@ contract SherlockClaimManager is ISherlockClaimManager, Manager {
   // Used for callbacks on UMA functions
   // This modifier is used for a function being called by the OO contract, requires this contract as caller
   // Requires the OO contract to pass in the Sherlock identifier
+  ISherlockClaimManagerCallbackReceiver[] public claimCallbacks;
+
   modifier onlyUMA(bytes32 identifier) {
     if (identifier != UMA_IDENTIFIER) revert InvalidArgument();
     if (msg.sender != address(UMA)) revert InvalidSender();
@@ -195,6 +199,37 @@ contract SherlockClaimManager is ISherlockClaimManager, Manager {
     if (claim_.state == State.NonExistent) revert InvalidArgument();
   }
 
+  /// @dev only add trusted and gas verified callbacks.
+  function addCallback(ISherlockClaimManagerCallbackReceiver _callback)
+    external
+    onlyOwner
+    nonReentrant
+  {
+    if (address(_callback) == address(0)) revert ZeroArgument();
+    for (uint256 i; i < claimCallbacks.length; i++) {
+      if (claimCallbacks[i] == _callback) revert InvalidArgument();
+    }
+    if (claimCallbacks.length == MAX_CALLBACKS) revert InvalidState();
+
+    claimCallbacks.push(_callback);
+    emit CallbackAdded(_callback);
+  }
+
+  function removeCallback(ISherlockClaimManagerCallbackReceiver _callback, uint256 _index)
+    external
+    onlyOwner
+    nonReentrant
+  {
+    if (address(_callback) == address(0)) revert ZeroArgument();
+    if (claimCallbacks[_index] != _callback) revert InvalidArgument();
+
+    // move last index to index of _callback
+    claimCallbacks[_index] = claimCallbacks[claimCallbacks.length - 1];
+    // remove last index
+    claimCallbacks.pop();
+    emit CallbackRemoved(_callback);
+  }
+
   /// @notice Initiate a claim for a specific protocol as the protocol agent
   /// @param _protocol protocol ID (different from the internal or public claim ID fields)
   /// @param _amount amount of USDC which is being claimed by the protocol
@@ -207,7 +242,7 @@ contract SherlockClaimManager is ISherlockClaimManager, Manager {
     address _receiver,
     uint32 _timestamp,
     bytes memory ancillaryData
-  ) external override {
+  ) external override nonReentrant {
     if (_protocol == bytes32(0)) revert ZeroArgument();
     if (_amount == uint256(0)) revert ZeroArgument();
     if (_receiver == address(0)) revert ZeroArgument();
@@ -271,7 +306,7 @@ contract SherlockClaimManager is ISherlockClaimManager, Manager {
   // Only SPCC can call this
   // SPCC approves the claim and it can now be paid out
   // Requires that the last state of the claim was SpccPending
-  function spccApprove(uint256 _claimID) external override onlySPCC {
+  function spccApprove(uint256 _claimID) external override onlySPCC nonReentrant {
     bytes32 claimIdentifier = publicToInternalID[_claimID];
     if (claimIdentifier == bytes32(0)) revert InvalidArgument();
 
@@ -280,7 +315,7 @@ contract SherlockClaimManager is ISherlockClaimManager, Manager {
 
   // Only SPCC can call this
   // SPCC denies the claim and now the protocol agent can escalate to UMA OO if they desire
-  function spccRefuse(uint256 _claimID) external override onlySPCC {
+  function spccRefuse(uint256 _claimID) external override onlySPCC nonReentrant {
     bytes32 claimIdentifier = publicToInternalID[_claimID];
     if (claimIdentifier == bytes32(0)) revert InvalidArgument();
 
@@ -296,8 +331,8 @@ contract SherlockClaimManager is ISherlockClaimManager, Manager {
   /// @dev Use hardcoded liveness 7200
   /// @dev Proposer = current protocl agent (could differ from protocol agent when claim was started)
   /// @dev proposedPrice = _amount
-  function escalate(uint256 _claimID, uint256 _amount) external override {
-    // Amount sent needs to be at least equal to the BOND amount required
+  // Amount sent needs to be at least equal to the BOND amount required
+  function escalate(uint256 _claimID, uint256 _amount) external override nonReentrant {
     if (_amount < BOND) revert InvalidArgument();
 
     // Gets the internal ID of the claim
@@ -377,7 +412,7 @@ contract SherlockClaimManager is ISherlockClaimManager, Manager {
   /// @dev Needs to be SpccApproved or UmaApproved && >UMAHO_TIME
   /// @dev Funds will be pulled from core
   // Question Should we allow UMAHO to make a positive payout call? So we can speed up the claim being paid out?
-  function payoutClaim(uint256 _claimID) external override {
+  function payoutClaim(uint256 _claimID) external override nonReentrant {
     bytes32 claimIdentifier = publicToInternalID[_claimID];
     if (claimIdentifier == bytes32(0)) revert InvalidArgument();
 
@@ -386,6 +421,7 @@ contract SherlockClaimManager is ISherlockClaimManager, Manager {
     // Question In this case why do we even store receiver address? Could just be a param for this function?
     if (msg.sender != claim.initiator) revert InvalidSender();
 
+    bytes32 protocol = claim.protocol;
     // Address to receive the payout
     address receiver = claim.receiver;
     // Amount (in USDC) to be paid out
@@ -398,15 +434,21 @@ contract SherlockClaimManager is ISherlockClaimManager, Manager {
     // Checks to make sure this claim can be paid out
     if (_isPayoutState(_oldState, updated) == false) revert InvalidState();
 
+    for (uint256 i; i < claimCallbacks.length; i++) {
+      claimCallbacks[i].PreCorePayoutCallback(protocol, _claimID, amount);
+    }
+
     emit ClaimPayout(_claimID, receiver, amount);
 
-    // Transfers the actual tokens to the receiver
-    sherlockCore.payoutClaim(receiver, amount);
+    // We could potentially transfer more than `amount` in case balance > amount
+    uint256 balance = TOKEN.balanceOf(address(this));
+    if (balance != 0) TOKEN.safeTransfer(receiver, balance);
+    if (balance < amount) sherlockCore.payoutClaim(receiver, amount - balance);
   }
 
   /// @notice UMAHO is able to execute a halt if the state is UmaApproved and state was updated less than UMAHO_TIME ago
   // Once the UMAHO_TIME is up, UMAHO can still halt the claim, but only if the claim hasn't been paid out yet
-  function executeHalt(uint256 _claimID) external override onlyUMAHO {
+  function executeHalt(uint256 _claimID) external override onlyUMAHO nonReentrant {
     bytes32 claimIdentifier = publicToInternalID[_claimID];
     if (claimIdentifier == bytes32(0)) revert InvalidArgument();
 
@@ -423,6 +465,7 @@ contract SherlockClaimManager is ISherlockClaimManager, Manager {
   // Once requestAndProposePriceFor() is executed in UMA's contracts, this function gets called
   // We change the claim's state from UmaPriceProposed to UmaDisputeProposed
   // Then we call the next function in the process, disputePriceFor()
+  // @note reentrancy is allowed for this call
   function priceProposed(
     bytes32 identifier,
     uint32 timestamp,
@@ -445,6 +488,7 @@ contract SherlockClaimManager is ISherlockClaimManager, Manager {
   // Once disputePriceFor() is executed in UMA's contracts, this function gets called
   // We change the claim's state from UmaDisputeProposed to UmaPending
   // Then we call the next function in the process, priceSettled()
+  // @note reentrancy is allowed for this call
   function priceDisputed(
     bytes32 identifier,
     uint32 timestamp,
@@ -471,7 +515,7 @@ contract SherlockClaimManager is ISherlockClaimManager, Manager {
     uint32 timestamp,
     bytes memory ancillaryData,
     SkinnyOptimisticOracleInterface.Request memory request
-  ) external override onlyUMA(identifier) {
+  ) external override onlyUMA(identifier) nonReentrant {
     bytes32 claimIdentifier = keccak256(ancillaryData);
 
     Claim storage claim = claims_[claimIdentifier];

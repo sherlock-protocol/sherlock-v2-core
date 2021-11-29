@@ -75,6 +75,30 @@ describe('SherlockClaimManager ─ Stateless', function () {
       ).to.be.revertedWith('ZeroArgument()');
     });
   });
+  describe('addCallback()', function () {
+    it('Invalid sender', async function () {
+      await expect(this.scm.connect(this.carol).addCallback(this.alice.address)).to.be.revertedWith(
+        'Ownable: caller is not the owner',
+      );
+    });
+    it('Zero address', async function () {
+      await expect(this.scm.addCallback(constants.AddressZero)).to.be.revertedWith(
+        'ZeroArgument()',
+      );
+    });
+  });
+  describe('removeCallback()', function () {
+    it('Invalid sender', async function () {
+      await expect(
+        this.scm.connect(this.carol).removeCallback(this.alice.address, 1),
+      ).to.be.revertedWith('Ownable: caller is not the owner');
+    });
+    it('Zero address', async function () {
+      await expect(this.scm.removeCallback(constants.AddressZero, 1)).to.be.revertedWith(
+        'ZeroArgument()',
+      );
+    });
+  });
   describe('startClaim()', function () {
     it('Zero protocol', async function () {
       await expect(
@@ -362,7 +386,12 @@ describe('SherlockClaimManager ─ Functional', function () {
     timeTraveler = new TimeTraveler(network.provider);
     await timeTraveler.fork(13671132);
 
-    await prepare(this, ['SherlockClaimManagerTest', 'Sherlock', 'SherlockProtocolManager']);
+    await prepare(this, [
+      'SherlockClaimManagerTest',
+      'Sherlock',
+      'SherlockProtocolManager',
+      'CallbackMock',
+    ]);
 
     this.umaho = this.carol;
     this.spcc = this.gov;
@@ -370,6 +399,7 @@ describe('SherlockClaimManager ─ Functional', function () {
     await deploy(this, [
       ['scm', this.SherlockClaimManagerTest, [this.umaho.address, this.spcc.address]],
       ['spm', this.SherlockProtocolManager, [USDC_ADDRESS]],
+      ['callbackMock', this.CallbackMock, []],
     ]);
 
     await deploy(this, [
@@ -427,6 +457,71 @@ describe('SherlockClaimManager ─ Functional', function () {
     await this.sherlock.initialStake(maxTokens, 1000, this.alice.address);
 
     await timeTraveler.snapshot();
+  });
+  describe('addCallback()', function () {
+    before(async function () {
+      await timeTraveler.revertSnapshot();
+    });
+    it('Initial state', async function () {
+      await expect(this.scm.claimCallbacks(0)).to.be.reverted;
+    });
+    it('Do', async function () {
+      this.t1 = await meta(this.scm.addCallback(this.alice.address));
+      expect(this.t1.events.length).to.eq(1);
+      expect(this.t1.events[0].event).to.eq('CallbackAdded');
+      expect(this.t1.events[0].args.callback).to.eq(this.alice.address);
+    });
+    it('Zero address', async function () {
+      await expect(this.scm.addCallback(constants.AddressZero)).to.be.revertedWith(
+        'ZeroArgument()',
+      );
+    });
+    it('Initial state', async function () {
+      expect(await this.scm.claimCallbacks(0)).to.eq(this.alice.address);
+      await expect(this.scm.claimCallbacks(1)).to.be.reverted;
+    });
+    it('Do again', async function () {
+      await expect(this.scm.addCallback(this.alice.address)).to.be.revertedWith(
+        'InvalidArgument()',
+      );
+    });
+    it('Do max exceed', async function () {
+      await this.scm.addCallback(this.bob.address);
+      await this.scm.addCallback(this.carol.address);
+      await this.scm.addCallback(this.gov.address);
+      await expect(this.scm.addCallback(USDC_ADDRESS)).to.be.revertedWith('InvalidState()');
+    });
+  });
+  describe('removeCallback()', function () {
+    before(async function () {
+      await timeTraveler.revertSnapshot();
+
+      await this.scm.addCallback(this.alice.address);
+    });
+    it('Invalid index', async function () {
+      await expect(this.scm.removeCallback(this.alice.address, 1)).to.be.reverted;
+    });
+    it('Invalid callback', async function () {
+      await expect(this.scm.removeCallback(this.bob.address, 0)).to.be.revertedWith(
+        'InvalidArgument()',
+      );
+    });
+    it('Initial state', async function () {
+      expect(await this.scm.claimCallbacks(0)).to.eq(this.alice.address);
+      await expect(this.scm.claimCallbacks(1)).to.be.reverted;
+    });
+    it('Do', async function () {
+      this.t1 = await meta(this.scm.removeCallback(this.alice.address, 0));
+      expect(this.t1.events.length).to.eq(1);
+      expect(this.t1.events[0].event).to.eq('CallbackRemoved');
+      expect(this.t1.events[0].args.callback).to.eq(this.alice.address);
+    });
+    it('Verify state', async function () {
+      await expect(this.scm.claimCallbacks(0)).to.be.reverted;
+    });
+    it('Do again', async function () {
+      await expect(this.scm.removeCallback(this.alice.address, 0)).to.be.reverted;
+    });
   });
   describe('startClaim(), active', function () {
     before(async function () {
@@ -882,7 +977,7 @@ describe('SherlockClaimManager ─ Functional', function () {
       expect(this.t1.events[13].args.currentState).to.eq(STATE.UmaPending);
     });
     it('Verify state', async function () {
-      expect(await this.usdc.balanceOf(this.carol.address)).to.eq(parseUnits('9220', 6));
+      expect(await this.usdc.balanceOf(this.carol.address)).to.eq(parseUnits('9200', 6));
 
       const claim = await this.scm.claims(1);
       expect(claim[8]).to.eq(STATE.UmaPending);
@@ -917,7 +1012,7 @@ describe('SherlockClaimManager ─ Functional', function () {
       await this.scm.connect(this.carol).escalate(1, this.usdcAmount);
     });
     it('Verify state', async function () {
-      expect(await this.usdc.balanceOf(this.carol.address)).to.eq(parseUnits('9220', 6));
+      expect(await this.usdc.balanceOf(this.carol.address)).to.eq(parseUnits('9200', 6));
 
       const claim = await this.scm.claims(1);
       expect(claim[8]).to.eq(STATE.UmaPending);
@@ -1066,6 +1161,135 @@ describe('SherlockClaimManager ─ Functional', function () {
     });
     it('Verify state', async function () {
       expect(await this.usdc.balanceOf(this.bob.address)).to.eq(1000);
+
+      expect(await this.scm.protocolClaimActive(this.protocolX)).to.eq(false);
+
+      expect(await this.scm.viewPublicToInternalID(1)).to.eq(constants.HashZero);
+      expect(await this.scm.viewInternalToPublicID(this.internalIdentifier)).to.eq(0);
+
+      await expect(this.scm.claims(1)).to.be.revertedWith('InvalidArgument()');
+    });
+  });
+  describe('payoutClaim(), callback, not exceeding amount', function () {
+    before(async function () {
+      await timeTraveler.revertSnapshot();
+      this.internalIdentifier = keccak256('0x1212');
+
+      await this.scm.renounceUmaHaltOperator();
+      this.t0 = await meta(
+        this.scm
+          .connect(this.carol)
+          .startClaim(this.protocolX, maxTokens, this.bob.address, 1, '0x1212'),
+      );
+
+      this.t1 = await meta(this.scm.connect(this.spcc).spccApprove(1));
+
+      this.callbackAmount = maxTokens.div(10).mul(6);
+      await this.scm.addCallback(this.callbackMock.address);
+      await this.mintUSDC(this.callbackMock.address, this.callbackAmount);
+    });
+    it('Initial state', async function () {
+      expect(await this.usdc.balanceOf(this.bob.address)).to.eq(0);
+      expect(await this.usdc.balanceOf(this.sherlock.address)).to.eq(maxTokens);
+      expect(await this.usdc.balanceOf(this.callbackMock.address)).to.eq(this.callbackAmount);
+
+      expect(await this.scm.protocolClaimActive(this.protocolX)).to.eq(true);
+
+      expect(await this.scm.viewPublicToInternalID(1)).to.eq(this.internalIdentifier);
+      expect(await this.scm.viewInternalToPublicID(this.internalIdentifier)).to.eq(1);
+
+      const claim = await this.scm.claims(1);
+      expect(claim[0]).to.eq(this.t0.time);
+      expect(claim[1]).to.eq(this.t1.time);
+      expect(claim[2]).to.eq(this.carol.address);
+      expect(claim[3]).to.eq(this.protocolX);
+      expect(claim[4]).to.eq(maxTokens);
+      expect(claim[5]).to.eq(this.bob.address);
+      expect(claim[6]).to.eq(1);
+      expect(claim[7]).to.eq('0x1212');
+      expect(claim[8]).to.eq(STATE.SpccApproved);
+    });
+    it('Do', async function () {
+      this.t1 = await meta(this.scm.connect(this.carol).payoutClaim(1));
+      expect(this.t1.events.length).to.eq(6);
+      expect(this.t1.events[0].event).to.eq('ClaimStatusChanged');
+      expect(this.t1.events[0].args.claimID).to.eq(1);
+      expect(this.t1.events[0].args.previousState).to.eq(STATE.SpccApproved);
+      expect(this.t1.events[0].args.currentState).to.eq(STATE.NonExistent);
+      expect(this.t1.events[2].event).to.eq('ClaimPayout');
+      expect(this.t1.events[2].args.claimID).to.eq(1);
+      expect(this.t1.events[2].args.receiver).to.eq(this.bob.address);
+      expect(this.t1.events[2].args.amount).to.eq(maxTokens);
+    });
+    it('Verify state', async function () {
+      expect(await this.usdc.balanceOf(this.bob.address)).to.eq(maxTokens);
+      // sherlock still has this.callBackAmount as the callback mock paid for that
+      expect(await this.usdc.balanceOf(this.sherlock.address)).to.eq(this.callbackAmount);
+      expect(await this.usdc.balanceOf(this.callbackMock.address)).to.eq(0);
+
+      expect(await this.scm.protocolClaimActive(this.protocolX)).to.eq(false);
+
+      expect(await this.scm.viewPublicToInternalID(1)).to.eq(constants.HashZero);
+      expect(await this.scm.viewInternalToPublicID(this.internalIdentifier)).to.eq(0);
+
+      await expect(this.scm.claims(1)).to.be.revertedWith('InvalidArgument()');
+    });
+  });
+  describe('payoutClaim(), callback, exceeding amount', function () {
+    before(async function () {
+      await timeTraveler.revertSnapshot();
+      this.internalIdentifier = keccak256('0x1212');
+
+      await this.scm.renounceUmaHaltOperator();
+      this.t0 = await meta(
+        this.scm
+          .connect(this.carol)
+          .startClaim(this.protocolX, 1000, this.bob.address, 1, '0x1212'),
+      );
+
+      this.t1 = await meta(this.scm.connect(this.spcc).spccApprove(1));
+
+      await this.scm.addCallback(this.callbackMock.address);
+      await this.mintUSDC(this.callbackMock.address, maxTokens);
+    });
+    it('Initial state', async function () {
+      expect(await this.usdc.balanceOf(this.bob.address)).to.eq(0);
+      expect(await this.usdc.balanceOf(this.sherlock.address)).to.eq(maxTokens);
+      expect(await this.usdc.balanceOf(this.callbackMock.address)).to.eq(maxTokens);
+
+      expect(await this.scm.protocolClaimActive(this.protocolX)).to.eq(true);
+
+      expect(await this.scm.viewPublicToInternalID(1)).to.eq(this.internalIdentifier);
+      expect(await this.scm.viewInternalToPublicID(this.internalIdentifier)).to.eq(1);
+
+      const claim = await this.scm.claims(1);
+      expect(claim[0]).to.eq(this.t0.time);
+      expect(claim[1]).to.eq(this.t1.time);
+      expect(claim[2]).to.eq(this.carol.address);
+      expect(claim[3]).to.eq(this.protocolX);
+      expect(claim[4]).to.eq(1000);
+      expect(claim[5]).to.eq(this.bob.address);
+      expect(claim[6]).to.eq(1);
+      expect(claim[7]).to.eq('0x1212');
+      expect(claim[8]).to.eq(STATE.SpccApproved);
+    });
+    it('Do', async function () {
+      this.t1 = await meta(this.scm.connect(this.carol).payoutClaim(1));
+      expect(this.t1.events.length).to.eq(4);
+      expect(this.t1.events[0].event).to.eq('ClaimStatusChanged');
+      expect(this.t1.events[0].args.claimID).to.eq(1);
+      expect(this.t1.events[0].args.previousState).to.eq(STATE.SpccApproved);
+      expect(this.t1.events[0].args.currentState).to.eq(STATE.NonExistent);
+      expect(this.t1.events[2].event).to.eq('ClaimPayout');
+      expect(this.t1.events[2].args.claimID).to.eq(1);
+      expect(this.t1.events[2].args.receiver).to.eq(this.bob.address);
+      expect(this.t1.events[2].args.amount).to.eq(1000);
+    });
+    it('Verify state', async function () {
+      // Bob has maxTokens even though payout amount is 1000
+      expect(await this.usdc.balanceOf(this.bob.address)).to.eq(maxTokens);
+      expect(await this.usdc.balanceOf(this.sherlock.address)).to.eq(maxTokens);
+      expect(await this.usdc.balanceOf(this.callbackMock.address)).to.eq(0);
 
       expect(await this.scm.protocolClaimActive(this.protocolX)).to.eq(false);
 

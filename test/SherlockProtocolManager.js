@@ -16,6 +16,13 @@ describe('SherlockProtocolManager ─ Stateless', function () {
     await deploy(this, [['spm', this.SherlockProtocolManagerTest, [this.ERC20Mock6d.address]]]);
     await deploy(this, [['SherlockMock', this.SherlockMock, []]]);
   });
+  describe('constructor', function () {
+    it('Zero token', async function () {
+      await expect(
+        this.SherlockProtocolManagerTest.deploy(constants.AddressZero),
+      ).to.be.revertedWith('ZeroArgument()');
+    });
+  });
   describe('protocolAdd()', function () {
     it('Invalid sender', async function () {
       await expect(
