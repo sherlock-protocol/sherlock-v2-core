@@ -250,14 +250,13 @@ contract SherlockClaimManager is ISherlockClaimManager, ReentrancyGuard, Manager
     if (_timestamp >= block.timestamp) revert InvalidArgument();
     if (ancillaryData.length == 0) revert ZeroArgument();
     if (address(sherlockCore) == address(0)) revert InvalidConditions();
+    // Protocol must not already have another claim active
     if (protocolClaimActive[_protocol]) revert ClaimActive();
 
     // Creates the internal ID for this claim
     bytes32 claimIdentifier = keccak256(ancillaryData);
     // State for this newly created claim must be equal to the default state (NonExistent)
     if (claims_[claimIdentifier].state != State.NonExistent) revert InvalidArgument();
-    // Protocol must not already have another claim active
-    require(!protocolClaimActive[_protocol]);
 
     // Gets the instance of the protocol manager contract
     ISherlockProtocolManager protocolManager = sherlockCore.sherlockProtocolManager();
