@@ -40,7 +40,7 @@ interface ISherlockClaimManager is IManager, OptimisticRequester {
   event UMAHORenounced();
 
   enum State {
-    NonExistent, // Claim doesn't exist
+    NonExistent, // Claim doesn't exist (this is the default state on creation)
     SpccPending, // Claim is created, SPCC is able to set state to valid
     SpccApproved, // Final state, claim is valid
     SpccDenied, // Claim denied by SPCC, claim can be escalated within 7 days
@@ -109,20 +109,22 @@ interface ISherlockClaimManager is IManager, OptimisticRequester {
 
   function spccRefuse(uint256 _claimID) external;
 
-  /// @notice callable by protocol agent
-  /// @dev use hardcoded USDC address
-  /// @dev use hardcoded bond amount (upgradable by big timelock boi)
-  /// @dev use hardcoded liveness 7200
-  /// @dev proposer = current protocl agent (could differ from protocol agent when claim was started)
+  /// @notice Callable by protocol agent
+  /// @param _claimID Public claim ID 
+  /// @dev Use hardcoded USDC address
+  /// @dev Use hardcoded bond amount (upgradable by a large timelock)
+  /// @dev Use hardcoded liveness 7200
+  /// @dev Proposer = current protocl agent (could differ from protocol agent when claim was started)
   /// @dev proposedPrice = _amount
   /// @param _amount maximum amount to use to escaltion, remaining will be send back
   function escalate(uint256 _claimID, uint256 _amount) external;
 
-  /// @notice execute claim, storage will be removed after
-  /// @dev needs to be SpccApproved or UmaApproved && >1 day
-  /// @dev funds will be pulled from core
+  /// @notice Execute claim, storage will be removed after
+  /// @param _claimID Public ID of the claim
+  /// @dev Needs to be SpccApproved or UmaApproved && >UMAHO_TIME
+  /// @dev Funds will be pulled from core
   function payoutClaim(uint256 _claimID) external;
 
-  /// @notice uho is able to execute a halt if the state is UmaApproved + less then 1 day changed
+  /// @notice UMAHO is able to execute a halt if the state is UmaApproved and state was updated less than UMAHO_TIME ago
   function executeHalt(uint256 _claimID) external;
 }
