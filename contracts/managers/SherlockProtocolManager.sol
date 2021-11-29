@@ -806,7 +806,10 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
     _setProtocolAgent(_protocol, msg.sender, _protocolAgent);
   }
 
-  // Checks to see if this contract is the assigned protocol manager contract in the Sherlock core contract
+  /// @notice Function used to check if this is the current active protocol manager
+  /// @return Boolean indicating it's active
+  /// @dev If inactive the owner can pull all ERC20s
+  /// @dev Will be checked by calling the sherlock contract
   function isActive() public view returns (bool) {
     return address(sherlockCore.sherlockProtocolManager()) == address(this);
   }
