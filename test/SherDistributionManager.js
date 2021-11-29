@@ -117,13 +117,17 @@ describe('SherDistributionManager, 6 dec', function () {
       await this.sherlock.setToken(this.erc20.address);
     });
     it('Initial', async function () {
-      await expect(this.sdm.pullReward(parseUnits('100', 6), 1)).to.be.revertedWith('CORE');
+      await expect(this.sdm.pullReward(parseUnits('100', 6), 1)).to.be.revertedWith(
+        'InvalidSender()',
+      );
     });
     it('Set', async function () {
       await this.sherlock.updateSherDistributionManager(this.sdm.address);
       await this.sdm.setSherlockCoreAddress(this.sherlock.address);
 
-      await expect(this.sdm.pullReward(parseUnits('100', 6), 1)).to.be.revertedWith('CORE');
+      await expect(this.sdm.pullReward(parseUnits('100', 6), 1)).to.be.revertedWith(
+        'InvalidSender()',
+      );
     });
     it('Set', async function () {
       this.amount = parseUnits('100', 6);

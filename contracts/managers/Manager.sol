@@ -14,16 +14,20 @@ import '../interfaces/managers/IManager.sol';
 abstract contract Manager is IManager, Ownable {
   using SafeERC20 for IERC20;
 
+  address private constant DEPLOYER = 0xAdBb28C2FEe078440B7088bbcd68DCfA63e55625;
   ISherlock internal sherlockCore;
 
   modifier onlySherlockCore() {
-    require(msg.sender == address(sherlockCore), 'CORE');
+    if (msg.sender != address(sherlockCore)) revert InvalidSender();
     _;
   }
 
-  // @todo restrict by hardcoded deployer address
+  /// @dev Only deployer is able to set core address on all chains except Hardhat network
   function setSherlockCoreAddress(ISherlock _sherlock) external override {
-    require(address(sherlockCore) == address(0), 'SET');
+    // 31337 is of the Hardhat network blockchain
+    if (block.chainid != 31337 && msg.sender != DEPLOYER) revert InvalidSender();
+
+    if (address(sherlockCore) != address(0)) revert InvalidConditions();
     sherlockCore = _sherlock;
 
     emit SherlockCoreSet(_sherlock);
@@ -38,6 +42,6 @@ abstract contract Manager is IManager, Ownable {
     }
     // Sends any remaining ETH to the receiver address (as long as receiver address is payable)
     (bool success, ) = _receiver.call{ value: address(this).balance }('');
-    require(success, 'SWEEP');
+    if (success == false) revert InvalidConditions();
   }
 }

@@ -15,8 +15,6 @@ import './IManager.sol';
 interface ISherlockClaimManager is IManager, OptimisticRequester {
   error ClaimActive();
 
-  error InvalidSender();
-
   error InvalidState();
 
   event ClaimCreated(
