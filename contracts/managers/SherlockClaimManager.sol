@@ -15,8 +15,6 @@ import '@openzeppelin/contracts/security/ReentrancyGuard.sol';
 
 import 'hardhat/console.sol';
 
-// @todo add callback for payout
-
 /// @dev expects 6 decimals input tokens
 contract SherlockClaimManager is ISherlockClaimManager, ReentrancyGuard, Manager {
   using SafeERC20 for IERC20;
