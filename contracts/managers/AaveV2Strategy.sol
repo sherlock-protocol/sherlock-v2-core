@@ -46,7 +46,7 @@ contract AaveV2Strategy is IStrategyManager, Manager {
   function deposit() external override {
     ILendingPool lp = getLp();
     uint256 amount = want.balanceOf(address(this));
-    require(amount != 0, 'ZERO_AMOUNT');
+    if (amount == 0) revert InvalidConditions();
 
     if (want.allowance(address(this), address(lp)) < amount) {
       want.safeApprove(address(lp), type(uint256).max);
@@ -64,10 +64,10 @@ contract AaveV2Strategy is IStrategyManager, Manager {
   }
 
   function withdraw(uint256 _amount) external override onlySherlockCore {
-    require(_amount != type(uint256).max, 'MAX');
+    if (_amount == type(uint256).max) revert InvalidArgument();
 
     ILendingPool lp = getLp();
-    require(lp.withdraw(address(want), _amount, msg.sender) == _amount, 'AAVE');
+    if (lp.withdraw(address(want), _amount, msg.sender) != _amount) revert InvalidConditions();
   }
 
   function claimRewards() external {
@@ -78,12 +78,11 @@ contract AaveV2Strategy is IStrategyManager, Manager {
   }
 
   function isActive() public view returns (bool) {
-    // todo managing strategy should have the strategy() interface and return address(this)
     return address(sherlockCore.yieldStrategy()) == address(this);
   }
 
   function sweep(address _receiver, IERC20[] memory _extraTokens) external onlyOwner {
-    require(!isActive());
+    if (isActive()) revert InvalidConditions();
     _sweep(_receiver, _extraTokens);
   }
 }
