@@ -490,12 +490,12 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
     // claimablePremiums is different from _settleTotalDebt() because it does not change state
     // Retrieves current amount of all premiums that are owed to stakers
     uint256 amount = claimablePremiums();
-    // Global value of premiums owed to stakers is set to zero since we are transferring the entire amount out
-    lastClaimablePremiumsForStakers = 0;
-    lastAccountedGlobal = block.timestamp;
 
     // Transfers all the premiums owed to stakers to the Sherlock core contract
     if (amount != 0) {
+      // Global value of premiums owed to stakers is set to zero since we are transferring the entire amount out
+      lastClaimablePremiumsForStakers = 0;
+      lastAccountedGlobal = block.timestamp;
       token.safeTransfer(sherlock, amount);
     }
   }

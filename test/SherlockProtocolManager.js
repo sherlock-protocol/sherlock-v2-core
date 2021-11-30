@@ -1751,7 +1751,7 @@ describe('SherlockProtocolManager ─ Functional', function () {
 
       expect(await this.spm.claimablePremiums()).to.eq(0);
       expect(await this.spm.viewLastClaimablePremiumsForStakers()).to.eq(0);
-      expect(await this.spm.viewLastAccountedGlobal()).to.eq(this.t1.time);
+      expect(await this.spm.viewLastAccountedGlobal()).to.eq(0);
       expect(await this.spm.viewAllPremiumsPerSecToStakers()).to.eq(0);
 
       expect(await this.ERC20Mock6d.balanceOf(this.bob.address)).to.eq(0);
