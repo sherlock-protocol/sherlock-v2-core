@@ -1171,21 +1171,21 @@ describe('SherlockProtocolManager ─ Functional', function () {
 
       // events
       expect(this.t2.events.length).to.eq(6);
-      expect(this.t2.events[1].event).to.eq('ProtocolPremiumChanged');
-      expect(this.t2.events[1].args.oldPremium).to.eq(this.premium);
-      expect(this.t2.events[1].args.newPremium).to.eq(0);
+      expect(this.t2.events[0].event).to.eq('ProtocolPremiumChanged');
+      expect(this.t2.events[0].args.oldPremium).to.eq(this.premium);
+      expect(this.t2.events[0].args.newPremium).to.eq(0);
+      expect(this.t2.events[0].args.protocol).to.eq(this.protocolX);
+      expect(this.t2.events[1].event).to.eq('ProtocolAgentTransfer');
       expect(this.t2.events[1].args.protocol).to.eq(this.protocolX);
-      expect(this.t2.events[2].event).to.eq('ProtocolAgentTransfer');
+      expect(this.t2.events[1].args.from).to.eq(this.alice.address);
+      expect(this.t2.events[1].args.to).to.eq(constants.AddressZero);
+      expect(this.t2.events[2].event).to.eq('ProtocolUpdated');
       expect(this.t2.events[2].args.protocol).to.eq(this.protocolX);
-      expect(this.t2.events[2].args.from).to.eq(this.alice.address);
-      expect(this.t2.events[2].args.to).to.eq(constants.AddressZero);
-      expect(this.t2.events[3].event).to.eq('ProtocolUpdated');
+      expect(this.t2.events[2].args.coverage).to.eq(constants.HashZero);
+      expect(this.t2.events[2].args.nonStakers).to.eq(0);
+      expect(this.t2.events[2].args.coverageAmount).to.eq(0);
+      expect(this.t2.events[3].event).to.eq('ProtocolRemoved');
       expect(this.t2.events[3].args.protocol).to.eq(this.protocolX);
-      expect(this.t2.events[3].args.coverage).to.eq(constants.HashZero);
-      expect(this.t2.events[3].args.nonStakers).to.eq(0);
-      expect(this.t2.events[3].args.coverageAmount).to.eq(0);
-      expect(this.t2.events[4].event).to.eq('ProtocolRemoved');
-      expect(this.t2.events[4].args.protocol).to.eq(this.protocolX);
       expect(this.t2.events[5].event).to.eq('ProtocolRemovedByArb');
       expect(this.t2.events[5].args.protocol).to.eq(this.protocolX);
       expect(this.t2.events[5].args.arb).to.eq(this.bob.address);

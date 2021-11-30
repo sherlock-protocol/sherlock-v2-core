@@ -639,15 +639,15 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
     // This means the protocol still has adequate active balance and thus cannot be removed
     if (remainingBalance >= minActiveBalance) revert InvalidConditions();
 
-    // Sets the protocol's active balance to 0 and sends the remaining balance to msg.sender
-    // NOTE: Evert to decide if we need to move the transfer to after _forceRemoveProtocol() to mitigate reentrancy
-    if (remainingBalance != 0) {
-      activeBalances[_protocol] = 0;
-      token.safeTransfer(msg.sender, remainingBalance);
-    }
-
+    // Sets the protocol's active balance to 0
+    delete activeBalances[_protocol];
     // Removes the protocol from coverage
     _forceRemoveProtocol(_protocol, agent);
+
+    if (remainingBalance != 0) {
+      // sends the remaining balance to msg.sender
+      token.safeTransfer(msg.sender, remainingBalance);
+    }
     emit ProtocolRemovedByArb(_protocol, msg.sender, remainingBalance);
   }
 
