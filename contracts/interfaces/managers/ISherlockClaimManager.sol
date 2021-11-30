@@ -47,7 +47,8 @@ interface ISherlockClaimManager is IManager, OptimisticRequester {
     UmaDisputeProposed, // Escaltion is done, waiting for confirmation
     UmaPending, // Claim is escalated, in case Spcc denied or didn't act within 7 days.
     UmaApproved, // Final state, claim is valid, claim can be enacted after 3 day, umaHaltOperator has 3 day to change to denied
-    UmaDenied // Final state, claim is invalid
+    UmaDenied, // Final state, claim is invalid
+    Halted // UMHA can halt claim if state is UmaApproved
   }
 
   struct Claim {
@@ -108,7 +109,7 @@ interface ISherlockClaimManager is IManager, OptimisticRequester {
   function spccRefuse(uint256 _claimID) external;
 
   /// @notice Callable by protocol agent
-  /// @param _claimID Public claim ID 
+  /// @param _claimID Public claim ID
   /// @dev Use hardcoded USDC address
   /// @dev Use hardcoded bond amount (upgradable by a large timelock)
   /// @dev Use hardcoded liveness 7200

@@ -31,7 +31,7 @@ contract SherlockClaimManager is ISherlockClaimManager, ReentrancyGuard, Manager
   // After the OO has voted to pay out
   // This variable represents the amount of time during which UMAHO can block a claim that was approved by the OO
   // After this time period, the claim (which was approved by the OO) is inferred to be approved by UMAHO as well
-  uint256 constant UMAHO_TIME = 3 days;
+  uint256 constant UMAHO_TIME = 24 hours;
 
   // The amount of time the Sherlock Protocol Claims Committee (SPCC) gets to decide on a claim
   // If no action is taken by SPCC during this time, then the protocol agent can escalate the decision to the UMA OO
@@ -466,7 +466,8 @@ contract SherlockClaimManager is ISherlockClaimManager, ReentrancyGuard, Manager
     if (claimIdentifier == bytes32(0)) revert InvalidArgument();
 
     // Sets state of claim to nonexistent, reverts if the old state was anything but UmaApproved
-    if (_setState(claimIdentifier, State.NonExistent) != State.UmaApproved) revert InvalidState();
+    if (_setState(claimIdentifier, State.Halted) != State.UmaApproved) revert InvalidState();
+    if (_setState(claimIdentifier, State.NonExistent) != State.Halted) revert InvalidState();
 
     emit ClaimHalted(_claimID);
   }
