@@ -29,7 +29,7 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
   uint256 constant PROTOCOL_CLAIM_DEADLINE = 7 days;
 
   // This is the amount that cannot be withdrawn (measured in seconds of payment) if a protocol wants to remove active balance
-  uint256 constant MIN_SECONDS_LEFT = 3 days;
+  uint256 constant MIN_SECONDS_LEFT = 7 days;
 
   // Convenient for percentage calculations
   uint256 constant HUNDRED_PERCENT = 10**18;
@@ -253,7 +253,7 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
     // Where arbs would no longer be incentivized to remove the protocol
     // Because if a protocol is not removed by arbs before running out of active balance, this can cause problems
     // Note: Change MIN_SECONDS_LEFT to minSecondsOfCoverage
-    if (_premium != 0 && _secondsOfCoverageLeft(_protocol) < MIN_SECONDS_LEFT) {
+    if (_premium != 0 && _secondsOfCoverageLeft(_protocol) < minSecondsOfCoverage) {
       revert InsufficientBalance(_protocol);
     }
   }
@@ -329,7 +329,7 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
         // The idea here is that claimablePremiumsStored has gotten too big accidentally
         // We need to decrease the balance of claimablePremiumsStored by the amount that was added in error
         // This first line can be true if claimPremiumsForStakers() has been called and
-        // lastClaimablePremiumsForStakers would be 0 but a faulty protocol could cause claimablePremiumError to be >0 still 
+        // lastClaimablePremiumsForStakers would be 0 but a faulty protocol could cause claimablePremiumError to be >0 still
         if (claimablePremiumError > lastClaimablePremiumsForStakers_) {
           insufficientTokens = claimablePremiumError - lastClaimablePremiumsForStakers_;
           lastClaimablePremiumsForStakers = 0;
@@ -674,7 +674,7 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
     // NOTE: We don't give the arb the full remaining balance like we do in forceRemoveByActiveBalance()
     // This is because we know the exact balance the arb will get in forceRemoveByActiveBalance()
     // But when removing based on seconds of coverage left, the remainingBalance could still be quite large
-    // So it's better to scale the arb reward over time. It's a little complex because the remainingBalance 
+    // So it's better to scale the arb reward over time. It's a little complex because the remainingBalance
     // Decreases over time also but reward will be highest at the midpoint of percentageScaled (50%)
     uint256 arbAmount = (remainingBalance * percentageScaled) / HUNDRED_PERCENT;
     if (arbAmount != 0) {

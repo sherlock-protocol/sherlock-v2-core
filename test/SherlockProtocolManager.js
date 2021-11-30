@@ -8,6 +8,7 @@ const { id } = require('ethers/lib/utils');
 
 const maxTokens = parseUnits('100000000000', 6);
 const days7 = 60 * 60 * 24 * 7;
+const days3 = 60 * 60 * 24 * 3;
 describe('SherlockProtocolManager ─ Stateless', function () {
   before(async function () {
     await prepare(this, ['SherlockProtocolManagerTest', 'ERC20Mock6d', 'SherlockMock']);
@@ -1892,6 +1893,8 @@ describe('SherlockProtocolManager ─ Functional', function () {
       this.t0 = await meta(
         this.spm.protocolAdd(this.protocolX, this.alice.address, id('t'), parseEther('0.1'), 500),
       );
+
+      await this.spm.setMinSecondsOfCoverage(BigNumber.from(days3));
     });
     it('Initial state', async function () {
       expect(await this.spm.viewActiveBalance(this.protocolX)).to.eq(0);
@@ -2182,6 +2185,8 @@ describe('SherlockProtocolManager ─ Functional', function () {
       this.t0 = await meta(
         this.spm.protocolAdd(this.protocolX, this.alice.address, id('t'), parseEther('0.1'), 500),
       );
+
+      await this.spm.setMinSecondsOfCoverage(BigNumber.from(days3));
     });
     it('Initial state', async function () {
       expect(await this.spm.viewActiveBalance(this.protocolX)).to.eq(0);
@@ -2687,7 +2692,7 @@ describe('SherlockProtocolManager ─ Functional', function () {
         'InsufficientBalance("' + this.protocolX + '")',
       );
 
-      this.amount = 60 * 60 * 24 * 4;
+      this.amount = 60 * 60 * 24 * 8;
       this.t1 = await meta(this.spm.depositToActiveBalance(this.protocolX, this.amount));
       await this.spm.setProtocolPremium(this.protocolX, 1);
 
