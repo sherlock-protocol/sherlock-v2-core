@@ -282,7 +282,7 @@ contract SherlockClaimManager is ISherlockClaimManager, ReentrancyGuard, Manager
     if (_amount > maxClaim) revert InvalidArgument();
 
     // Increments the last claim ID by 1 to get the public claim ID
-    // Note ++variable is more gas efficient than variable++
+    // Note initial claimID will be 1
     uint256 claimID = ++lastClaimID;
     // Protocol now has an active claim
     protocolClaimActive[_protocol] = true;
@@ -408,7 +408,6 @@ contract SherlockClaimManager is ISherlockClaimManager, ReentrancyGuard, Manager
     // Checks for remaining balance in the contract
     uint256 remaining = TOKEN.balanceOf(address(this));
     // Sends remaining balance to the protocol agent
-    // Note This is probably not optimal, but we leave it this way for simplicity's sake
     // A protocol agent should be able to send the exact amount to avoid the extra gas from this function
     if (remaining != 0) TOKEN.safeTransfer(msg.sender, remaining);
   }
@@ -419,7 +418,7 @@ contract SherlockClaimManager is ISherlockClaimManager, ReentrancyGuard, Manager
   /// @dev Needs to be SpccApproved or UmaApproved && >UMAHO_TIME
   /// @dev Funds will be pulled from core
   // We are ok with spending the extra time to wait for the UMAHO time to expire before paying out
-  // We could have UMAHO multisig send a tx to confirm the payout (payout would happen sooner), 
+  // We could have UMAHO multisig send a tx to confirm the payout (payout would happen sooner),
   // But doesn't seem worth it to save half a day or so
   function payoutClaim(uint256 _claimID) external override nonReentrant {
     bytes32 claimIdentifier = publicToInternalID[_claimID];
@@ -467,7 +466,6 @@ contract SherlockClaimManager is ISherlockClaimManager, ReentrancyGuard, Manager
     if (claimIdentifier == bytes32(0)) revert InvalidArgument();
 
     // Sets state of claim to nonexistent, reverts if the old state was anything but UmaApproved
-    // Todo Add intermediate state like UmahoDenied for a clearer audit trail of what happened
     if (_setState(claimIdentifier, State.NonExistent) != State.UmaApproved) revert InvalidState();
 
     emit ClaimHalted(_claimID);
