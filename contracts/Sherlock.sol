@@ -314,7 +314,6 @@ contract Sherlock is ISherlock, ERC721, Ownable {
 
     if (address(sherDistributionManager) == address(0)) return 0;
     // Does not allow restaking of 0 tokens
-    // Question Does this cause problems during restaking?
     if (_amount == 0) return 0;
 
     // Checks this amount of SHER tokens in this contract before we transfer new ones
@@ -384,6 +383,7 @@ contract Sherlock is ISherlock, ERC721, Ownable {
   // Also burns the requisite amount of shares associated with this NFT position
   // Returns the amount of USDC owed to these shares
   // Question Do we need to make sure the NFT position has at least this many stakeShares?
+  // Answer: No, it's an internal function and will fail if it tries to subtract too many stakeShares
   function _redeemShares(
     uint256 _id,
     uint256 _stakeShares,

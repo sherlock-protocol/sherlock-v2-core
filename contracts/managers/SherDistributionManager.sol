@@ -39,6 +39,7 @@ contract SherDistributionManager is ISherDistributionManager, Manager {
     IERC20 _sher
   ) {
     // Question Are we sure we want to revert if these are equal to? Then we can't cleanly turn off rewards entirely?
+    // Answer: If we want to change Kors Curve variables, we will just deploy a new distribution manager contract
     if (_maxRewardsEndTVL >= _zeroRewardsStartTVL) revert InvalidArgument();
     if (_maxRewardsRate == 0) revert ZeroArgument();
     if (address(_sher) == address(0)) revert ZeroArgument();
@@ -154,7 +155,7 @@ contract SherDistributionManager is ISherDistributionManager, Manager {
   // Only contract owner can call this
   // Sends all specified tokens in this contract to the receiver's address (as well as ETH)
   function sweep(address _receiver, IERC20[] memory _extraTokens) external onlyOwner {
-    // This contract must be the current assigned protocol manager contract
+    // This contract must NOT be the current assigned distribution manager contract
     require(!isActive(), 'is_active');
     // Executes the sweep for ERC-20s specified in _extraTokens as well as for ETH
     _sweep(_receiver, _extraTokens);

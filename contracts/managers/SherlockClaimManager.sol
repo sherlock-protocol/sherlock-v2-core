@@ -37,25 +37,23 @@ contract SherlockClaimManager is ISherlockClaimManager, ReentrancyGuard, Manager
   // If no action is taken by SPCC during this time, then the protocol agent can escalate the decision to the UMA OO
   uint256 constant SPCC_TIME = 7 days;
 
-  // A pre-defined amount of time for the claim to be disputed within the OO
-  // Question Does Sherlock actually use this value? Need to understand it better.
+  // A pre-defined amount of time for the proposed price ($0) to be disputed within the OO
+  // Note This value is not important as we immediately dispute the proposed price
+  // 7200 represents 2 hours
   uint256 constant LIVENESS = 7200;
 
   // This is how UMA will know that Sherlock is requesting a decision from the OO
   // This is "SHERLOCK_CLAIM" in hex value
-  // Question Why did we change this to a different value? What is this new value?
   bytes32 public constant override UMA_IDENTIFIER =
     bytes32(0x534845524c4f434b5f434c41494d000000000000000000000000000000000000);
 
   uint256 MAX_CALLBACKS = 4;
 
   // The Optimistic Oracle contract that we interact with
-  // Question Why do we create the instance a different way now? What is the hex string? Why not pass during constructor anymore?
   SkinnyOptimisticOracleInterface constant UMA =
     SkinnyOptimisticOracleInterface(0xeE3Afe347D5C74317041E2618C49534dAf887c24);
 
   // USDC
-  // Question Why do we create the instance a different way now? What is the hex string? Why not pass during constructor anymore?
   IERC20 constant TOKEN = IERC20(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48);
 
   // The address of the multisig controlled by UMA that can emergency halt a claim that was approved by the OO
@@ -70,7 +68,7 @@ contract SherlockClaimManager is ISherlockClaimManager, ReentrancyGuard, Manager
   // A protocol's public claim ID is simply incremented by 1 from the last claim ID made by any protocol (1, 2, 3, etc.)
   // A protocol's internal ID is the keccak256() of a protocol's ancillary data field
   // A protocol's ancillary data field will contain info like the hash of the protocol's coverage agreement (each will be unique)
-  // Question Why do we have both of these fields again?
+  // The public ID (1, 2, 3, etc.) is easy to track while the internal ID is used for interacting with UMA
   mapping(uint256 => bytes32) internal publicToInternalID;
 
   // Opposite of the last field, allows us to move between a protocol's public ID and internal ID
@@ -84,13 +82,15 @@ contract SherlockClaimManager is ISherlockClaimManager, ReentrancyGuard, Manager
   // The last claim ID we used for a claim (ID is incremented by 1 each time)
   uint256 internal lastClaimID;
 
+  // A request object used in the UMA OO
   SkinnyOptimisticOracleInterface.Request private umaRequest;
+
+  // An array of contracts that implement the callback provided in this contract
+  ISherlockClaimManagerCallbackReceiver[] public claimCallbacks;
 
   // Used for callbacks on UMA functions
   // This modifier is used for a function being called by the OO contract, requires this contract as caller
   // Requires the OO contract to pass in the Sherlock identifier
-  ISherlockClaimManagerCallbackReceiver[] public claimCallbacks;
-
   modifier onlyUMA(bytes32 identifier) {
     if (identifier != UMA_IDENTIFIER) revert InvalidArgument();
     if (msg.sender != address(UMA)) revert InvalidSender();
@@ -197,6 +197,10 @@ contract SherlockClaimManager is ISherlockClaimManager, ReentrancyGuard, Manager
     if (claim_.state == State.NonExistent) revert InvalidArgument();
   }
 
+  // This function allows a new contract to be added that will implement PreCorePayoutCallback()
+  // The intention of this callback is to allow other contracts to trigger payouts, etc. when Sherlock triggers one
+  // This would be helpful for a reinsurer who should pay out when Sherlock pays out
+  // Data is passed to the "reinsurer" so it can know if it should pay out and how much
   /// @dev only add trusted and gas verified callbacks.
   function addCallback(ISherlockClaimManagerCallbackReceiver _callback)
     external
@@ -204,26 +208,31 @@ contract SherlockClaimManager is ISherlockClaimManager, ReentrancyGuard, Manager
     nonReentrant
   {
     if (address(_callback) == address(0)) revert ZeroArgument();
+    // Checks to see if this callback contract already exists
     for (uint256 i; i < claimCallbacks.length; i++) {
       if (claimCallbacks[i] == _callback) revert InvalidArgument();
     }
+    // Checks to see if the max amount of callback contracts has been reached
     if (claimCallbacks.length == MAX_CALLBACKS) revert InvalidState();
 
     claimCallbacks.push(_callback);
     emit CallbackAdded(_callback);
   }
 
+  // This removes a contract from the claimCallbacks array
   function removeCallback(ISherlockClaimManagerCallbackReceiver _callback, uint256 _index)
     external
     onlyOwner
     nonReentrant
   {
     if (address(_callback) == address(0)) revert ZeroArgument();
+    // If the index and the callback contract don't line up, revert
     if (claimCallbacks[_index] != _callback) revert InvalidArgument();
 
-    // move last index to index of _callback
+    // Move last index to index of _callback
+    // Creates a copy of the last index value and pastes it over the _index value
     claimCallbacks[_index] = claimCallbacks[claimCallbacks.length - 1];
-    // remove last index
+    // Remove last index (because it is now a duplicate)
     claimCallbacks.pop();
     emit CallbackRemoved(_callback);
   }
@@ -273,7 +282,7 @@ contract SherlockClaimManager is ISherlockClaimManager, ReentrancyGuard, Manager
     if (_amount > maxClaim) revert InvalidArgument();
 
     // Increments the last claim ID by 1 to get the public claim ID
-    // Note ++variable is the same as variable++ but more gas efficient
+    // Note ++variable is more gas efficient than variable++
     uint256 claimID = ++lastClaimID;
     // Protocol now has an active claim
     protocolClaimActive[_protocol] = true;
@@ -394,12 +403,13 @@ contract SherlockClaimManager is ISherlockClaimManager, ReentrancyGuard, Manager
     // Deletes the original request made by Sherlock
     delete umaRequest;
     // Approves the OO to spend $0
-    // Question Why do we do this?
+    // This is just out of caution, don't want UMA to be approved for any amount of tokens they shouldn't be
     TOKEN.safeApprove(address(UMA), 0);
     // Checks for remaining balance in the contract
     uint256 remaining = TOKEN.balanceOf(address(this));
     // Sends remaining balance to the protocol agent
-    // Question This seems like a messier flow than before, are we really going to spend gas to send 1 cent back to the protocol agent?
+    // Note This is probably not optimal, but we leave it this way for simplicity's sake
+    // A protocol agent should be able to send the exact amount to avoid the extra gas from this function
     if (remaining != 0) TOKEN.safeTransfer(msg.sender, remaining);
   }
 
@@ -408,18 +418,21 @@ contract SherlockClaimManager is ISherlockClaimManager, ReentrancyGuard, Manager
   /// @param _claimID Public ID of the claim
   /// @dev Needs to be SpccApproved or UmaApproved && >UMAHO_TIME
   /// @dev Funds will be pulled from core
-  // Question Should we allow UMAHO to make a positive payout call? So we can speed up the claim being paid out?
+  // We are ok with spending the extra time to wait for the UMAHO time to expire before paying out
+  // We could have UMAHO multisig send a tx to confirm the payout (payout would happen sooner), 
+  // But doesn't seem worth it to save half a day or so
   function payoutClaim(uint256 _claimID) external override nonReentrant {
     bytes32 claimIdentifier = publicToInternalID[_claimID];
     if (claimIdentifier == bytes32(0)) revert InvalidArgument();
 
     Claim storage claim = claims_[claimIdentifier];
     // Only the claim initiator can call this, and payout gets sent to receiver address
-    // Question In this case why do we even store receiver address? Could just be a param for this function?
     if (msg.sender != claim.initiator) revert InvalidSender();
 
     bytes32 protocol = claim.protocol;
     // Address to receive the payout
+    // Note We could make the receiver a param in this function, but we want it to be known asap
+    // Can find and correct problems if the receiver is specified when the claim is initiated
     address receiver = claim.receiver;
     // Amount (in USDC) to be paid out
     uint256 amount = claim.amount;
@@ -431,6 +444,7 @@ contract SherlockClaimManager is ISherlockClaimManager, ReentrancyGuard, Manager
     // Checks to make sure this claim can be paid out
     if (_isPayoutState(_oldState, updated) == false) revert InvalidState();
 
+    // Calls the PreCorePayoutCallback function on any contracts in claimCallbacks
     for (uint256 i; i < claimCallbacks.length; i++) {
       claimCallbacks[i].PreCorePayoutCallback(protocol, _claimID, amount);
     }
@@ -438,6 +452,9 @@ contract SherlockClaimManager is ISherlockClaimManager, ReentrancyGuard, Manager
     emit ClaimPayout(_claimID, receiver, amount);
 
     // We could potentially transfer more than `amount` in case balance > amount
+    // We are leaving this as is for simplicity's sake
+    // We don't expect to have tokens in this contract unless a reinsurer is providing them for a payout
+    // In which case they should provide the exact amount, and balance == amount is true
     uint256 balance = TOKEN.balanceOf(address(this));
     if (balance != 0) TOKEN.safeTransfer(receiver, balance);
     if (balance < amount) sherlockCore.payoutClaim(receiver, amount - balance);
@@ -450,6 +467,7 @@ contract SherlockClaimManager is ISherlockClaimManager, ReentrancyGuard, Manager
     if (claimIdentifier == bytes32(0)) revert InvalidArgument();
 
     // Sets state of claim to nonexistent, reverts if the old state was anything but UmaApproved
+    // Todo Add intermediate state like UmahoDenied for a clearer audit trail of what happened
     if (_setState(claimIdentifier, State.NonExistent) != State.UmaApproved) revert InvalidState();
 
     emit ClaimHalted(_claimID);
@@ -524,7 +542,6 @@ contract SherlockClaimManager is ISherlockClaimManager, ReentrancyGuard, Manager
 
     // If UMA approves the claim, set state to UmaApproved
     // If UMA denies, set state to UmaDenied, then to NonExistent (deletes the claim data)
-    // Question For UMAHO executeHalt(), we go straight to NonExistent state, here we do UmaDenied first, why?
     if (umaApproved) {
       if (_setState(claimIdentifier, State.UmaApproved) != State.UmaPending) revert InvalidState();
     } else {
