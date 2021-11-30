@@ -117,7 +117,6 @@ contract Sherlock is ISherlock, ERC721, Ownable {
   // View functions
   //
 
-  
   // Returns the timestamp at which the position represented by _tokenID can first be unstaked/restaked
   /// @notice View the current lockup end timestamp of `_tokenID`
   /// @return Timestamp when NFT position unlocks
@@ -308,13 +307,11 @@ contract Sherlock is ISherlock, ERC721, Ownable {
     uint256 _period,
     uint256 _id
   ) internal returns (uint256 _sher) {
-
     // Sets the timestamp at which this position can first be unstaked/restaked
     lockupEnd_[_id] = block.timestamp + _period;
 
     if (address(sherDistributionManager) == address(0)) return 0;
     // Does not allow restaking of 0 tokens
-    // Question Does this cause problems during restaking?
     if (_amount == 0) return 0;
 
     // Checks this amount of SHER tokens in this contract before we transfer new ones
@@ -364,7 +361,7 @@ contract Sherlock is ISherlock, ERC721, Ownable {
     // The amount of tokens in this contract
     uint256 mainBalance = token.balanceOf(address(this));
 
-    // If the amount to transfer out is still greater than the amount of tokens in this contract, 
+    // If the amount to transfer out is still greater than the amount of tokens in this contract,
     // Withdraw yield strategy tokens to make up the difference
     if (_amount > mainBalance) {
       yieldStrategy.withdraw(_amount - mainBalance);
@@ -384,6 +381,7 @@ contract Sherlock is ISherlock, ERC721, Ownable {
   // Also burns the requisite amount of shares associated with this NFT position
   // Returns the amount of USDC owed to these shares
   // Question Do we need to make sure the NFT position has at least this many stakeShares?
+  // Answer: No, it's an internal function and will fail if it tries to subtract too many stakeShares
   function _redeemShares(
     uint256 _id,
     uint256 _stakeShares,
@@ -445,13 +443,12 @@ contract Sherlock is ISherlock, ERC721, Ownable {
     // Transfers the USDC from the msg.sender to this contract for the amount specified (this is the staking action)
     token.safeTransferFrom(msg.sender, address(this), _amount);
 
-
     uint256 stakeShares_;
     uint256 totalStakeShares_ = totalStakeShares;
     // _amount of tokens divided by the "before" total amount of tokens, multiplied by the "before" amount of stake shares
     if (totalStakeShares_ != 0)
       stakeShares_ = (_amount * totalStakeShares_) / (totalTokenBalanceStakers() - _amount);
-    // If this is the first stake ever, we just mint stake shares equal to the amount of USDC staked
+      // If this is the first stake ever, we just mint stake shares equal to the amount of USDC staked
     else stakeShares_ = _amount;
 
     // Assigns this NFT ID the calc'd amount of stake shares above
@@ -491,7 +488,7 @@ contract Sherlock is ISherlock, ERC721, Ownable {
     delete lockupEnd_[_id];
   }
 
-  // This is how a staker restakes an expired position 
+  // This is how a staker restakes an expired position
   /// @notice Owner restakes position with ID: `_id` for `_period` seconds
   /// @param _id ID of the position
   /// @param _period Period of time, in seconds, to lockup your funds
