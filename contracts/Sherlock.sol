@@ -161,6 +161,9 @@ contract Sherlock is ISherlock, ERC721, Ownable {
   //
 
   // Allows governance to add a new staking period (4 months, etc.)
+  /// @notice Allows stakers to stake for `_period` of time
+  /// @param _period Period of time, in seconds,
+  /// @dev should revert if already enabled
   function enableStakingPeriod(uint256 _period) public override onlyOwner {
     if (_period == 0) revert ZeroArgument();
     // Revert if staking period is already active
@@ -172,6 +175,9 @@ contract Sherlock is ISherlock, ERC721, Ownable {
   }
 
   // Allows governance to remove a staking period (4 months, etc.)
+  /// @notice Disallow stakers to stake for `_period` of time
+  /// @param _period Period of time, in seconds,
+  /// @dev should revert if already disabled
   function disableStakingPeriod(uint256 _period) external override onlyOwner {
     // Revert if staking period is already inactive
     if (!stakingPeriods[_period]) revert InvalidArgument();
@@ -182,6 +188,8 @@ contract Sherlock is ISherlock, ERC721, Ownable {
   }
 
   // Sets a new contract to be the active SHER distribution manager
+  /// @notice Update SHER distribution manager contract
+  /// @param _manager New adddress of the manager
   function updateSherDistributionManager(ISherDistributionManager _manager)
     external
     override
@@ -195,6 +203,7 @@ contract Sherlock is ISherlock, ERC721, Ownable {
   }
 
   // Deletes the SHER distribution manager altogether (if Sherlock decides to no longer pay out SHER rewards)
+  /// @notice Remove SHER token rewards
   function removeSherDistributionManager() external override onlyOwner {
     if (address(sherDistributionManager) == address(0)) revert InvalidConditions();
 
@@ -206,6 +215,8 @@ contract Sherlock is ISherlock, ERC721, Ownable {
   }
 
   // Sets a new address for nonstakers payments
+  /// @notice Update address eligble for non staker rewards from protocol premiums
+  /// @param _nonStakers Address eligble for non staker rewards
   function updateNonStakersAddress(address _nonStakers) external override onlyOwner {
     if (address(_nonStakers) == address(0)) revert ZeroArgument();
     if (nonStakersAddress == _nonStakers) revert InvalidArgument();
@@ -215,6 +226,8 @@ contract Sherlock is ISherlock, ERC721, Ownable {
   }
 
   // Sets a new protocol manager contract
+  /// @notice Transfer protocol manager implementation address
+  /// @param _protocolManager new implementation address
   function updateSherlockProtocolManager(ISherlockProtocolManager _protocolManager)
     external
     override
@@ -228,6 +241,8 @@ contract Sherlock is ISherlock, ERC721, Ownable {
   }
 
   // Sets a new claim manager contract
+  /// @notice Transfer claim manager role to different address
+  /// @param _sherlockClaimManager New address of claim manager
   function updateSherlockClaimManager(ISherlockClaimManager _sherlockClaimManager)
     external
     override
@@ -241,6 +256,9 @@ contract Sherlock is ISherlock, ERC721, Ownable {
   }
 
   // Sets a new yield strategy manager contract
+  /// @notice Update yield strategy
+  /// @param _yieldStrategy News address of the strategy
+  /// @dev try a yieldStrategyWithdrawAll() on old, ignore failure
   function updateYieldStrategy(IStrategyManager _yieldStrategy) external override onlyOwner {
     if (address(_yieldStrategy) == address(0)) revert ZeroArgument();
     if (yieldStrategy == _yieldStrategy) revert InvalidArgument();

@@ -7,5 +7,9 @@ pragma solidity 0.8.9;
 /******************************************************************************/
 
 interface ISherlockClaimManagerCallbackReceiver {
+    /// @notice Calls this function on approved contracts and passes args
+    /// @param _protocol The protocol that is receiving the payout
+    /// @param _claimID The claim ID that is receiving the payout
+    /// @param _amount The amount of USDC being paid out for this claim
     function PreCorePayoutCallback(bytes32 _protocol, uint256 _claimID, uint256 _amount) external;
 }

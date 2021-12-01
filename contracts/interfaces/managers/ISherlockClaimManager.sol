@@ -13,8 +13,10 @@ import '../UMAprotocol/OptimisticRequester.sol';
 import './IManager.sol';
 
 interface ISherlockClaimManager is IManager, OptimisticRequester {
+  // Doesn't allow a new claim to be submitted by a protocol agent if a claim is already active for that protocol
   error ClaimActive();
 
+  // If the current state of a claim does not match the expected state, this error is thrown
   error InvalidState();
 
   event ClaimCreated(
@@ -47,7 +49,8 @@ interface ISherlockClaimManager is IManager, OptimisticRequester {
     UmaDisputeProposed, // Escaltion is done, waiting for confirmation
     UmaPending, // Claim is escalated, in case Spcc denied or didn't act within 7 days.
     UmaApproved, // Final state, claim is valid, claim can be enacted after 3 day, umaHaltOperator has 3 day to change to denied
-    UmaDenied // Final state, claim is invalid
+    UmaDenied, // Final state, claim is invalid
+    Halted // UMHA can halt claim if state is UmaApproved
   }
 
   struct Claim {
@@ -94,7 +97,12 @@ interface ISherlockClaimManager is IManager, OptimisticRequester {
 
   function claims(uint256 _claimID) external view returns (Claim memory);
 
-  /// @notice callable by protocol agent
+  /// @notice Initiate a claim for a specific protocol as the protocol agent
+  /// @param _protocol protocol ID (different from the internal or public claim ID fields)
+  /// @param _amount amount of USDC which is being claimed by the protocol
+  /// @param _receiver address to receive the amount of USDC being claimed
+  /// @param _timestamp timestamp at which the exploit first occurred
+  /// @param ancillaryData other data associated with the claim, such as the coverage agreement
   function startClaim(
     bytes32 _protocol,
     uint256 _amount,
@@ -108,13 +116,13 @@ interface ISherlockClaimManager is IManager, OptimisticRequester {
   function spccRefuse(uint256 _claimID) external;
 
   /// @notice Callable by protocol agent
-  /// @param _claimID Public claim ID 
+  /// @param _claimID Public claim ID
+  /// @param _amount Bond amount sent by protocol agent
   /// @dev Use hardcoded USDC address
-  /// @dev Use hardcoded bond amount (upgradable by a large timelock)
+  /// @dev Use hardcoded bond amount (upgradable with a large timelock)
   /// @dev Use hardcoded liveness 7200
   /// @dev Proposer = current protocl agent (could differ from protocol agent when claim was started)
   /// @dev proposedPrice = _amount
-  /// @param _amount maximum amount to use to escaltion, remaining will be send back
   function escalate(uint256 _claimID, uint256 _amount) external;
 
   /// @notice Execute claim, storage will be removed after

@@ -18,6 +18,7 @@ const { id, formatBytes32String, keccak256 } = require('ethers/lib/utils');
 const maxTokens = parseUnits('1000000', 6);
 const days7 = 60 * 60 * 24 * 7;
 const days3 = 60 * 60 * 24 * 3;
+const days1 = 60 * 60 * 24;
 const year2035timestamp = 2079361524;
 
 const UMA_ADDRESS = '0xeE3Afe347D5C74317041E2618C49534dAf887c24';
@@ -37,6 +38,7 @@ const STATE = {
   UmaPending: 7,
   UmaApproved: 8,
   UmaDenied: 9,
+  Halted: 10,
 };
 
 describe('SherlockClaimManager ─ Stateless', function () {
@@ -1064,7 +1066,7 @@ describe('SherlockClaimManager ─ Functional', function () {
       );
     });
     it('Invalid state, uma time', async function () {
-      await timeTraveler.increaseTime(days3 - 10);
+      await timeTraveler.increaseTime(days1 - 10);
 
       await expect(this.scm.connect(this.carol).payoutClaim(1)).to.be.revertedWith(
         'InvalidState()',
@@ -1359,13 +1361,16 @@ describe('SherlockClaimManager ─ Functional', function () {
     it('Do', async function () {
       this.t3 = await meta(this.scm.connect(this.umaho).executeHalt(1));
 
-      expect(this.t3.events.length).to.eq(2);
+      expect(this.t3.events.length).to.eq(3);
       expect(this.t3.events[0].event).to.eq('ClaimStatusChanged');
       expect(this.t3.events[0].args.claimID).to.eq(1);
       expect(this.t3.events[0].args.previousState).to.eq(STATE.UmaApproved);
-      expect(this.t3.events[0].args.currentState).to.eq(STATE.NonExistent);
-      expect(this.t3.events[1].event).to.eq('ClaimHalted');
+      expect(this.t3.events[0].args.currentState).to.eq(STATE.Halted);
       expect(this.t3.events[1].args.claimID).to.eq(1);
+      expect(this.t3.events[1].args.previousState).to.eq(STATE.Halted);
+      expect(this.t3.events[1].args.currentState).to.eq(STATE.NonExistent);
+      expect(this.t3.events[2].event).to.eq('ClaimHalted');
+      expect(this.t3.events[2].args.claimID).to.eq(1);
     });
     it('Verify state', async function () {
       expect(await this.scm.protocolClaimActive(this.protocolX)).to.eq(false);
@@ -1684,7 +1689,7 @@ describe('SherlockClaimManager ─ Functional', function () {
       expect(await this.scm.isPayoutState(STATE.SpccDenied, 0)).to.eq(false);
 
       expect(await this.scm.isPayoutState(STATE.UmaApproved, this.lastT.time)).to.eq(false);
-      expect(await this.scm.isPayoutState(STATE.UmaApproved, this.lastT.time.sub(days3))).to.eq(
+      expect(await this.scm.isPayoutState(STATE.UmaApproved, this.lastT.time.sub(days1))).to.eq(
         false,
       );
 

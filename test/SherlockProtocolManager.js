@@ -8,6 +8,7 @@ const { id } = require('ethers/lib/utils');
 
 const maxTokens = parseUnits('100000000000', 6);
 const days7 = 60 * 60 * 24 * 7;
+const days3 = 60 * 60 * 24 * 3;
 describe('SherlockProtocolManager ─ Stateless', function () {
   before(async function () {
     await prepare(this, ['SherlockProtocolManagerTest', 'ERC20Mock6d', 'SherlockMock']);
@@ -1170,21 +1171,21 @@ describe('SherlockProtocolManager ─ Functional', function () {
 
       // events
       expect(this.t2.events.length).to.eq(6);
-      expect(this.t2.events[1].event).to.eq('ProtocolPremiumChanged');
-      expect(this.t2.events[1].args.oldPremium).to.eq(this.premium);
-      expect(this.t2.events[1].args.newPremium).to.eq(0);
+      expect(this.t2.events[0].event).to.eq('ProtocolPremiumChanged');
+      expect(this.t2.events[0].args.oldPremium).to.eq(this.premium);
+      expect(this.t2.events[0].args.newPremium).to.eq(0);
+      expect(this.t2.events[0].args.protocol).to.eq(this.protocolX);
+      expect(this.t2.events[1].event).to.eq('ProtocolAgentTransfer');
       expect(this.t2.events[1].args.protocol).to.eq(this.protocolX);
-      expect(this.t2.events[2].event).to.eq('ProtocolAgentTransfer');
+      expect(this.t2.events[1].args.from).to.eq(this.alice.address);
+      expect(this.t2.events[1].args.to).to.eq(constants.AddressZero);
+      expect(this.t2.events[2].event).to.eq('ProtocolUpdated');
       expect(this.t2.events[2].args.protocol).to.eq(this.protocolX);
-      expect(this.t2.events[2].args.from).to.eq(this.alice.address);
-      expect(this.t2.events[2].args.to).to.eq(constants.AddressZero);
-      expect(this.t2.events[3].event).to.eq('ProtocolUpdated');
+      expect(this.t2.events[2].args.coverage).to.eq(constants.HashZero);
+      expect(this.t2.events[2].args.nonStakers).to.eq(0);
+      expect(this.t2.events[2].args.coverageAmount).to.eq(0);
+      expect(this.t2.events[3].event).to.eq('ProtocolRemoved');
       expect(this.t2.events[3].args.protocol).to.eq(this.protocolX);
-      expect(this.t2.events[3].args.coverage).to.eq(constants.HashZero);
-      expect(this.t2.events[3].args.nonStakers).to.eq(0);
-      expect(this.t2.events[3].args.coverageAmount).to.eq(0);
-      expect(this.t2.events[4].event).to.eq('ProtocolRemoved');
-      expect(this.t2.events[4].args.protocol).to.eq(this.protocolX);
       expect(this.t2.events[5].event).to.eq('ProtocolRemovedByArb');
       expect(this.t2.events[5].args.protocol).to.eq(this.protocolX);
       expect(this.t2.events[5].args.arb).to.eq(this.bob.address);
@@ -1750,7 +1751,7 @@ describe('SherlockProtocolManager ─ Functional', function () {
 
       expect(await this.spm.claimablePremiums()).to.eq(0);
       expect(await this.spm.viewLastClaimablePremiumsForStakers()).to.eq(0);
-      expect(await this.spm.viewLastAccountedGlobal()).to.eq(this.t1.time);
+      expect(await this.spm.viewLastAccountedGlobal()).to.eq(0);
       expect(await this.spm.viewAllPremiumsPerSecToStakers()).to.eq(0);
 
       expect(await this.ERC20Mock6d.balanceOf(this.bob.address)).to.eq(0);
@@ -1892,6 +1893,8 @@ describe('SherlockProtocolManager ─ Functional', function () {
       this.t0 = await meta(
         this.spm.protocolAdd(this.protocolX, this.alice.address, id('t'), parseEther('0.1'), 500),
       );
+
+      await this.spm.setMinSecondsOfCoverage(BigNumber.from(days3));
     });
     it('Initial state', async function () {
       expect(await this.spm.viewActiveBalance(this.protocolX)).to.eq(0);
@@ -2182,6 +2185,8 @@ describe('SherlockProtocolManager ─ Functional', function () {
       this.t0 = await meta(
         this.spm.protocolAdd(this.protocolX, this.alice.address, id('t'), parseEther('0.1'), 500),
       );
+
+      await this.spm.setMinSecondsOfCoverage(BigNumber.from(days3));
     });
     it('Initial state', async function () {
       expect(await this.spm.viewActiveBalance(this.protocolX)).to.eq(0);
@@ -2687,7 +2692,7 @@ describe('SherlockProtocolManager ─ Functional', function () {
         'InsufficientBalance("' + this.protocolX + '")',
       );
 
-      this.amount = 60 * 60 * 24 * 4;
+      this.amount = 60 * 60 * 24 * 8;
       this.t1 = await meta(this.spm.depositToActiveBalance(this.protocolX, this.amount));
       await this.spm.setProtocolPremium(this.protocolX, 1);
 

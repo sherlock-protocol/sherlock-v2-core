@@ -11,18 +11,23 @@ import '../ISherlock.sol';
 import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 
 interface IManager {
+  // Note Can delete this error since we dont use in Manager.sol?
   error ZeroArgument();
 
+  // Note Can delete this error since we dont use in Manager.sol?
   error InvalidArgument();
 
+  // If a required condition for executing the function is not met, it reverts and throws this error
   error InvalidConditions();
 
+  // Throws if the msg.sender is not the required address
   error InvalidSender();
 
   event SherlockCoreSet(ISherlock sherlock);
 
   /// @notice Set sherlock core address where premiums should be send too
   /// @param _sherlock Current core contract
+  /// @dev Only deployer is able to set core address on all chains except Hardhat network
   /// @dev One time function, will revert once `sherlock` != address(0)
   /// @dev This contract will be deployed first, passed on as argument in core constuctor
   /// @dev ^ that's needed for tvl accounting, once core is deployed this function is called

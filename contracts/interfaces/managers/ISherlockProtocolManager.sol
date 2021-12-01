@@ -11,15 +11,17 @@ import './IManager.sol';
 /// @title Sherlock core interface for protocols
 /// @author Evert Kors
 interface ISherlockProtocolManager is IManager {
-  // We do some internal accounting with (lastBlockAccounted - block.now) * premium
-  // we have mapping(protocol => uint256) for lastSettled but also a global one
 
+  // msg.sender is not authorized to call this function
   error Unauthorized();
 
+  // If a protocol was never instantiated or was removed and the claim deadline has passed, this error is returned
   error ProtocolNotExists(bytes32 protocol);
 
+  // When comparing two arrays and the lengths are not equal (but are supposed to be equal)
   error UnequalArrayLength();
 
+  // If there is not enough balance in the contract for the amount requested (after any requirements are met), this is returned
   error InsufficientBalance(bytes32 protocol);
 
   event MinBalance(uint256 previous, uint256 current);

@@ -41,7 +41,7 @@ interface ISherlockGov {
   function disableStakingPeriod(uint256 _period) external;
 
   /// @notice View if `_period` is a valid period
-  /// @return Boolean indicatin if period is valid
+  /// @return Boolean indicating if period is valid
   function stakingPeriods(uint256 _period) external view returns (bool);
 
   /// @notice Update SHER distribution manager contract

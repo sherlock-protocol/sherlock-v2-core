@@ -22,7 +22,13 @@ abstract contract Manager is IManager, Ownable {
     _;
   }
 
+  /// @notice Set sherlock core address where premiums should be send too
+  /// @param _sherlock Current core contract
   /// @dev Only deployer is able to set core address on all chains except Hardhat network
+  /// @dev One time function, will revert once `sherlock` != address(0)
+  /// @dev This contract will be deployed first, passed on as argument in core constuctor
+  /// @dev ^ that's needed for tvl accounting, once core is deployed this function is called
+  /// @dev throws `SherlockCoreSet`
   function setSherlockCoreAddress(ISherlock _sherlock) external override {
     // 31337 is of the Hardhat network blockchain
     if (block.chainid != 31337 && msg.sender != DEPLOYER) revert InvalidSender();
@@ -41,6 +47,7 @@ abstract contract Manager is IManager, Ownable {
       token.safeTransfer(_receiver, token.balanceOf(address(this)));
     }
     // Sends any remaining ETH to the receiver address (as long as receiver address is payable)
+    // Question Why don't we do a safeTransfer() here?
     (bool success, ) = _receiver.call{ value: address(this).balance }('');
     if (success == false) revert InvalidConditions();
   }
