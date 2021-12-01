@@ -352,7 +352,7 @@ contract Sherlock is ISherlock, ERC721, Ownable {
     try sherDistributionManager.pullReward(_amount, _period) returns (uint256 amount) {
       _sher = amount;
     } catch (bytes memory reason) {
-      // If for whatever reason the correct amount of SHER tokens are not created and transferred to this contract
+      // If for whatever reason the sherDistributionManager call fails
       emit SherRewardsError(reason);
       return 0;
     }

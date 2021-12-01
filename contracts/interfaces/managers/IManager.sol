@@ -11,10 +11,10 @@ import '../ISherlock.sol';
 import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 
 interface IManager {
-  // Note Can delete this error since we dont use in Manager.sol?
+  // An address or other value passed in is equal to zero (and shouldn't be)
   error ZeroArgument();
 
-  // Note Can delete this error since we dont use in Manager.sol?
+  // Occurs when a value already holds the desired property, or is not whitelisted
   error InvalidArgument();
 
   // If a required condition for executing the function is not met, it reverts and throws this error
