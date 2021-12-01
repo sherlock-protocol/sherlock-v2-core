@@ -161,6 +161,9 @@ contract Sherlock is ISherlock, ERC721, Ownable {
   //
 
   // Allows governance to add a new staking period (4 months, etc.)
+  /// @notice Allows stakers to stake for `_period` of time
+  /// @param _period Period of time, in seconds,
+  /// @dev should revert if already enabled
   function enableStakingPeriod(uint256 _period) public override onlyOwner {
     if (_period == 0) revert ZeroArgument();
     // Revert if staking period is already active
@@ -172,6 +175,9 @@ contract Sherlock is ISherlock, ERC721, Ownable {
   }
 
   // Allows governance to remove a staking period (4 months, etc.)
+  /// @notice Disallow stakers to stake for `_period` of time
+  /// @param _period Period of time, in seconds,
+  /// @dev should revert if already disabled
   function disableStakingPeriod(uint256 _period) external override onlyOwner {
     // Revert if staking period is already inactive
     if (!stakingPeriods[_period]) revert InvalidArgument();
@@ -182,6 +188,8 @@ contract Sherlock is ISherlock, ERC721, Ownable {
   }
 
   // Sets a new contract to be the active SHER distribution manager
+  /// @notice Update SHER distribution manager contract
+  /// @param _manager New adddress of the manager
   function updateSherDistributionManager(ISherDistributionManager _manager)
     external
     override
@@ -195,6 +203,7 @@ contract Sherlock is ISherlock, ERC721, Ownable {
   }
 
   // Deletes the SHER distribution manager altogether (if Sherlock decides to no longer pay out SHER rewards)
+  /// @notice Remove SHER token rewards
   function removeSherDistributionManager() external override onlyOwner {
     if (address(sherDistributionManager) == address(0)) revert InvalidConditions();
 
@@ -206,6 +215,8 @@ contract Sherlock is ISherlock, ERC721, Ownable {
   }
 
   // Sets a new address for nonstakers payments
+  /// @notice Update address eligble for non staker rewards from protocol premiums
+  /// @param _nonStakers Address eligble for non staker rewards
   function updateNonStakersAddress(address _nonStakers) external override onlyOwner {
     if (address(_nonStakers) == address(0)) revert ZeroArgument();
     if (nonStakersAddress == _nonStakers) revert InvalidArgument();
@@ -215,6 +226,8 @@ contract Sherlock is ISherlock, ERC721, Ownable {
   }
 
   // Sets a new protocol manager contract
+  /// @notice Transfer protocol manager implementation address
+  /// @param _protocolManager new implementation address
   function updateSherlockProtocolManager(ISherlockProtocolManager _protocolManager)
     external
     override
@@ -228,6 +241,8 @@ contract Sherlock is ISherlock, ERC721, Ownable {
   }
 
   // Sets a new claim manager contract
+  /// @notice Transfer claim manager role to different address
+  /// @param _sherlockClaimManager New address of claim manager
   function updateSherlockClaimManager(ISherlockClaimManager _sherlockClaimManager)
     external
     override
@@ -241,6 +256,9 @@ contract Sherlock is ISherlock, ERC721, Ownable {
   }
 
   // Sets a new yield strategy manager contract
+  /// @notice Update yield strategy
+  /// @param _yieldStrategy News address of the strategy
+  /// @dev try a yieldStrategyWithdrawAll() on old, ignore failure
   function updateYieldStrategy(IStrategyManager _yieldStrategy) external override onlyOwner {
     if (address(_yieldStrategy) == address(0)) revert ZeroArgument();
     if (yieldStrategy == _yieldStrategy) revert InvalidArgument();
@@ -250,6 +268,9 @@ contract Sherlock is ISherlock, ERC721, Ownable {
   }
 
   // Deposits a chosen amount of tokens (USDC) into the active yield strategy
+  /// @notice Deposit `_amount` into active strategy
+  /// @param _amount Amount of tokens
+  /// @dev gov only
   function yieldStrategyDeposit(uint256 _amount) external override onlyOwner {
     if (_amount == 0) revert ZeroArgument();
 
@@ -262,6 +283,9 @@ contract Sherlock is ISherlock, ERC721, Ownable {
   }
 
   // Withdraws a chosen amount of tokens (USDC) from the yield strategy back into this contract
+  /// @notice Withdraw `_amount` from active strategy
+  /// @param _amount Amount of tokens
+  /// @dev gov only
   function yieldStrategyWithdraw(uint256 _amount) external override onlyOwner {
     if (_amount == 0) revert ZeroArgument();
 
@@ -269,6 +293,8 @@ contract Sherlock is ISherlock, ERC721, Ownable {
   }
 
   // Withdraws all tokens from the yield strategy back into this contract
+  /// @notice Withdraw all funds from active strategy
+  /// @dev gov only
   function yieldStrategyWithdrawAll() external override onlyOwner {
     yieldStrategy.withdrawAll();
   }
@@ -279,6 +305,11 @@ contract Sherlock is ISherlock, ERC721, Ownable {
 
   // Transfers specified amount of tokens to the address specified by the claim creator (protocol agent)
   // This function is called by the Sherlock claim manager contract if a claim is approved
+  /// @notice Initiate a payout of `_amount` to `_receiver`
+  /// @param _receiver Receiver of payout
+  /// @param _amount Amount to send
+  /// @dev only payout manager should call this
+  /// @dev should pull money out of strategy
   function payoutClaim(address _receiver, uint256 _amount) external override {
     // Can only be called by the Sherlock claim manager contract
     if (msg.sender != address(sherlockClaimManager)) revert Unauthorized();
@@ -321,7 +352,7 @@ contract Sherlock is ISherlock, ERC721, Ownable {
     try sherDistributionManager.pullReward(_amount, _period) returns (uint256 amount) {
       _sher = amount;
     } catch (bytes memory reason) {
-      // If for whatever reason the correct amount of SHER tokens are not created and transferred to this contract
+      // If for whatever reason the sherDistributionManager call fails
       emit SherRewardsError(reason);
       return 0;
     }

@@ -6,7 +6,7 @@ pragma solidity 0.8.9;
 * Sherlock Protocol: https://sherlock.xyz
 /******************************************************************************/
 
-/// @title Sherlock core interface for stakers
+/// @title Sherlock core interface for yield strategy
 /// @author Evert Kors
 interface ISherlockStrategy {
   /// @notice Deposit `_amount` into active strategy

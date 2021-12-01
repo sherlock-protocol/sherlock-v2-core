@@ -181,6 +181,7 @@ contract SherlockClaimManager is ISherlockClaimManager, ReentrancyGuard, Manager
   }
 
   // Allows us to remove the UMA Halt Operator multisig address if we decide we no longer need UMAHO's services
+  /// @notice gov is able to renounce the role
   function renounceUmaHaltOperator() external override onlyOwner {
     if (umaHaltOperator == address(0)) revert InvalidConditions();
 
