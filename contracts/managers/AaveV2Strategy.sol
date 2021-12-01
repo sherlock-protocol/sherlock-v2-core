@@ -24,7 +24,7 @@ contract AaveV2Strategy is IStrategyManager, Manager {
   ILendingPoolAddressesProvider public constant lpAddressProvider =
     ILendingPoolAddressesProvider(0xB53C1a33016B2DC2fF3653530bfF1848a515c8c5);
 
-  // Believe this has to do with stkAAVE token rewards for deposit positions
+  // Aave contract that controls stkAAVE rewards
   IAaveIncentivesController public immutable aaveIncentivesController;
 
   // This is the token being deposited (USDC)
@@ -32,8 +32,7 @@ contract AaveV2Strategy is IStrategyManager, Manager {
   // This is the receipt token Aave gives in exchange for a token deposit (aUSDC)
   IAToken public immutable aWant;
 
-  // Believe this is the address that receives the stkAAVE rewards for deposits
-  // For simplicity, Sherlock keeps all stkAAVE rewards
+  // Address to receive stkAAVE rewards
   address public immutable aaveLmReceiver;
 
   // Constructor takes the aUSDC address and the rewards receiver address (a Sherlock address) as args
