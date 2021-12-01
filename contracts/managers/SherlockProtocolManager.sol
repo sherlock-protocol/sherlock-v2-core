@@ -651,6 +651,32 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
     emit ProtocolRemovedByArb(_protocol, msg.sender, remainingBalance);
   }
 
+  /// @notice Calculate if arb is possible and what the reward would be
+  /// @param _protocol Protocol identifier
+  /// @return arbAmount Amount reward for arbing
+  /// @return able Indicator if arb call is even possible
+  /// @dev Doesn't subtract the current protocol debt from the active balance
+  function _calcForceRemoveBySecondsOfCoverage(bytes32 _protocol)
+    internal
+    view
+    returns (uint256 arbAmount, bool able)
+  {
+    uint256 minSecondsOfCoverage_ = minSecondsOfCoverage;
+    uint256 secondsLeft = _secondsOfCoverageLeft(_protocol);
+
+    // If arb is not possible return false
+    if (secondsLeft >= minSecondsOfCoverage_) return (0, false);
+
+    // This percentage scales over time
+    // Reaches 100% on 0 seconds of coverage left
+    uint256 percentageScaled = HUNDRED_PERCENT -
+      (secondsLeft * HUNDRED_PERCENT) /
+      minSecondsOfCoverage_;
+
+    able = true;
+    arbAmount = (activeBalances[_protocol] * percentageScaled) / HUNDRED_PERCENT;
+  }
+
   /// @notice Removes a protocol with insufficent seconds of coverage left
   /// @param _protocol Protocol identifier
   // Seconds of coverage is defined by the active balance of the protocol divided by the protocol's premium per second
@@ -658,25 +684,15 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
     // NOTE: We use _secondsOfCoverageLeft() below and include this check instead of secondsOfCoverageLeft() for gas savings
     address agent = _verifyProtocolExists(_protocol);
 
-    // Figuring out how far above or below the minSecondsOfCoverage this protocol currently is
-    uint256 percentageScaled = (_secondsOfCoverageLeft(_protocol) * HUNDRED_PERCENT) /
-      minSecondsOfCoverage;
-
-    // Reverts if there is still more seconds of coverage left than the minimum required
-    if (percentageScaled >= HUNDRED_PERCENT) revert InvalidConditions();
-
-    // Gets the latest value of the active balance at this protocol
-    _settleProtocolDebt(_protocol);
-
-    // Sets latest value of active balance to remainingBalance variable
-    uint256 remainingBalance = activeBalances[_protocol];
-
     // NOTE: We don't give the arb the full remaining balance like we do in forceRemoveByActiveBalance()
     // This is because we know the exact balance the arb will get in forceRemoveByActiveBalance()
     // But when removing based on seconds of coverage left, the remainingBalance could still be quite large
     // So it's better to scale the arb reward over time. It's a little complex because the remainingBalance
     // Decreases over time also but reward will be highest at the midpoint of percentageScaled (50%)
-    uint256 arbAmount = (remainingBalance * percentageScaled) / HUNDRED_PERCENT;
+    _settleProtocolDebt(_protocol);
+    (uint256 arbAmount, bool able) = _calcForceRemoveBySecondsOfCoverage(_protocol);
+    if (able == false) revert InvalidConditions();
+
     if (arbAmount != 0) {
       // subtracts the amount that will be paid to the arb from the active balance
       activeBalances[_protocol] -= arbAmount;

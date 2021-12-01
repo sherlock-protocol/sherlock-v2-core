@@ -79,4 +79,12 @@ contract SherlockProtocolManagerTest is SherlockProtocolManager {
   function viewActiveBalance(bytes32 _protocol) external view returns (uint256) {
     return activeBalances[_protocol];
   }
+
+  function viewCalcForceRemoveBySecondsOfCoverage(bytes32 _protocol)
+    external
+    view
+    returns (uint256, bool)
+  {
+    return _calcForceRemoveBySecondsOfCoverage(_protocol);
+  }
 }
