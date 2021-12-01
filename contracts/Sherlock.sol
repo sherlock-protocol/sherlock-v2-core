@@ -251,6 +251,9 @@ contract Sherlock is ISherlock, ERC721, Ownable {
   }
 
   // Deposits a chosen amount of tokens (USDC) into the active yield strategy
+  /// @notice Deposit `_amount` into active strategy
+  /// @param _amount Amount of tokens
+  /// @dev gov only
   function yieldStrategyDeposit(uint256 _amount) external override onlyOwner {
     if (_amount == 0) revert ZeroArgument();
 
@@ -263,6 +266,9 @@ contract Sherlock is ISherlock, ERC721, Ownable {
   }
 
   // Withdraws a chosen amount of tokens (USDC) from the yield strategy back into this contract
+  /// @notice Withdraw `_amount` from active strategy
+  /// @param _amount Amount of tokens
+  /// @dev gov only
   function yieldStrategyWithdraw(uint256 _amount) external override onlyOwner {
     if (_amount == 0) revert ZeroArgument();
 
@@ -270,6 +276,8 @@ contract Sherlock is ISherlock, ERC721, Ownable {
   }
 
   // Withdraws all tokens from the yield strategy back into this contract
+  /// @notice Withdraw all funds from active strategy
+  /// @dev gov only
   function yieldStrategyWithdrawAll() external override onlyOwner {
     yieldStrategy.withdrawAll();
   }
@@ -280,6 +288,11 @@ contract Sherlock is ISherlock, ERC721, Ownable {
 
   // Transfers specified amount of tokens to the address specified by the claim creator (protocol agent)
   // This function is called by the Sherlock claim manager contract if a claim is approved
+  /// @notice Initiate a payout of `_amount` to `_receiver`
+  /// @param _receiver Receiver of payout
+  /// @param _amount Amount to send
+  /// @dev only payout manager should call this
+  /// @dev should pull money out of strategy
   function payoutClaim(address _receiver, uint256 _amount) external override {
     // Can only be called by the Sherlock claim manager contract
     if (msg.sender != address(sherlockClaimManager)) revert Unauthorized();
