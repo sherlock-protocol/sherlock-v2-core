@@ -1630,6 +1630,12 @@ describe('SherlockClaimManager ─ Functional', function () {
       expect(
         await this.scm.isEscalateState(STATE.SpccPending, this.lastT.time.sub(days7).sub(days7)),
       ).to.eq(true);
+      expect(await this.scm.isEscalateState(STATE.SpccPending, this.lastT.time.sub(weeks4))).to.eq(
+        true,
+      );
+      expect(
+        await this.scm.isEscalateState(STATE.SpccPending, this.lastT.time.sub(weeks4).sub(days7)),
+      ).to.eq(true);
     });
     it('Sad flows', async function () {
       expect(await this.scm.isEscalateState(STATE.SpccDenied, 0)).to.eq(false);
@@ -1645,6 +1651,12 @@ describe('SherlockClaimManager ─ Functional', function () {
       );
       expect(
         await this.scm.isEscalateState(STATE.SpccPending, this.lastT.time.sub(days3).sub(days3)),
+      ).to.eq(false);
+      expect(
+        await this.scm.isEscalateState(
+          STATE.SpccPending,
+          this.lastT.time.sub(weeks4).sub(days7).sub(1),
+        ),
       ).to.eq(false);
     });
   });

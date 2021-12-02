@@ -43,12 +43,12 @@ interface ISherlockClaimManager is IManager, OptimisticRequester {
     NonExistent, // Claim doesn't exist (this is the default state on creation)
     SpccPending, // Claim is created, SPCC is able to set state to valid
     SpccApproved, // Final state, claim is valid
-    SpccDenied, // Claim denied by SPCC, claim can be escalated within 7 days
+    SpccDenied, // Claim denied by SPCC, claim can be escalated within 4 weeks
     UmaPriceProposed, // Price is proposed by not escalated
     ReadyToProposeUmaDispute, // Price is proposed, callback receiver, ready to submit dispute
     UmaDisputeProposed, // Escaltion is done, waiting for confirmation
     UmaPending, // Claim is escalated, in case Spcc denied or didn't act within 7 days.
-    UmaApproved, // Final state, claim is valid, claim can be enacted after 3 day, umaHaltOperator has 3 day to change to denied
+    UmaApproved, // Final state, claim is valid, claim can be enacted after 1 day, umaHaltOperator has 1 day to change to denied
     UmaDenied, // Final state, claim is invalid
     Halted // UMHA can halt claim if state is UmaApproved
   }

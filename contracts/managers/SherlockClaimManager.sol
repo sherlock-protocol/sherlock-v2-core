@@ -126,7 +126,15 @@ contract SherlockClaimManager is ISherlockClaimManager, ReentrancyGuard, Manager
   // 2) Beyond the designated time window for SPCC to respond
   function _isEscalateState(State _oldState, uint256 updated) internal view returns (bool) {
     if (_oldState == State.SpccDenied && block.timestamp <= updated + ESCALATE_TIME) return true;
-    if (_oldState == State.SpccPending && updated + SPCC_TIME < block.timestamp) return true;
+
+    uint256 spccDeadline = updated + SPCC_TIME;
+    if (
+      _oldState == State.SpccPending &&
+      spccDeadline < block.timestamp &&
+      block.timestamp <= spccDeadline + ESCALATE_TIME
+    ) {
+      return true;
+    }
     return false;
   }
 
