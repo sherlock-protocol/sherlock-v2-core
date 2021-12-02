@@ -1751,6 +1751,40 @@ describe('SherlockProtocolManager ─ Functional', function () {
       expect(await this.ERC20Mock6d.balanceOf(this.bob.address)).to.be.eq(parseUnits('16', 6));
     });
   });
+  describe('forceRemoveBySecondsOfCoverage(), 100%', function () {
+    before(async function () {
+      this.premium = parseUnits('1', 6);
+      this.balance = this.premium.mul(100);
+
+      await timeTraveler.revertSnapshot();
+
+      this.minCoverageSeconds = this.balance.div(this.premium);
+      await this.spm.privateSetMinSecondsOfCoverage(this.minCoverageSeconds);
+
+      this.t0 = await meta(
+        this.spm.protocolAdd(this.protocolX, this.alice.address, id('t'), parseEther('0.1'), 500),
+      );
+
+      await this.spm.depositToActiveBalance(this.protocolX, this.balance);
+      this.t1 = await meta(this.spm.setProtocolPremium(this.protocolX, this.premium));
+    });
+    it('skip time', async function () {
+      this.skipSeconds = 110;
+
+      await timeTraveler.increaseTime(Number(this.skipSeconds));
+      await timeTraveler.mine(1);
+    });
+    it('do', async function () {
+      this.t2 = await meta(
+        this.spm.connect(this.bob).forceRemoveBySecondsOfCoverage(this.protocolX),
+      );
+    });
+    it('verify state', async function () {
+      // balance is 100-100 = 0
+      // 100% of 0 = 0
+      expect(await this.ERC20Mock6d.balanceOf(this.bob.address)).to.be.eq(parseUnits('0', 6));
+    });
+  });
   describe('forceRemoveBySecondsOfCoverage(), no remaining', function () {
     before(async function () {
       this.premium = parseUnits('10', 6);
