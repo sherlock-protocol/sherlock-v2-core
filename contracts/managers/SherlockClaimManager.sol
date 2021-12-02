@@ -26,6 +26,9 @@ contract SherlockClaimManager is ISherlockClaimManager, ReentrancyGuard, Manager
   /// @dev at time of writing will result in a 20k cost of escalating
   uint256 constant BOND = 9_600 * 10**6; // 20k bond
 
+  // The amount of time the protocol agent has to escalate a claim
+  uint256 constant ESCALATE_TIME = 4 weeks;
+
   // The UMA Halt Operator (UMAHO) is the multisig (controlled by UMA) who gives final approval to pay out a claim
   // After the OO has voted to pay out
   // This variable represents the amount of time during which UMAHO can block a claim that was approved by the OO
@@ -118,9 +121,11 @@ contract SherlockClaimManager is ISherlockClaimManager, ReentrancyGuard, Manager
   }
 
   // Checks to see if a claim can be escalated to the UMA OO
-  // Claim must be 1) Denied by SPCC or 2) Beyond the designated time window for SPCC to respond
+  // Claim must be either
+  // 1) Denied by SPCC and within 4 weeks after denial
+  // 2) Beyond the designated time window for SPCC to respond
   function _isEscalateState(State _oldState, uint256 updated) internal view returns (bool) {
-    if (_oldState == State.SpccDenied) return true;
+    if (_oldState == State.SpccDenied && block.timestamp <= updated + ESCALATE_TIME) return true;
     if (_oldState == State.SpccPending && updated + SPCC_TIME < block.timestamp) return true;
     return false;
   }

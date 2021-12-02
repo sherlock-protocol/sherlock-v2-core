@@ -16,6 +16,7 @@ const { TimeTraveler } = require('./utilities/snapshot');
 const { id, formatBytes32String, keccak256 } = require('ethers/lib/utils');
 
 const maxTokens = parseUnits('1000000', 6);
+const weeks4 = 60 * 60 * 24 * 7 * 4;
 const days7 = 60 * 60 * 24 * 7;
 const days3 = 60 * 60 * 24 * 3;
 const days1 = 60 * 60 * 24;
@@ -1619,7 +1620,9 @@ describe('SherlockClaimManager ─ Functional', function () {
     });
     it('Happy flows', async function () {
       expect(await this.scm.isEscalateState(STATE.SpccDenied, this.lastT.time)).to.eq(true);
-      expect(await this.scm.isEscalateState(STATE.SpccDenied, 0)).to.eq(true);
+      expect(await this.scm.isEscalateState(STATE.SpccDenied, this.lastT.time.sub(weeks4))).to.eq(
+        true,
+      );
 
       expect(
         await this.scm.isEscalateState(STATE.SpccPending, this.lastT.time.sub(days7).sub(1)),
@@ -1629,6 +1632,11 @@ describe('SherlockClaimManager ─ Functional', function () {
       ).to.eq(true);
     });
     it('Sad flows', async function () {
+      expect(await this.scm.isEscalateState(STATE.SpccDenied, 0)).to.eq(false);
+      expect(
+        await this.scm.isEscalateState(STATE.SpccDenied, this.lastT.time.sub(weeks4).sub(1)),
+      ).to.eq(false);
+
       expect(await this.scm.isEscalateState(STATE.SpccApproved, this.lastT.time)).to.eq(false);
       expect(await this.scm.isEscalateState(STATE.NonExistent, 0)).to.eq(false);
 
