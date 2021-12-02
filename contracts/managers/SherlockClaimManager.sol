@@ -156,6 +156,11 @@ contract SherlockClaimManager is ISherlockClaimManager, ReentrancyGuard, Manager
     return false;
   }
 
+  function _isCleanupState(State _oldState) internal view returns (bool) {
+    if (_oldState == State.SpccDenied) return true;
+    if (_oldState == State.SpccPending) return true;
+  }
+
   // Deletes the data associated with a claim (after claim has reached its final state)
   // _claimIdentifier is the internal claim ID
   function _cleanUpClaim(bytes32 _claimIdentifier) internal {
@@ -248,6 +253,35 @@ contract SherlockClaimManager is ISherlockClaimManager, ReentrancyGuard, Manager
     // Remove last index (because it is now a duplicate)
     claimCallbacks.pop();
     emit CallbackRemoved(_callback);
+  }
+
+  /// @notice Cleanup claim if escalation is pursued
+  /// @param _protocol protocol ID
+  /// @param _claimID public claim ID
+  /// @dev Retrieves current protocol agent for cleanup
+  /// @dev State is either SpccPending or SpccDenied
+  function cleanUp(bytes32 _protocol, uint256 _claimID) external {
+    if (_protocol == bytes32(0)) revert ZeroArgument();
+    if (_claimID == uint256(0)) revert ZeroArgument();
+
+    // Gets the instance of the protocol manager contract
+    ISherlockProtocolManager protocolManager = sherlockCore.sherlockProtocolManager();
+    // Gets the protocol agent associated with the protocol ID passed in
+    address agent = protocolManager.protocolAgent(_protocol);
+    // Caller of this function must be the protocol agent address associated with the protocol ID passed in
+    if (msg.sender != agent) revert InvalidSender();
+
+    bytes32 claimIdentifier = publicToInternalID[_claimID];
+    // If there is no active claim
+    if (claimIdentifier == bytes32(0)) revert InvalidArgument();
+
+    Claim storage claim = claims_[claimIdentifier];
+    // verify if claim belongs to protocol agent
+    if (claim.protocol != _protocol) revert InvalidArgument();
+
+    State _oldState = _setState(claimIdentifier, State.Cleaned);
+    if (_isCleanupState(_oldState) == false) revert InvalidState();
+    if (_setState(claimIdentifier, State.NonExistent) != State.Cleaned) revert InvalidState();
   }
 
   /// @notice Initiate a claim for a specific protocol as the protocol agent

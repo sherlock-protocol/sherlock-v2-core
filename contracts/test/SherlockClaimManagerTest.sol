@@ -36,6 +36,10 @@ contract SherlockClaimManagerTest is SherlockClaimManager {
     return _isEscalateState(_oldState, updated);
   }
 
+  function isCleanupState(State _oldState) external view returns (bool) {
+    return _isCleanupState(_oldState);
+  }
+
   function _setClaimUpdate(uint256 _claimID, uint256 _updated) external {
     claims_[publicToInternalID[_claimID]].updated = _updated;
   }

@@ -50,7 +50,8 @@ interface ISherlockClaimManager is IManager, OptimisticRequester {
     UmaPending, // Claim is escalated, in case Spcc denied or didn't act within 7 days.
     UmaApproved, // Final state, claim is valid, claim can be enacted after 1 day, umaHaltOperator has 1 day to change to denied
     UmaDenied, // Final state, claim is invalid
-    Halted // UMHA can halt claim if state is UmaApproved
+    Halted, // UMHA can halt claim if state is UmaApproved
+    Cleaned // Claim is removed by protocol agent
   }
 
   struct Claim {

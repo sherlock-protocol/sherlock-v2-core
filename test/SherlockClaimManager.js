@@ -40,6 +40,7 @@ const STATE = {
   UmaApproved: 8,
   UmaDenied: 9,
   Halted: 10,
+  Cleaned: 11,
 };
 
 describe('SherlockClaimManager ─ Stateless', function () {
@@ -100,6 +101,14 @@ describe('SherlockClaimManager ─ Stateless', function () {
       await expect(this.scm.removeCallback(constants.AddressZero, 1)).to.be.revertedWith(
         'ZeroArgument()',
       );
+    });
+  });
+  describe('cleanUp()', function () {
+    it('Zero protocol', async function () {
+      await expect(this.scm.cleanUp(constants.HashZero, 1)).to.be.revertedWith('ZeroArgument()');
+    });
+    it('Zero claimid', async function () {
+      await expect(this.scm.cleanUp(this.protocolX, 0)).to.be.revertedWith('ZeroArgument()');
     });
   });
   describe('startClaim()', function () {
@@ -428,6 +437,7 @@ describe('SherlockClaimManager ─ Functional', function () {
 
     await this.spm.protocolAdd(this.protocolX, this.carol.address, id('x'), 0, COVERAGE_AMOUNT);
     await this.spm.protocolAdd(this.protocolY, this.carol.address, id('x'), 0, COVERAGE_AMOUNT);
+    await this.spm.protocolAdd(this.protocolZ, this.bob.address, id('x'), 0, COVERAGE_AMOUNT);
 
     const usdcWhaleAddress = '0xe78388b4ce79068e89bf8aa7f218ef6b9ab0e9d0';
     await timeTraveler.request({
@@ -524,6 +534,98 @@ describe('SherlockClaimManager ─ Functional', function () {
     });
     it('Do again', async function () {
       await expect(this.scm.removeCallback(this.alice.address, 0)).to.be.reverted;
+    });
+  });
+  describe('cleanUp(), revert cases', function () {
+    before(async function () {
+      await timeTraveler.revertSnapshot();
+
+      await this.scm
+        .connect(this.carol)
+        .startClaim(this.protocolX, 1, this.alice.address, 1, '0x1212');
+
+      await this.scm
+        .connect(this.bob)
+        .startClaim(this.protocolZ, 1, this.alice.address, 1, '0x121212');
+    });
+    it('Wrong agent', async function () {
+      await expect(this.scm.cleanUp(this.protocolX, 1)).to.be.revertedWith('InvalidSender()');
+    });
+    it('Wrong claim', async function () {
+      await expect(this.scm.connect(this.carol).cleanUp(this.protocolX, 3)).to.be.revertedWith(
+        'InvalidArgument()',
+      );
+    });
+    it('Wrong agent for claim', async function () {
+      await expect(this.scm.connect(this.carol).cleanUp(this.protocolX, 2)).to.be.revertedWith(
+        'InvalidArgument()',
+      );
+    });
+    it('Wrong state', async function () {
+      await this.scm.connect(this.spcc).spccApprove(1);
+
+      await expect(this.scm.connect(this.carol).cleanUp(this.protocolX, 1)).to.be.revertedWith(
+        'InvalidState()',
+      );
+    });
+  });
+  describe('cleanUp()', function () {
+    before(async function () {
+      await timeTraveler.revertSnapshot();
+
+      this.t1 = await meta(
+        this.scm.connect(this.carol).startClaim(this.protocolX, 1, this.alice.address, 1, '0x1212'),
+      );
+
+      this.internalIdentifier = keccak256('0x1212');
+    });
+    it('Initial state', async function () {
+      expect(await this.scm.viewLastClaimID()).to.eq(1);
+      expect(await this.scm.protocolClaimActive(this.protocolX)).to.eq(true);
+      expect(await this.scm.viewPublicToInternalID(1)).to.eq(this.internalIdentifier);
+      expect(await this.scm.viewInternalToPublicID(this.internalIdentifier)).to.eq(1);
+      const claim = await this.scm.viewClaims(this.internalIdentifier);
+      expect(claim[0]).to.eq(this.t1.time);
+      expect(claim[1]).to.eq(this.t1.time);
+      expect(claim[2]).to.eq(this.carol.address);
+      expect(claim[3]).to.eq(this.protocolX);
+      expect(claim[4]).to.eq(1);
+      expect(claim[5]).to.eq(this.alice.address);
+      expect(claim[6]).to.eq(1);
+      expect(claim[7]).to.eq('0x1212');
+      expect(claim[8]).to.eq(STATE.SpccPending);
+      const claim2 = await this.scm.claims(1);
+      expect(claim2[0]).to.eq(this.t1.time);
+    });
+    it('Do', async function () {
+      this.t2 = await meta(this.scm.connect(this.carol).cleanUp(this.protocolX, 1));
+
+      expect(this.t2.events.length).to.eq(2);
+      expect(this.t2.events[0].event).to.eq('ClaimStatusChanged');
+      expect(this.t2.events[0].args.claimID).to.eq(1);
+      expect(this.t2.events[0].args.previousState).to.eq(STATE.SpccPending);
+      expect(this.t2.events[0].args.currentState).to.eq(STATE.Cleaned);
+      expect(this.t2.events[1].event).to.eq('ClaimStatusChanged');
+      expect(this.t2.events[1].args.claimID).to.eq(1);
+      expect(this.t2.events[1].args.previousState).to.eq(STATE.Cleaned);
+      expect(this.t2.events[1].args.currentState).to.eq(STATE.NonExistent);
+    });
+    it('Verify state', async function () {
+      expect(await this.scm.viewLastClaimID()).to.eq(1);
+      expect(await this.scm.protocolClaimActive(this.protocolX)).to.eq(false);
+      expect(await this.scm.viewPublicToInternalID(1)).to.eq(constants.HashZero);
+      expect(await this.scm.viewInternalToPublicID(this.internalIdentifier)).to.eq(0);
+      const claim = await this.scm.viewClaims(this.internalIdentifier);
+      expect(claim[0]).to.eq(0);
+      expect(claim[1]).to.eq(0);
+      expect(claim[2]).to.eq(constants.AddressZero);
+      expect(claim[3]).to.eq(constants.HashZero);
+      expect(claim[4]).to.eq(0);
+      expect(claim[5]).to.eq(constants.AddressZero);
+      expect(claim[6]).to.eq(0);
+      expect(claim[7]).to.eq('0x');
+      expect(claim[8]).to.eq(STATE.NonExistent);
+      await expect(this.scm.claims(1)).to.be.revertedWith('InvalidArgument');
     });
   });
   describe('startClaim(), active', function () {
@@ -1718,6 +1820,23 @@ describe('SherlockClaimManager ─ Functional', function () {
 
       expect(await this.scm.isPayoutState(STATE.UmaPriceProposed, this.lastT.time)).to.eq(false);
       expect(await this.scm.isPayoutState(STATE.UmaPending, 0)).to.eq(false);
+    });
+  });
+  describe('isCleanupState() (private function) +UMAHO', function () {
+    before(async function () {
+      await timeTraveler.revertSnapshot();
+
+      // irrelevant tx
+      this.lastT = await meta(this.usdc.approve(this.sherlock.address, maxTokens));
+    });
+    it('Happy flows', async function () {
+      expect(await this.scm.isCleanupState(STATE.SpccPending)).to.eq(true);
+      expect(await this.scm.isCleanupState(STATE.SpccDenied)).to.eq(true);
+    });
+    it('Sad flows', async function () {
+      expect(await this.scm.isCleanupState(STATE.Cleaned)).to.eq(false);
+      expect(await this.scm.isCleanupState(STATE.SpccApproved)).to.eq(false);
+      expect(await this.scm.isCleanupState(STATE.UmaPending)).to.eq(false);
     });
   });
   after(async function () {
