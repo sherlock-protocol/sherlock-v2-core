@@ -34,6 +34,10 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
   // Convenient for percentage calculations
   uint256 constant HUNDRED_PERCENT = 10**18;
 
+  // The minimum active "seconds of coverage left" a protocol must have before arbitragers can remove the protocol from coverage
+  // This value is calculated from a protocol's active balance divided by the premium per second the protocol is paying
+  uint256 constant MIN_SECONDS_OF_COVERAGE = 12 hours;
+
   // This is an address that is controlled by a covered protocol (maybe its a multisig used by that protocol, etc.)
   mapping(bytes32 => address) protocolAgent_;
 
@@ -65,12 +69,8 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
   uint256 lastClaimablePremiumsForStakers;
 
   // The minimum active balance (measured in USDC) a protocol must keep before arbitragers can remove the protocol from coverage
-  // This is one of two criteria a protocol must meet in order to avoid removal (the other is minSecondsOfCoverage below)
+  // This is one of two criteria a protocol must meet in order to avoid removal (the other is MIN_SECONDS_OF_COVERAGE)
   uint256 public override minActiveBalance;
-
-  // The minimum active "seconds of coverage left" a protocol must have before arbitragers can remove the protocol from coverage
-  // This value is calculated from a protocol's active balance divided by the premium per second the protocol is paying
-  uint256 public override minSecondsOfCoverage;
 
   // Removed protocols can still make a claim up until this timestamp (will be 10 days or something)
   mapping(bytes32 => uint256) removedProtocolClaimDeadline;
@@ -252,8 +252,7 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
     // Effectively we just need to make sure we don't accidentally run a protocol's active balance down below the point
     // Where arbs would no longer be incentivized to remove the protocol
     // Because if a protocol is not removed by arbs before running out of active balance, this can cause problems
-    // Note: Change MIN_SECONDS_LEFT to minSecondsOfCoverage
-    if (_premium != 0 && _secondsOfCoverageLeft(_protocol) < minSecondsOfCoverage) {
+    if (_premium != 0 && _secondsOfCoverageLeft(_protocol) < MIN_SECONDS_OF_COVERAGE) {
       revert InsufficientBalance(_protocol);
     }
   }
@@ -429,17 +428,6 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
 
     emit MinBalance(minActiveBalance, _minActiveBalance);
     minActiveBalance = _minActiveBalance;
-  }
-
-  /// @notice Sets the minimum active balance (as measured in seconds of coverage left) before an arb can remove a protocol
-  /// @param _minSeconds Minimum seconds of coverage needed
-  /// @dev Only gov
-  function setMinSecondsOfCoverage(uint256 _minSeconds) external override onlyOwner {
-    // Can't set a value that is too high to be reasonable
-    require(_minSeconds < MIN_SECS_OF_COVERAGE_SANITY_CEILING, 'INSANE');
-
-    emit MinSecondsOfCoverage(minSecondsOfCoverage, _minSeconds);
-    minSecondsOfCoverage = _minSeconds;
   }
 
   // This function allows the nonstakers role to claim tokens owed to them by a specific protocol
@@ -661,17 +649,16 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
     view
     returns (uint256 arbAmount, bool able)
   {
-    uint256 minSecondsOfCoverage_ = minSecondsOfCoverage;
     uint256 secondsLeft = _secondsOfCoverageLeft(_protocol);
 
     // If arb is not possible return false
-    if (secondsLeft >= minSecondsOfCoverage_) return (0, false);
+    if (secondsLeft >= MIN_SECONDS_OF_COVERAGE) return (0, false);
 
     // This percentage scales over time
     // Reaches 100% on 0 seconds of coverage left
     uint256 percentageScaled = HUNDRED_PERCENT -
       (secondsLeft * HUNDRED_PERCENT) /
-      minSecondsOfCoverage_;
+      MIN_SECONDS_OF_COVERAGE;
 
     able = true;
     arbAmount = (activeBalances[_protocol] * percentageScaled) / HUNDRED_PERCENT;

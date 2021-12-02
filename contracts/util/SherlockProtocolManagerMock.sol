@@ -64,11 +64,7 @@ contract SherlockProtocolManagerMock is ISherlockProtocolManager, Manager {
 
   function minActiveBalance() external view override returns (uint256) {}
 
-  function minSecondsOfCoverage() external view override returns (uint256) {}
-
   function setMinActiveBalance(uint256 _minBalance) external override {}
-
-  function setMinSecondsOfCoverage(uint256 _minSeconds) external override {}
 
   function setProtocolPremium(bytes32 _protocol, uint256 _premium) external override {}
 

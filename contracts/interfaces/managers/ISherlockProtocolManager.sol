@@ -11,7 +11,6 @@ import './IManager.sol';
 /// @title Sherlock core interface for protocols
 /// @author Evert Kors
 interface ISherlockProtocolManager is IManager {
-
   // msg.sender is not authorized to call this function
   error Unauthorized();
 
@@ -25,8 +24,6 @@ interface ISherlockProtocolManager is IManager {
   error InsufficientBalance(bytes32 protocol);
 
   event MinBalance(uint256 previous, uint256 current);
-
-  event MinSecondsOfCoverage(uint256 previous, uint256 current);
 
   event AccountingError(bytes32 protocol, uint256 amount, uint256 insufficientTokens);
 
@@ -136,19 +133,10 @@ interface ISherlockProtocolManager is IManager {
   /// @return Minimal balance needed
   function minActiveBalance() external view returns (uint256);
 
-  /// @notice View minimal seconds of coverage needed before liquidation can start
-  /// @return Minimal seconds of coverage needed
-  function minSecondsOfCoverage() external view returns (uint256);
-
   /// @notice Sets the minimum active balance before an arb can remove a protocol
   /// @param _minActiveBalance Minimum balance needed (in USDC)
   /// @dev Only gov
   function setMinActiveBalance(uint256 _minActiveBalance) external;
-
-  /// @notice Sets the minimum active balance (as measured in seconds of coverage left) before an arb can remove a protocol
-  /// @param _minSeconds Minimum seconds of coverage needed
-  /// @dev Only gov
-  function setMinSecondsOfCoverage(uint256 _minSeconds) external;
 
   /// @notice Set premium of `_protocol` to `_premium`
   /// @param _protocol Protocol identifier

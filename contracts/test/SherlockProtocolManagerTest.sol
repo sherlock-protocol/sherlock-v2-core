@@ -20,14 +20,6 @@ contract SherlockProtocolManagerTest is SherlockProtocolManager {
     minActiveBalance = _min;
   }
 
-  function privateSetMinSecondsOfCoverage(uint256 _min) external {
-    minSecondsOfCoverage = _min;
-  }
-
-  function viewMinSecondsOfCoverage() external view returns (uint256) {
-    return minSecondsOfCoverage;
-  }
-
   function viewMinActiveBalance() external view returns (uint256) {
     return minActiveBalance;
   }
