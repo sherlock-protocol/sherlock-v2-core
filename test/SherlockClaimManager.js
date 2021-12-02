@@ -847,7 +847,7 @@ describe('SherlockClaimManager ─ Functional', function () {
       await this.scm.connect(this.spcc).spccRefuse(1);
     });
     it('Do', async function () {
-      await expect(this.scm.escalate(1, parseUnits('5000', 6))).to.be.revertedWith(
+      await expect(this.scm.escalate(1, parseUnits('9600', 6))).to.be.revertedWith(
         'InvalidSender()',
       );
     });
@@ -862,7 +862,7 @@ describe('SherlockClaimManager ─ Functional', function () {
     });
     it('Do', async function () {
       await expect(
-        this.scm.connect(this.carol).escalate(1, parseUnits('5000', 6)),
+        this.scm.connect(this.carol).escalate(1, parseUnits('9600', 6)),
       ).to.be.revertedWith('InvalidState()');
     });
   });
@@ -876,13 +876,13 @@ describe('SherlockClaimManager ─ Functional', function () {
 
       await this.scm.connect(this.spcc).spccRefuse(1);
 
-      this.usdcAmount = parseUnits('20000', 6);
+      this.usdcAmount = parseUnits('20001', 6);
       await this.mintUSDC(this.carol.address, this.usdcAmount);
 
       await this.usdc.connect(this.carol).approve(this.scm.address, this.usdcAmount);
     });
     it('Initial state', async function () {
-      expect(await this.usdc.balanceOf(this.carol.address)).to.eq(parseUnits('20000', 6));
+      expect(await this.usdc.balanceOf(this.carol.address)).to.eq(parseUnits('20001', 6));
 
       const claim = await this.scm.claims(1);
       expect(claim[8]).to.eq(STATE.SpccDenied);
@@ -911,7 +911,7 @@ describe('SherlockClaimManager ─ Functional', function () {
       expect(request.currency).to.eq(USDC_ADDRESS);
       expect(request.reward).to.eq(0);
       expect(request.finalFee).to.eq(parseUnits('400', 6));
-      expect(request.bond).to.eq(parseUnits('5000', 6));
+      expect(request.bond).to.eq(parseUnits('9600', 6));
       expect(request.customLiveness).to.eq(7200);
       expect(request.proposer).to.eq(this.sherlock.address);
       expect(request.proposedPrice).to.eq(0);
@@ -931,7 +931,7 @@ describe('SherlockClaimManager ─ Functional', function () {
       expect(request2.currency).to.eq(USDC_ADDRESS);
       expect(request2.reward).to.eq(0);
       expect(request2.finalFee).to.eq(parseUnits('400', 6));
-      expect(request2.bond).to.eq(parseUnits('5000', 6));
+      expect(request2.bond).to.eq(parseUnits('9600', 6));
       expect(request2.customLiveness).to.eq(7200);
       expect(request2.proposer).to.eq(this.sherlock.address);
       expect(request2.proposedPrice).to.eq(0);
@@ -963,7 +963,7 @@ describe('SherlockClaimManager ─ Functional', function () {
       expect(request3.currency).to.eq(USDC_ADDRESS);
       expect(request3.reward).to.eq(0);
       expect(request3.finalFee).to.eq(parseUnits('400', 6));
-      expect(request3.bond).to.eq(parseUnits('5000', 6));
+      expect(request3.bond).to.eq(parseUnits('9600', 6));
       expect(request3.customLiveness).to.eq(7200);
       expect(request3.proposer).to.eq(this.sherlock.address);
       expect(request3.proposedPrice).to.eq(0);
@@ -979,7 +979,7 @@ describe('SherlockClaimManager ─ Functional', function () {
       expect(this.t1.events[13].args.currentState).to.eq(STATE.UmaPending);
     });
     it('Verify state', async function () {
-      expect(await this.usdc.balanceOf(this.carol.address)).to.eq(parseUnits('9200', 6));
+      expect(await this.usdc.balanceOf(this.carol.address)).to.eq(parseUnits('1', 6));
 
       const claim = await this.scm.claims(1);
       expect(claim[8]).to.eq(STATE.UmaPending);
@@ -991,7 +991,7 @@ describe('SherlockClaimManager ─ Functional', function () {
     before(async function () {
       await timeTraveler.revertSnapshot();
 
-      this.usdcAmount = parseUnits('20000', 6);
+      this.usdcAmount = parseUnits('29200', 6);
       await this.mintUSDC(this.carol.address, this.usdcAmount);
       await this.usdc.connect(this.carol).approve(this.scm.address, this.usdcAmount);
 
@@ -1003,7 +1003,7 @@ describe('SherlockClaimManager ─ Functional', function () {
       await timeTraveler.mine(1);
     });
     it('Initial state', async function () {
-      expect(await this.usdc.balanceOf(this.carol.address)).to.eq(parseUnits('20000', 6));
+      expect(await this.usdc.balanceOf(this.carol.address)).to.eq(parseUnits('29200', 6));
 
       const claim = await this.scm.claims(1);
       expect(claim[8]).to.eq(STATE.SpccPending);

@@ -8,8 +8,6 @@ pragma solidity 0.8.9;
 
 import '../Sherlock.sol';
 
-import 'hardhat/console.sol';
-
 /// @notice this contract is used for testing to view all storage variables
 contract SherlockTest is Sherlock {
   constructor(

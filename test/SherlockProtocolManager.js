@@ -1988,7 +1988,7 @@ describe('SherlockProtocolManager ─ Functional', function () {
       expect(await this.spm.minActiveBalance()).to.eq(0);
     });
     it('do fail', async function () {
-      await expect(this.spm.setMinActiveBalance(parseUnits('20001', 6))).to.be.revertedWith(
+      await expect(this.spm.setMinActiveBalance(parseUnits('30001', 6))).to.be.revertedWith(
         'INSANE',
       );
     });

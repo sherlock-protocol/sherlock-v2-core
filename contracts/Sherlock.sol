@@ -13,8 +13,6 @@ import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 
 import './interfaces/ISherlock.sol';
 
-import 'hardhat/console.sol';
-
 /// @title Sherlock core interface for stakers
 /// @author Evert Kors
 // This is the contract that manages staking actions
@@ -26,7 +24,7 @@ contract Sherlock is ISherlock, ERC721, Ownable {
   uint256 constant ARB_RESTAKE_WAIT_TIME = 2 weeks;
 
   // The period during which the reward for restaking an account (after the inital period) grows
-  uint256 constant ARB_RESTAKE_GROWTH_TIME = 2 weeks;
+  uint256 constant ARB_RESTAKE_GROWTH_TIME = 1 weeks;
 
   // Anyone who gets auto-restaked is restaked for this period (3 months)
   uint256 constant ARB_RESTAKE_PERIOD = 12 weeks;

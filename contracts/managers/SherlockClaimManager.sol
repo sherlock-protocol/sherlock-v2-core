@@ -18,14 +18,13 @@ import '../interfaces/UMAprotocol/SkinnyOptimisticOracleInterface.sol';
 
 import '@openzeppelin/contracts/security/ReentrancyGuard.sol';
 
-import 'hardhat/console.sol';
-
 /// @dev expects 6 decimals input tokens
 contract SherlockClaimManager is ISherlockClaimManager, ReentrancyGuard, Manager {
   using SafeERC20 for IERC20;
 
   // The bond required for a protocol agent to escalate a claim to UMA Optimistic Oracle (OO)
-  uint256 constant BOND = 5000 * 10**6; // 5k bond
+  /// @dev at time of writing will result in a 20k cost of escalating
+  uint256 constant BOND = 9_600 * 10**6; // 20k bond
 
   // The UMA Halt Operator (UMAHO) is the multisig (controlled by UMA) who gives final approval to pay out a claim
   // After the OO has voted to pay out

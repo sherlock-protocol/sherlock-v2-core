@@ -9,6 +9,7 @@ const { id } = require('ethers/lib/utils');
 const maxTokens = parseUnits('100000000000', 6);
 const maxTokens2 = parseEther('100000000000', 18);
 
+const weeks1 = 60 * 60 * 24 * 7 * 1;
 const weeks2 = 60 * 60 * 24 * 7 * 2;
 const weeks12 = 60 * 60 * 24 * 7 * 12;
 
@@ -1195,7 +1196,7 @@ describe('Sherlock ─ Functional', function () {
       expect(res[1]).to.eq(true);
     });
     it('10 percent', async function () {
-      await timeTraveler.increaseTime(weeks2 / 10);
+      await timeTraveler.increaseTime(weeks1 / 10);
       await timeTraveler.mine(1);
 
       const res = await this.sherlock.connect(this.bob).viewRewardForArbRestake(1);
@@ -1205,7 +1206,7 @@ describe('Sherlock ─ Functional', function () {
       expect(res[1]).to.eq(true);
     });
     it('20 percent', async function () {
-      await timeTraveler.increaseTime(weeks2 / 10);
+      await timeTraveler.increaseTime(weeks1 / 10);
       await timeTraveler.mine(1);
 
       const res = await this.sherlock.connect(this.bob).viewRewardForArbRestake(1);
@@ -1215,7 +1216,7 @@ describe('Sherlock ─ Functional', function () {
       expect(res[1]).to.eq(true);
     });
     it('90 percent', async function () {
-      await timeTraveler.increaseTime((weeks2 / 10) * 7);
+      await timeTraveler.increaseTime((weeks1 / 10) * 7);
       await timeTraveler.mine(1);
 
       const res = await this.sherlock.connect(this.bob).viewRewardForArbRestake(1);
@@ -1225,7 +1226,7 @@ describe('Sherlock ─ Functional', function () {
       expect(res[1]).to.eq(true);
     });
     it('100 percent', async function () {
-      await timeTraveler.increaseTime(weeks2 / 10);
+      await timeTraveler.increaseTime(weeks1 / 10);
       await timeTraveler.mine(1);
 
       const res = await this.sherlock.connect(this.bob).viewRewardForArbRestake(1);
@@ -1235,7 +1236,7 @@ describe('Sherlock ─ Functional', function () {
       expect(res[1]).to.eq(true);
     });
     it('Stays 100 percent', async function () {
-      await timeTraveler.increaseTime(weeks2 / 10);
+      await timeTraveler.increaseTime(weeks1 / 10);
       await timeTraveler.mine(1);
 
       const res = await this.sherlock.connect(this.bob).viewRewardForArbRestake(1);
@@ -1315,7 +1316,7 @@ describe('Sherlock ─ Functional', function () {
           this.t1.time
             .add(10)
             .add(weeks2)
-            .add(weeks2 / 2)
+            .add(weeks1 / 2)
             .sub(1),
         ),
       );

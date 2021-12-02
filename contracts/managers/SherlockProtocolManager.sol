@@ -20,10 +20,7 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
   IERC20 immutable token;
 
   // This is the ceiling value that can be set for the threshold (based on USDC balance) at which a protocol can get removed
-  uint256 constant MIN_BALANCE_SANITY_CEILING = 20_000 * 10**6; // 20k usdc
-
-  // This is the ceiling value that can be set for the threshold (based on seconds of coverage left) at which a protocol can get removed
-  uint256 constant MIN_SECS_OF_COVERAGE_SANITY_CEILING = 7 days;
+  uint256 constant MIN_BALANCE_SANITY_CEILING = 30_000 * 10**6; // 30k usdc
 
   // A removed protocol is still able to make a claim for this amount of time after its removal
   uint256 constant PROTOCOL_CLAIM_DEADLINE = 7 days;
