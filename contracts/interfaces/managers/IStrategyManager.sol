@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
-pragma solidity 0.8.9;
+pragma solidity 0.8.10;
 
 /******************************************************************************\
 * Author: Evert Kors <dev@sherlock.xyz> (https://twitter.com/evert0x)
@@ -11,7 +11,6 @@ import './IManager.sol';
 import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 
 interface IStrategyManager is IManager {
-
   /// @return Returns the token type being deposited into a strategy
   function want() external view returns (IERC20);
 

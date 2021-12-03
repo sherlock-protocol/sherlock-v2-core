@@ -307,7 +307,7 @@ describe('SherlockProtocolManager ─ Stateless', function () {
     it('Unitinitalized', async function () {
       await expect(
         this.spm.nonStakersClaim(this.protocolX, 1, this.bob.address),
-      ).to.be.revertedWith('Transaction reverted: function call to a non-contract account');
+      ).to.be.revertedWith('Transaction reverted: function returned an unexpected amount of data');
 
       await this.spm.setSherlockCoreAddress(this.SherlockMock.address);
     });
@@ -3115,10 +3115,10 @@ describe('SherlockProtocolManager ─ Functional', function () {
     });
     it('Initial state', async function () {
       await expect(this.spm.isActive()).to.be.revertedWith(
-        'Transaction reverted: function call to a non-contract account',
+        'Transaction reverted: function returned an unexpected amount of data',
       );
       await expect(this.spm.sweep(this.bob.address, [this.ERC20Mock6d.address])).to.be.revertedWith(
-        'Transaction reverted: function call to a non-contract account',
+        'Transaction reverted: function returned an unexpected amount of data',
       );
 
       expect(await this.ERC20Mock6d.balanceOf(this.bob.address)).to.eq(0);

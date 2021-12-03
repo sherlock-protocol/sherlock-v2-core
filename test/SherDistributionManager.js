@@ -156,10 +156,10 @@ describe('SherDistributionManager, 6 dec', function () {
       this.erc20.transfer(this.sdm.address, this.balance);
 
       await expect(this.sdm.isActive()).to.be.revertedWith(
-        'Transaction reverted: function call to a non-contract account',
+        'Transaction reverted: function returned an unexpected amount of data',
       );
       await expect(this.sdm.sweep(this.bob.address, [this.erc20.address])).to.be.revertedWith(
-        'Transaction reverted: function call to a non-contract account',
+        'Transaction reverted: function returned an unexpected amount of data',
       );
 
       expect(await this.erc20.balanceOf(this.bob.address)).to.eq(0);
