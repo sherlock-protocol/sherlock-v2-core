@@ -359,7 +359,7 @@ contract SherlockClaimManager is ISherlockClaimManager, ReentrancyGuard, Manager
   // Only SPCC can call this
   // SPCC approves the claim and it can now be paid out
   // Requires that the last state of the claim was SpccPending
-  function spccApprove(uint256 _claimID) external override onlySPCC nonReentrant whenNotPaused {
+  function spccApprove(uint256 _claimID) external override whenNotPaused onlySPCC nonReentrant {
     bytes32 claimIdentifier = publicToInternalID[_claimID];
     if (claimIdentifier == bytes32(0)) revert InvalidArgument();
 
@@ -368,7 +368,7 @@ contract SherlockClaimManager is ISherlockClaimManager, ReentrancyGuard, Manager
 
   // Only SPCC can call this
   // SPCC denies the claim and now the protocol agent can escalate to UMA OO if they desire
-  function spccRefuse(uint256 _claimID) external override onlySPCC nonReentrant whenNotPaused {
+  function spccRefuse(uint256 _claimID) external override whenNotPaused onlySPCC nonReentrant {
     bytes32 claimIdentifier = publicToInternalID[_claimID];
     if (claimIdentifier == bytes32(0)) revert InvalidArgument();
 
@@ -513,7 +513,7 @@ contract SherlockClaimManager is ISherlockClaimManager, ReentrancyGuard, Manager
 
   /// @notice UMAHO is able to execute a halt if the state is UmaApproved and state was updated less than UMAHO_TIME ago
   // Once the UMAHO_TIME is up, UMAHO can still halt the claim, but only if the claim hasn't been paid out yet
-  function executeHalt(uint256 _claimID) external override onlyUMAHO nonReentrant whenNotPaused {
+  function executeHalt(uint256 _claimID) external override whenNotPaused onlyUMAHO nonReentrant {
     bytes32 claimIdentifier = publicToInternalID[_claimID];
     if (claimIdentifier == bytes32(0)) revert InvalidArgument();
 
@@ -537,7 +537,7 @@ contract SherlockClaimManager is ISherlockClaimManager, ReentrancyGuard, Manager
     uint32 timestamp,
     bytes memory ancillaryData,
     SkinnyOptimisticOracleInterface.Request memory request
-  ) external override onlyUMA(identifier) whenNotPaused {
+  ) external override whenNotPaused onlyUMA(identifier) {
     bytes32 claimIdentifier = keccak256(ancillaryData);
 
     Claim storage claim = claims_[claimIdentifier];
@@ -560,7 +560,7 @@ contract SherlockClaimManager is ISherlockClaimManager, ReentrancyGuard, Manager
     uint32 timestamp,
     bytes memory ancillaryData,
     SkinnyOptimisticOracleInterface.Request memory request
-  ) external override onlyUMA(identifier) whenNotPaused {
+  ) external override whenNotPaused onlyUMA(identifier) {
     bytes32 claimIdentifier = keccak256(ancillaryData);
 
     Claim storage claim = claims_[claimIdentifier];
