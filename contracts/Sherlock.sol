@@ -10,6 +10,7 @@ import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import '@openzeppelin/contracts/token/ERC721/ERC721.sol';
 import '@openzeppelin/contracts/access/Ownable.sol';
 import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
+import '@openzeppelin/contracts/security/Pausable.sol';
 
 import './interfaces/ISherlock.sol';
 
@@ -17,7 +18,7 @@ import './interfaces/ISherlock.sol';
 /// @author Evert Kors
 // This is the contract that manages staking actions
 
-contract Sherlock is ISherlock, ERC721, Ownable {
+contract Sherlock is ISherlock, ERC721, Ownable, Pausable {
   using SafeERC20 for IERC20;
 
   // The initial period for a staker to restake/withdraw without being auto-restaked
@@ -297,6 +298,24 @@ contract Sherlock is ISherlock, ERC721, Ownable {
     yieldStrategy.withdrawAll();
   }
 
+  /// @notice Pause external functions in all contracts
+  function pause() external onlyOwner {
+    _pause();
+    yieldStrategy.pause();
+    sherDistributionManager.pause();
+    sherlockProtocolManager.pause();
+    sherlockClaimManager.pause();
+  }
+
+  /// @notice Unpause external functions in all contracts
+  function unpause() external onlyOwner {
+    _unpause();
+    yieldStrategy.unpause();
+    sherDistributionManager.unpause();
+    sherlockProtocolManager.unpause();
+    sherlockClaimManager.unpause();
+  }
+
   //
   // Access control functions
   //
@@ -308,7 +327,7 @@ contract Sherlock is ISherlock, ERC721, Ownable {
   /// @param _amount Amount to send
   /// @dev only payout manager should call this
   /// @dev should pull money out of strategy
-  function payoutClaim(address _receiver, uint256 _amount) external override {
+  function payoutClaim(address _receiver, uint256 _amount) external override whenNotPaused {
     // Can only be called by the Sherlock claim manager contract
     if (msg.sender != address(sherlockClaimManager)) revert Unauthorized();
 
@@ -461,7 +480,7 @@ contract Sherlock is ISherlock, ERC721, Ownable {
     uint256 _amount,
     uint256 _period,
     address _receiver
-  ) external override returns (uint256 _id, uint256 _sher) {
+  ) external override whenNotPaused returns (uint256 _id, uint256 _sher) {
     if (_amount == 0) revert ZeroArgument();
     // Makes sure the period is a whitelisted period
     if (!stakingPeriods[_period]) revert InvalidArgument();
@@ -499,7 +518,7 @@ contract Sherlock is ISherlock, ERC721, Ownable {
   /// @dev Only the owner of `_id` will be able to redeem their position
   /// @dev The SHER rewards are sent to the NFT owner
   /// @dev Can only be called after lockup `_period` has ended
-  function redeemNFT(uint256 _id) external override returns (uint256 _amount) {
+  function redeemNFT(uint256 _id) external override whenNotPaused returns (uint256 _amount) {
     // Checks to make sure caller is the owner of the NFT position, and that the lockup period is over
     address nftOwner = _verifyUnlockableByOwner(_id);
 
@@ -525,7 +544,12 @@ contract Sherlock is ISherlock, ERC721, Ownable {
   /// @dev Only the owner of `_id` will be able to restake their position using this call
   /// @dev `_period` needs to be whitelisted
   /// @dev Can only be called after lockup `_period` has ended
-  function ownerRestake(uint256 _id, uint256 _period) external override returns (uint256 _sher) {
+  function ownerRestake(uint256 _id, uint256 _period)
+    external
+    override
+    whenNotPaused
+    returns (uint256 _sher)
+  {
     // Checks to make sure caller is the owner of the NFT position, and that the lockup period is over
     address nftOwner = _verifyUnlockableByOwner(_id);
 
@@ -583,7 +607,12 @@ contract Sherlock is ISherlock, ERC721, Ownable {
   /// @dev Can only be called after lockup `_period` is more than 2 weeks in the past (assuming ARB_RESTAKE_WAIT_TIME is 2 weeks)
   /// @dev Max 10% (ARB_RESTAKE_MAX_PERCENTAGE) of tokens associated with a position are used to incentivize arbs (x)
   /// @dev During a 2 week period the reward ratio will move from 0% to 100% (* x)
-  function arbRestake(uint256 _id) external override returns (uint256 _sher, uint256 _arbReward) {
+  function arbRestake(uint256 _id)
+    external
+    override
+    whenNotPaused
+    returns (uint256 _sher, uint256 _arbReward)
+  {
     address nftOwner = ownerOf(_id);
 
     // Returns the stake shares that an arb would get, and whether the position can currently be arbed

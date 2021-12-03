@@ -437,7 +437,7 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
     bytes32 _protocol,
     uint256 _amount,
     address _receiver
-  ) external override {
+  ) external override whenNotPaused {
     if (_protocol == bytes32(0)) revert ZeroArgument();
     if (_amount == uint256(0)) revert ZeroArgument();
     if (_receiver == address(0)) revert ZeroArgument();
@@ -466,7 +466,7 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
   /// @dev Callable by everyone
   /// @dev Will be called by burn() in Sherlock core contract
   /// @dev Funds will be transferred to Sherlock core contract
-  function claimPremiumsForStakers() external override {
+  function claimPremiumsForStakers() external override whenNotPaused {
     // Gets address of core Sherlock contract
     address sherlock = address(sherlockCore);
     // Revert if core Sherlock contract not initialized yet
@@ -613,7 +613,7 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
   /// @notice Remove a protocol with insufficient active balance
   /// @param _protocol Protocol identifier
   // msg.sender receives whatever is left of the insufficient active balance, this should incentivize arbs to call this function
-  function forceRemoveByActiveBalance(bytes32 _protocol) external override {
+  function forceRemoveByActiveBalance(bytes32 _protocol) external override whenNotPaused {
     address agent = _verifyProtocolExists(_protocol);
 
     // Gets the latest value of the active balance at this protocol
@@ -664,7 +664,7 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
   /// @notice Removes a protocol with insufficent seconds of coverage left
   /// @param _protocol Protocol identifier
   // Seconds of coverage is defined by the active balance of the protocol divided by the protocol's premium per second
-  function forceRemoveBySecondsOfCoverage(bytes32 _protocol) external override {
+  function forceRemoveBySecondsOfCoverage(bytes32 _protocol) external override whenNotPaused {
     // NOTE: We use _secondsOfCoverageLeft() below and include this check instead of secondsOfCoverageLeft() for gas savings
     address agent = _verifyProtocolExists(_protocol);
 
@@ -756,7 +756,11 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
   /// @param _protocol Protocol identifier
   /// @param _amount Amount of tokens to deposit
   /// @dev Approval should be made before calling
-  function depositToActiveBalance(bytes32 _protocol, uint256 _amount) external override {
+  function depositToActiveBalance(bytes32 _protocol, uint256 _amount)
+    external
+    override
+    whenNotPaused
+  {
     if (_amount == uint256(0)) revert ZeroArgument();
     _verifyProtocolExists(_protocol);
 
@@ -776,7 +780,11 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
   /// @dev Only protocol agent is able to withdraw
   /// @dev Balance can be withdrawn up until 3 days worth of active balance
   /// @dev In case coverage is not active (0 premium), full balance can be withdrawn
-  function withdrawActiveBalance(bytes32 _protocol, uint256 _amount) external override {
+  function withdrawActiveBalance(bytes32 _protocol, uint256 _amount)
+    external
+    override
+    whenNotPaused
+  {
     if (_amount == uint256(0)) revert ZeroArgument();
     // Only the protocol agent can call this function
     if (msg.sender != _verifyProtocolExists(_protocol)) revert Unauthorized();
@@ -803,7 +811,11 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
   /// @param _protocol Protocol identifier
   /// @param _protocolAgent Account able to submit a claim on behalf of the protocol
   /// @dev Only the active protocolAgent is able to transfer the role
-  function transferProtocolAgent(bytes32 _protocol, address _protocolAgent) external override {
+  function transferProtocolAgent(bytes32 _protocol, address _protocolAgent)
+    external
+    override
+    whenNotPaused
+  {
     if (_protocolAgent == address(0)) revert ZeroArgument();
     // Can't set the new protocol agent to the caller address
     if (msg.sender == _protocolAgent) revert InvalidArgument();

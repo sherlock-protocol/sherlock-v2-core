@@ -260,7 +260,7 @@ contract SherlockClaimManager is ISherlockClaimManager, ReentrancyGuard, Manager
   /// @param _claimID public claim ID
   /// @dev Retrieves current protocol agent for cleanup
   /// @dev State is either SpccPending or SpccDenied
-  function cleanUp(bytes32 _protocol, uint256 _claimID) external {
+  function cleanUp(bytes32 _protocol, uint256 _claimID) external whenNotPaused {
     if (_protocol == bytes32(0)) revert ZeroArgument();
     if (_claimID == uint256(0)) revert ZeroArgument();
 
@@ -296,7 +296,7 @@ contract SherlockClaimManager is ISherlockClaimManager, ReentrancyGuard, Manager
     address _receiver,
     uint32 _timestamp,
     bytes memory ancillaryData
-  ) external override nonReentrant {
+  ) external override nonReentrant whenNotPaused {
     if (_protocol == bytes32(0)) revert ZeroArgument();
     if (_amount == uint256(0)) revert ZeroArgument();
     if (_receiver == address(0)) revert ZeroArgument();
@@ -359,7 +359,7 @@ contract SherlockClaimManager is ISherlockClaimManager, ReentrancyGuard, Manager
   // Only SPCC can call this
   // SPCC approves the claim and it can now be paid out
   // Requires that the last state of the claim was SpccPending
-  function spccApprove(uint256 _claimID) external override onlySPCC nonReentrant {
+  function spccApprove(uint256 _claimID) external override onlySPCC nonReentrant whenNotPaused {
     bytes32 claimIdentifier = publicToInternalID[_claimID];
     if (claimIdentifier == bytes32(0)) revert InvalidArgument();
 
@@ -368,7 +368,7 @@ contract SherlockClaimManager is ISherlockClaimManager, ReentrancyGuard, Manager
 
   // Only SPCC can call this
   // SPCC denies the claim and now the protocol agent can escalate to UMA OO if they desire
-  function spccRefuse(uint256 _claimID) external override onlySPCC nonReentrant {
+  function spccRefuse(uint256 _claimID) external override onlySPCC nonReentrant whenNotPaused {
     bytes32 claimIdentifier = publicToInternalID[_claimID];
     if (claimIdentifier == bytes32(0)) revert InvalidArgument();
 
@@ -385,7 +385,12 @@ contract SherlockClaimManager is ISherlockClaimManager, ReentrancyGuard, Manager
   /// @dev Proposer = current protocl agent (could differ from protocol agent when claim was started)
   /// @dev proposedPrice = _amount
   // Amount sent needs to be at least equal to the BOND amount required
-  function escalate(uint256 _claimID, uint256 _amount) external override nonReentrant {
+  function escalate(uint256 _claimID, uint256 _amount)
+    external
+    override
+    nonReentrant
+    whenNotPaused
+  {
     if (_amount < BOND) revert InvalidArgument();
 
     // Gets the internal ID of the claim
@@ -467,7 +472,7 @@ contract SherlockClaimManager is ISherlockClaimManager, ReentrancyGuard, Manager
   // We are ok with spending the extra time to wait for the UMAHO time to expire before paying out
   // We could have UMAHO multisig send a tx to confirm the payout (payout would happen sooner),
   // But doesn't seem worth it to save half a day or so
-  function payoutClaim(uint256 _claimID) external override nonReentrant {
+  function payoutClaim(uint256 _claimID) external override nonReentrant whenNotPaused {
     bytes32 claimIdentifier = publicToInternalID[_claimID];
     if (claimIdentifier == bytes32(0)) revert InvalidArgument();
 
@@ -508,7 +513,7 @@ contract SherlockClaimManager is ISherlockClaimManager, ReentrancyGuard, Manager
 
   /// @notice UMAHO is able to execute a halt if the state is UmaApproved and state was updated less than UMAHO_TIME ago
   // Once the UMAHO_TIME is up, UMAHO can still halt the claim, but only if the claim hasn't been paid out yet
-  function executeHalt(uint256 _claimID) external override onlyUMAHO nonReentrant {
+  function executeHalt(uint256 _claimID) external override onlyUMAHO nonReentrant whenNotPaused {
     bytes32 claimIdentifier = publicToInternalID[_claimID];
     if (claimIdentifier == bytes32(0)) revert InvalidArgument();
 
@@ -532,7 +537,7 @@ contract SherlockClaimManager is ISherlockClaimManager, ReentrancyGuard, Manager
     uint32 timestamp,
     bytes memory ancillaryData,
     SkinnyOptimisticOracleInterface.Request memory request
-  ) external override onlyUMA(identifier) {
+  ) external override onlyUMA(identifier) whenNotPaused {
     bytes32 claimIdentifier = keccak256(ancillaryData);
 
     Claim storage claim = claims_[claimIdentifier];
@@ -555,7 +560,7 @@ contract SherlockClaimManager is ISherlockClaimManager, ReentrancyGuard, Manager
     uint32 timestamp,
     bytes memory ancillaryData,
     SkinnyOptimisticOracleInterface.Request memory request
-  ) external override onlyUMA(identifier) {
+  ) external override onlyUMA(identifier) whenNotPaused {
     bytes32 claimIdentifier = keccak256(ancillaryData);
 
     Claim storage claim = claims_[claimIdentifier];
@@ -571,6 +576,7 @@ contract SherlockClaimManager is ISherlockClaimManager, ReentrancyGuard, Manager
   // UMA OO gives back a resolved price (either 0 or claim.amount) and
   // Claim's state is changed to either UmaApproved or UmaDenied
   // If UmaDenied, the claim is dead and state is immediately changed to NonExistent and cleaned up
+  /// @dev still want to capture settled price in a paused state. Otherwise claim is stuck.
   function priceSettled(
     bytes32 identifier,
     uint32 timestamp,

@@ -8,10 +8,11 @@ pragma solidity 0.8.9;
 
 import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 import '@openzeppelin/contracts/access/Ownable.sol';
+import '@openzeppelin/contracts/security/Pausable.sol';
 
 import '../interfaces/managers/IManager.sol';
 
-abstract contract Manager is IManager, Ownable {
+abstract contract Manager is IManager, Ownable, Pausable {
   using SafeERC20 for IERC20;
 
   address private constant DEPLOYER = 0xAdBb28C2FEe078440B7088bbcd68DCfA63e55625;
@@ -48,5 +49,13 @@ abstract contract Manager is IManager, Ownable {
     // Sends any remaining ETH to the receiver address (as long as receiver address is payable)
     (bool success, ) = _receiver.call{ value: address(this).balance }('');
     if (success == false) revert InvalidConditions();
+  }
+
+  function pause() external onlySherlockCore {
+    _pause();
+  }
+
+  function unpause() external onlySherlockCore {
+    _unpause();
   }
 }

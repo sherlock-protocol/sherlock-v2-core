@@ -57,7 +57,7 @@ contract AaveV2Strategy is IStrategyManager, Manager {
   }
 
   /// @notice Deposits all USDC held in this contract into Aave's lending pool
-  function deposit() external override {
+  function deposit() external override whenNotPaused {
     ILendingPool lp = getLp();
     // Checking the USDC balance of this contract
     uint256 amount = want.balanceOf(address(this));
@@ -99,7 +99,7 @@ contract AaveV2Strategy is IStrategyManager, Manager {
   }
 
   // Claims the stkAAVE rewards and sends them to the receiver address
-  function claimRewards() external {
+  function claimRewards() external whenNotPaused {
     // Creates an array with one slot
     address[] memory assets = new address[](1);
     // Sets the slot equal to the address of aUSDC

@@ -33,4 +33,10 @@ interface IManager {
   /// @dev ^ that's needed for tvl accounting, once core is deployed this function is called
   /// @dev throws `SherlockCoreSet`
   function setSherlockCoreAddress(ISherlock _sherlock) external;
+
+  /// @notice Pause external functions in contract
+  function pause() external;
+
+  /// @notice Unpause external functions in contract
+  function unpause() external;
 }
