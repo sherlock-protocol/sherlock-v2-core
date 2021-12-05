@@ -56,8 +56,13 @@ contract SherlockMock is ISherlock, ERC721, Ownable {
 
   function disableStakingPeriod(uint256 _period) external override onlyOwner {}
 
-  function pullSherReward(uint256 _amount, uint256 _period) external {
-    sherDistributionManager.pullReward(_amount, _period);
+  function pullSherReward(
+    uint256 _amount,
+    uint256 _period,
+    uint256 _id,
+    address _receiver
+  ) external {
+    sherDistributionManager.pullReward(_amount, _period, _id, _receiver);
   }
 
   function updateSherDistributionManager(ISherDistributionManager _manager)

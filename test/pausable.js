@@ -294,7 +294,9 @@ describe('Pausable', function () {
       await this.sherdist.transferOwnership(this.bob.address);
     });
     it('Initial state', async function () {
-      await expect(this.sherdist.pullReward(1, 1)).to.be.revertedWith('InvalidSender()');
+      await expect(this.sherdist.pullReward(1, 1, 1, this.bob.address)).to.be.revertedWith(
+        'InvalidSender()',
+      );
       await expect(this.sherdist.sweep(this.bob.address, [])).to.be.revertedWith(
         'Ownable: caller is not the owner',
       );
@@ -303,7 +305,9 @@ describe('Pausable', function () {
       await this.sherlock.pause();
     });
     it('Verify state', async function () {
-      await expect(this.sherdist.pullReward(1, 1)).to.be.revertedWith('InvalidSender()');
+      await expect(this.sherdist.pullReward(1, 1, 1, this.bob.address)).to.be.revertedWith(
+        'InvalidSender()',
+      );
       await expect(this.sherdist.sweep(this.bob.address, [])).to.be.revertedWith(
         'Ownable: caller is not the owner',
       );
@@ -312,7 +316,9 @@ describe('Pausable', function () {
       await this.sherlock.unpause();
     });
     it('Verify state', async function () {
-      await expect(this.sherdist.pullReward(1, 1)).to.be.revertedWith('InvalidSender()');
+      await expect(this.sherdist.pullReward(1, 1, 1, this.bob.address)).to.be.revertedWith(
+        'InvalidSender()',
+      );
       await expect(this.sherdist.sweep(this.bob.address, [])).to.be.revertedWith(
         'Ownable: caller is not the owner',
       );

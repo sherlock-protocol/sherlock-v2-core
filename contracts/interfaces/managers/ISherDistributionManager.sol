@@ -21,7 +21,12 @@ interface ISherDistributionManager is IManager {
   /// @dev Calling contract will depend on before + after balance diff and return value
   /// @dev INCLUDES stake in calculation, function expects the `_amount` to be deposited already
   /// @dev If tvl=50 and amount=50, this means it is calculating SHER rewards for the first 50 tokens going in
-  function pullReward(uint256 _amount, uint256 _period) external returns (uint256 _sher);
+  function pullReward(
+    uint256 _amount,
+    uint256 _period,
+    uint256 _id,
+    address _receiver
+  ) external returns (uint256 _sher);
 
   /// @notice Calculates how many `_sher` SHER tokens are owed to a stake position based on `_amount` and `_period`
   /// @param _tvl TVL to use for reward calculation (pre-stake TVL)

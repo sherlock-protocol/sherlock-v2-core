@@ -348,12 +348,14 @@ contract Sherlock is ISherlock, ERC721, Ownable, Pausable {
   /// @param _amount Amount of tokens to stake
   /// @param _period Period of time for which funds get locked
   /// @param _id ID for this NFT position
+  /// @param _receiver Address that will be linked to this position
   /// @return _sher Amount of SHER tokens awarded to this position after `_period` ends
   /// @dev `_period` needs to be whitelisted
   function _stake(
     uint256 _amount,
     uint256 _period,
-    uint256 _id
+    uint256 _id,
+    address _receiver
   ) internal returns (uint256 _sher) {
     // Sets the timestamp at which this position can first be unstaked/restaked
     lockupEnd_[_id] = block.timestamp + _period;
@@ -366,7 +368,9 @@ contract Sherlock is ISherlock, ERC721, Ownable, Pausable {
     uint256 before = sher.balanceOf(address(this));
 
     // pullReward() calcs then actually transfers the SHER tokens to this contract
-    try sherDistributionManager.pullReward(_amount, _period) returns (uint256 amount) {
+    try sherDistributionManager.pullReward(_amount, _period, _id, _receiver) returns (
+      uint256 amount
+    ) {
       _sher = amount;
     } catch (bytes memory reason) {
       // If for whatever reason the sherDistributionManager call fails
@@ -463,7 +467,7 @@ contract Sherlock is ISherlock, ERC721, Ownable, Pausable {
     // We use the same ID that we just deleted the SHER rewards mapping for
     // Resets the lockupEnd mapping and SHER token rewards mapping for this ID
     // Note stakeShares for this position do not change so no need to update
-    _sher = _stake(tokenBalanceOf(_id), _period, _id);
+    _sher = _stake(tokenBalanceOf(_id), _period, _id, _nftOwner);
 
     emit Restaked(_id);
   }
@@ -505,7 +509,7 @@ contract Sherlock is ISherlock, ERC721, Ownable, Pausable {
     totalStakeShares += stakeShares_;
 
     // Locks up the USDC amount and calcs the SHER token amount to receive on unstake
-    _sher = _stake(_amount, _period, _id);
+    _sher = _stake(_amount, _period, _id, _receiver);
 
     // This is an ERC-721 function that creates an NFT and sends it to the receiver
     _safeMint(_receiver, _id);

@@ -63,12 +63,12 @@ contract SherDistributionManager is ISherDistributionManager, Manager {
   /// @dev INCLUDES stake in calculation, function expects the `_amount` to be deposited already
   /// @dev If tvl=50 and amount=50, this means it is calculating SHER rewards for the first 50 tokens going in
   /// @dev Doesn't include whenNotPaused modifier as it's onlySherlockCore where pause is captured
-  function pullReward(uint256 _amount, uint256 _period)
-    external
-    override
-    onlySherlockCore
-    returns (uint256 _sher)
-  {
+  function pullReward(
+    uint256 _amount,
+    uint256 _period,
+    uint256 _id,
+    address _receiver
+  ) external override onlySherlockCore returns (uint256 _sher) {
     // Uses calcReward() to get the SHER tokens owed to this stake
     // Subtracts the amount from the total token balance to get the pre-stake USDC TVL
     _sher = calcReward(sherlockCore.totalTokenBalanceStakers() - _amount, _amount, _period);

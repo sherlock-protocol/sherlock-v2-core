@@ -117,17 +117,17 @@ describe('SherDistributionManager, 6 dec', function () {
       await this.sherlock.setToken(this.erc20.address);
     });
     it('Initial', async function () {
-      await expect(this.sdm.pullReward(parseUnits('100', 6), 1)).to.be.revertedWith(
-        'InvalidSender()',
-      );
+      await expect(
+        this.sdm.pullReward(parseUnits('100', 6), 1, 1, this.bob.address),
+      ).to.be.revertedWith('InvalidSender()');
     });
     it('Set', async function () {
       await this.sherlock.updateSherDistributionManager(this.sdm.address);
       await this.sdm.setSherlockCoreAddress(this.sherlock.address);
 
-      await expect(this.sdm.pullReward(parseUnits('100', 6), 1)).to.be.revertedWith(
-        'InvalidSender()',
-      );
+      await expect(
+        this.sdm.pullReward(parseUnits('100', 6), 1, 1, this.bob.address),
+      ).to.be.revertedWith('InvalidSender()');
     });
     it('Set', async function () {
       this.amount = parseUnits('100', 6);
@@ -140,11 +140,11 @@ describe('SherDistributionManager, 6 dec', function () {
       expect(await this.sdm.calcReward(0, this.amount, 1)).to.eq(parseEther('500'));
 
       expect(await this.sher.balanceOf(this.sherlock.address)).to.eq(0);
-      await this.sherlock.pullSherReward(this.amount, 1);
+      await this.sherlock.pullSherReward(this.amount, 1, 1, this.bob.address);
       expect(await this.sher.balanceOf(this.sherlock.address)).to.eq(parseEther('500'));
     });
     it('Do illuiqid', async function () {
-      await expect(this.sherlock.pullSherReward(1, 1)).to.be.reverted;
+      await expect(this.sherlock.pullSherReward(1, 1, 1, this.bob.address)).to.be.reverted;
     });
   });
   describe('sweep, eol', function () {
