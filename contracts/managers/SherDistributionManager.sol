@@ -58,11 +58,14 @@ contract SherDistributionManager is ISherDistributionManager, Manager {
   /// @notice Caller will receive `_sher` SHER tokens based on `_amount` and `_period`
   /// @param _amount Amount of tokens (in USDC) staked
   /// @param _period Period of time for stake, in seconds
+  /// @param _id ID for this NFT position
+  /// @param _receiver Address that will be linked to this position
   /// @return _sher Amount of SHER tokens sent to Sherlock core contract
   /// @dev Calling contract will depend on before + after balance diff and return value
   /// @dev INCLUDES stake in calculation, function expects the `_amount` to be deposited already
   /// @dev If tvl=50 and amount=50, this means it is calculating SHER rewards for the first 50 tokens going in
   /// @dev Doesn't include whenNotPaused modifier as it's onlySherlockCore where pause is captured
+  /// @dev `_id` and `_receiver` are unused in this implementation
   function pullReward(
     uint256 _amount,
     uint256 _period,
