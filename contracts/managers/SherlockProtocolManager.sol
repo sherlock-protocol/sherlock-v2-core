@@ -298,7 +298,7 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
     uint256 debt = _calcIncrementalProtocolDebt(_protocol);
     // This pulls the percentage that is sent to nonstakers
     _nonStakerPercentage = nonStakersPercentage[_protocol];
-    // This is a beginning of an
+    // In case the protocol has accrued debt, this code block will ensure the debt is settled properly
     if (debt != 0) {
       // Pulls the stored active balance of the protocol
       uint256 balance = activeBalances[_protocol];

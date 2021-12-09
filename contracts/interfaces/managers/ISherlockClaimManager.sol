@@ -104,6 +104,8 @@ interface ISherlockClaimManager is IManager, OptimisticRequester {
   /// @param _receiver address to receive the amount of USDC being claimed
   /// @param _timestamp timestamp at which the exploit first occurred
   /// @param ancillaryData other data associated with the claim, such as the coverage agreement
+  /// @dev The protocol agent that starts a claim will be the protocol agent during the claims lifecycle
+  /// @dev Even if the protocol agent role is tranferred during the lifecycle
   function startClaim(
     bytes32 _protocol,
     uint256 _amount,
@@ -122,7 +124,6 @@ interface ISherlockClaimManager is IManager, OptimisticRequester {
   /// @dev Use hardcoded USDC address
   /// @dev Use hardcoded bond amount (upgradable with a large timelock)
   /// @dev Use hardcoded liveness 7200
-  /// @dev Proposer = current protocl agent (could differ from protocol agent when claim was started)
   /// @dev proposedPrice = _amount
   function escalate(uint256 _claimID, uint256 _amount) external;
 
