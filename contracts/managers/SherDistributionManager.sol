@@ -77,7 +77,7 @@ contract SherDistributionManager is ISherDistributionManager, Manager {
     // Subtracts the amount from the total token balance to get the pre-stake USDC TVL
     _sher = calcReward(sherlockCore.totalTokenBalanceStakers() - _amount, _amount, _period);
     // Sends the SHER tokens to the core Sherlock contract where they are held until the unlock period for the stake expires
-    sher.safeTransfer(msg.sender, _sher);
+    if (_sher != 0) sher.safeTransfer(msg.sender, _sher);
   }
 
   /// @notice Calculates how many `_sher` SHER tokens are owed to a stake position based on `_amount` and `_period`
@@ -123,7 +123,7 @@ contract SherDistributionManager is ISherDistributionManager, Manager {
         // We accrue the max rewards available at the max rewards rate for the stake period to the SHER balance
         // This could be: $20M of maxRewardsAvailable which gets paid .01 SHER per second (max rate) for 3 months worth of seconds
         // Calculation continues after this
-        _sher += (maxRewardsAvailable * maxRewardsRate * _period) / DECIMALS;
+        _sher = (maxRewardsAvailable * maxRewardsRate * _period) / DECIMALS;
       }
     }
 
