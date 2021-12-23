@@ -64,7 +64,7 @@ describe('AaveV2 ─ Functional', function () {
           'test',
           'tst',
           this.aaveStrategy.address,
-          constants.AddressZero,
+          this.alice.address,
           this.alice.address,
           this.alice.address,
           this.alice.address,
@@ -79,6 +79,18 @@ describe('AaveV2 ─ Functional', function () {
     this.aUsdcLMError = parseUnits('5', 'gwei');
     await this.mintUSDC(this.aaveStrategy.address, USDC_AMOUNT);
     await timeTraveler.snapshot();
+  });
+  describe('constructor', function () {
+    it('Zero aToken', async function () {
+      await expect(
+        this.AaveV2Strategy.deploy(this.bob.address, constants.AddressZero),
+      ).to.be.revertedWith('ZeroArgument()');
+    });
+    it('Zero lmReceiver', async function () {
+      await expect(
+        this.AaveV2Strategy.deploy(constants.AddressZero, this.bob.address),
+      ).to.be.revertedWith('ZeroArgument()');
+    });
   });
   it('Constructor state', async function () {
     expect(await this.aaveStrategy.aWant()).to.eq(this.aUSDC.address);
@@ -251,6 +263,11 @@ describe('AaveV2 ─ Functional', function () {
         'InvalidConditions()',
       );
       expect(await this.usdc.balanceOf(this.bob.address)).to.eq(0);
+    });
+    it('Do zero', async function () {
+      await expect(
+        this.aaveStrategy.sweep(constants.AddressZero, [this.usdc.address]),
+      ).to.be.revertedWith('ZeroArgument()');
     });
     it('Update', async function () {
       await this.sherlock2.updateYieldStrategy(this.alice.address);

@@ -40,6 +40,11 @@ describe('Manager', function () {
       expect(await this.manager.viewSherlockCore()).to.eq(constants.AddressZero);
       await expect(this.manager.revertsIfNotCore()).to.be.revertedWith('InvalidSender()');
     });
+    it('Set core fail', async function () {
+      await expect(this.manager.setSherlockCoreAddress(constants.AddressZero)).to.be.revertedWith(
+        'ZeroArgument()',
+      );
+    });
     it('Set core', async function () {
       this.t1 = await meta(this.manager.setSherlockCoreAddress(this.alice.address));
 

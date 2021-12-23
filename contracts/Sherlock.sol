@@ -70,6 +70,7 @@ contract Sherlock is ISherlock, ERC721, Ownable, Pausable {
   // This variable is incremented by 1 to create a new NFT ID
   uint256 nftCounter;
 
+  // Even though `_sherDistributionManager` can be removed once deployed, every initial deployment will have an active instance.
   constructor(
     IERC20 _token, // USDC address
     IERC20 _sher, // SHER token address
@@ -85,6 +86,7 @@ contract Sherlock is ISherlock, ERC721, Ownable, Pausable {
     if (address(_token) == address(0)) revert ZeroArgument();
     if (address(_sher) == address(0)) revert ZeroArgument();
     if (address(_yieldStrategy) == address(0)) revert ZeroArgument();
+    if (address(_sherDistributionManager) == address(0)) revert ZeroArgument();
     if (_nonStakersAddress == address(0)) revert ZeroArgument();
     if (address(_sherlockProtocolManager) == address(0)) revert ZeroArgument();
     if (address(_sherlockClaimManager) == address(0)) revert ZeroArgument();

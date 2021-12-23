@@ -37,6 +37,9 @@ contract AaveV2Strategy is IStrategyManager, Manager {
 
   // Constructor takes the aUSDC address and the rewards receiver address (a Sherlock address) as args
   constructor(IAToken _aWant, address _aaveLmReceiver) {
+    if (address(_aWant) == address(0)) revert ZeroArgument();
+    if (_aaveLmReceiver == address(0)) revert ZeroArgument();
+
     aWant = _aWant;
     // This gets the underlying token associated with aUSDC (USDC)
     want = IERC20(_aWant.UNDERLYING_ASSET_ADDRESS());
@@ -120,6 +123,7 @@ contract AaveV2Strategy is IStrategyManager, Manager {
   // Only contract owner can call this
   // Sends all specified tokens in this contract to the receiver's address (as well as ETH)
   function sweep(address _receiver, IERC20[] memory _extraTokens) external onlyOwner {
+    if (_receiver == address(0)) revert ZeroArgument();
     // This contract must NOT be the current assigned yield strategy contract
     if (isActive()) revert InvalidConditions();
     // Executes the sweep for ERC-20s specified in _extraTokens as well as for ETH

@@ -3123,6 +3123,11 @@ describe('SherlockProtocolManager ─ Functional', function () {
 
       expect(await this.ERC20Mock6d.balanceOf(this.bob.address)).to.eq(0);
     });
+    it('Do zero', async function () {
+      await expect(
+        this.spm.sweep(constants.AddressZero, [this.ERC20Mock6d.address]),
+      ).to.be.revertedWith('ZeroArgument()');
+    });
     it('Set core', async function () {
       await this.sherlock.updateSherlockProtocolManager(this.spm.address);
       await this.spm.setSherlockCoreAddress(this.sherlock.address);

@@ -164,6 +164,11 @@ describe('SherDistributionManager, 6 dec', function () {
 
       expect(await this.erc20.balanceOf(this.bob.address)).to.eq(0);
     });
+    it('Do zero', async function () {
+      await expect(this.sdm.sweep(constants.AddressZero, [this.erc20.address])).to.be.revertedWith(
+        'ZeroArgument()',
+      );
+    });
     it('Set core', async function () {
       await this.sherlock.updateSherDistributionManager(this.sdm.address);
       await this.sdm.setSherlockCoreAddress(this.sherlock.address);

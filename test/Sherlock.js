@@ -109,6 +109,22 @@ describe('Sherlock ─ Stateless', function () {
         ),
       ).to.be.revertedWith('ZeroArgument()');
     });
+    it('Zero sherDistributionManager', async function () {
+      await expect(
+        this.Sherlock.deploy(
+          this.token.address,
+          this.sher.address,
+          'SHER POSITION',
+          'SPS',
+          this.strategy.address,
+          constants.AddressZero,
+          this.nonStaker.address,
+          this.protmanager.address,
+          this.claimManager.address,
+          [10, 20],
+        ),
+      ).to.be.revertedWith('ZeroArgument()');
+    });
     it('Zero nostaker', async function () {
       await expect(
         this.Sherlock.deploy(

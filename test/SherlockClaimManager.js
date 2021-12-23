@@ -424,7 +424,7 @@ describe('SherlockClaimManager ─ Functional', function () {
           'test',
           'tst',
           this.alice.address,
-          constants.AddressZero,
+          this.alice.address,
           this.alice.address,
           this.spm.address,
           this.scm.address,
@@ -432,6 +432,7 @@ describe('SherlockClaimManager ─ Functional', function () {
         ],
       ],
     ]);
+    await this.sherlock.removeSherDistributionManager();
     await this.scm.setSherlockCoreAddress(this.sherlock.address);
     await this.spm.setSherlockCoreAddress(this.sherlock.address);
 
