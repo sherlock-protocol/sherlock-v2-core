@@ -21,7 +21,7 @@ interface ISherlockClaimManager is IManager, OptimisticRequester {
 
   event ClaimCreated(
     uint256 claimID,
-    bytes32 protocol,
+    bytes32 indexed protocol,
     uint256 amount,
     address receiver,
     bool previousCoverageAmount
@@ -31,7 +31,7 @@ interface ISherlockClaimManager is IManager, OptimisticRequester {
 
   event CallbackRemoved(ISherlockClaimManagerCallbackReceiver callback);
 
-  event ClaimStatusChanged(uint256 claimID, State previousState, State currentState);
+  event ClaimStatusChanged(uint256 indexed claimID, State previousState, State currentState);
 
   event ClaimPayout(uint256 claimID, address receiver, uint256 amount);
 
