@@ -174,7 +174,9 @@ describe('SherDistributionManager, 6 dec', function () {
       await this.sdm.setSherlockCoreAddress(this.sherlock.address);
 
       expect(await this.sdm.isActive()).to.eq(true);
-      await expect(this.sdm.sweep(this.bob.address, [this.erc20.address])).to.be.reverted;
+      await expect(this.sdm.sweep(this.bob.address, [this.erc20.address])).to.be.revertedWith(
+        'InvalidConditions()',
+      );
     });
     it('Do', async function () {
       await this.sherlock.updateSherDistributionManager(constants.AddressZero);

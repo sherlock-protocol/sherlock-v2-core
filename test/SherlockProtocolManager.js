@@ -172,7 +172,9 @@ describe('SherlockProtocolManager ─ Stateless', function () {
       );
     });
     it('Insane', async function () {
-      await expect(this.spm.setMinActiveBalance(parseEther('1'))).to.be.revertedWith('INSANE');
+      await expect(this.spm.setMinActiveBalance(parseEther('1'))).to.be.revertedWith(
+        'InvalidConditions()',
+      );
     });
   });
   describe('setProtocolPremium()', function () {
@@ -1989,7 +1991,7 @@ describe('SherlockProtocolManager ─ Functional', function () {
     });
     it('do fail', async function () {
       await expect(this.spm.setMinActiveBalance(parseUnits('30001', 6))).to.be.revertedWith(
-        'INSANE',
+        'InvalidConditions()',
       );
     });
     it('do', async function () {

@@ -423,7 +423,7 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
     // New value cannot be the same as current value
     if (minActiveBalance == _minActiveBalance) revert InvalidArgument();
     // Can't set a value that is too high to be reasonable
-    require(_minActiveBalance < MIN_BALANCE_SANITY_CEILING, 'INSANE');
+    if (_minActiveBalance >= MIN_BALANCE_SANITY_CEILING) revert InvalidConditions();
 
     emit MinBalance(minActiveBalance, _minActiveBalance);
     minActiveBalance = _minActiveBalance;

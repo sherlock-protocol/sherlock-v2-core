@@ -162,7 +162,7 @@ contract SherDistributionManager is ISherDistributionManager, Manager {
   function sweep(address _receiver, IERC20[] memory _extraTokens) external onlyOwner {
     if (_receiver == address(0)) revert ZeroArgument();
     // This contract must NOT be the current assigned distribution manager contract
-    require(isActive() == false, 'is_active');
+    if (isActive()) revert InvalidConditions();
     // Executes the sweep for ERC-20s specified in _extraTokens as well as for ETH
     _sweep(_receiver, _extraTokens);
   }
