@@ -62,8 +62,8 @@ interface ISherlockClaimManager is IManager, OptimisticRequester {
     uint256 amount;
     address receiver;
     uint32 timestamp;
-    bytes ancillaryData;
     State state;
+    bytes ancillaryData;
   }
 
   // requestAndProposePriceFor() --> proposer = protocolAgent

@@ -353,8 +353,8 @@ contract SherlockClaimManager is ISherlockClaimManager, ReentrancyGuard, Manager
       _amount,
       _receiver,
       _timestamp,
-      ancillaryData,
-      State.SpccPending
+      State.SpccPending,
+      ancillaryData
     );
 
     emit ClaimCreated(claimID, _protocol, _amount, _receiver, prevCoverage);
