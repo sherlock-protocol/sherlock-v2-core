@@ -18,19 +18,19 @@ import '../interfaces/managers/ISherDistributionManager.sol';
 contract SherDistributionManager is ISherDistributionManager, Manager {
   using SafeERC20 for IERC20;
 
-  uint256 constant DECIMALS = 10**6;
+  uint256 internal constant DECIMALS = 10**6;
 
   // The TVL at which max SHER rewards STOP i.e. 100M USDC
-  uint256 immutable maxRewardsEndTVL;
+  uint256 internal immutable maxRewardsEndTVL;
 
   // The TVL at which SHER rewards stop entirely i.e. 600M USDC
-  uint256 immutable zeroRewardsStartTVL;
+  uint256 internal immutable zeroRewardsStartTVL;
 
   // The SHER tokens paid per USDC staked per second at the max rate
-  uint256 immutable maxRewardsRate;
+  uint256 internal immutable maxRewardsRate;
 
   // SHER token contract address
-  IERC20 immutable sher;
+  IERC20 public immutable sher;
 
   /// @dev With `_maxRewardsRate` being 10**18, 1 USDC == 1 SHER per second (on flat part of curve)
   constructor(

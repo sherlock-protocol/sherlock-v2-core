@@ -22,16 +22,16 @@ contract Sherlock is ISherlock, ERC721, Ownable, Pausable {
   using SafeERC20 for IERC20;
 
   // The initial period for a staker to restake/withdraw without being auto-restaked
-  uint256 constant ARB_RESTAKE_WAIT_TIME = 2 weeks;
+  uint256 public constant ARB_RESTAKE_WAIT_TIME = 2 weeks;
 
   // The period during which the reward for restaking an account (after the inital period) grows
-  uint256 constant ARB_RESTAKE_GROWTH_TIME = 1 weeks;
+  uint256 public constant ARB_RESTAKE_GROWTH_TIME = 1 weeks;
 
   // Anyone who gets auto-restaked is restaked for this period (3 months)
-  uint256 constant ARB_RESTAKE_PERIOD = 12 weeks;
+  uint256 public constant ARB_RESTAKE_PERIOD = 12 weeks;
 
   // The percentage of someone's stake that can be paid to an arb for restaking
-  uint256 constant ARB_RESTAKE_MAX_PERCENTAGE = (10**18 / 100) * 20; // 20%
+  uint256 public constant ARB_RESTAKE_MAX_PERCENTAGE = (10**18 / 100) * 20; // 20%
 
   // USDC address
   IERC20 public immutable token;
@@ -68,7 +68,7 @@ contract Sherlock is ISherlock, ERC721, Ownable, Pausable {
 
   // Stores the ID of the most recently created NFT
   // This variable is incremented by 1 to create a new NFT ID
-  uint256 nftCounter;
+  uint256 internal nftCounter;
 
   // Even though `_sherDistributionManager` can be removed once deployed, every initial deployment will have an active instance.
   constructor(

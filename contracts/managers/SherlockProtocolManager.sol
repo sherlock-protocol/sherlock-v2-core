@@ -17,70 +17,70 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
   using SafeERC20 for IERC20;
 
   // Represents the token that protocols pay with (currently USDC)
-  IERC20 immutable token;
+  IERC20 public immutable token;
 
   // This is the ceiling value that can be set for the threshold (based on USDC balance) at which a protocol can get removed
-  uint256 constant MIN_BALANCE_SANITY_CEILING = 30_000 * 10**6; // 30k usdc
+  uint256 public constant MIN_BALANCE_SANITY_CEILING = 30_000 * 10**6; // 30k usdc
 
   // A removed protocol is still able to make a claim for this amount of time after its removal
-  uint256 constant PROTOCOL_CLAIM_DEADLINE = 7 days;
+  uint256 public constant PROTOCOL_CLAIM_DEADLINE = 7 days;
 
   // This is the amount that cannot be withdrawn (measured in seconds of payment) if a protocol wants to remove active balance
-  uint256 constant MIN_SECONDS_LEFT = 7 days;
+  uint256 public constant MIN_SECONDS_LEFT = 7 days;
 
   // Convenient for percentage calculations
-  uint256 constant HUNDRED_PERCENT = 10**18;
+  uint256 internal constant HUNDRED_PERCENT = 10**18;
 
   // The minimum active "seconds of coverage left" a protocol must have before arbitragers can remove the protocol from coverage
   // This value is calculated from a protocol's active balance divided by the premium per second the protocol is paying
-  uint256 constant MIN_SECONDS_OF_COVERAGE = 12 hours;
+  uint256 public constant MIN_SECONDS_OF_COVERAGE = 12 hours;
 
   // This is an address that is controlled by a covered protocol (maybe its a multisig used by that protocol, etc.)
-  mapping(bytes32 => address) protocolAgent_;
+  mapping(bytes32 => address) internal protocolAgent_;
 
   // The percentage of premiums that is NOT sent to stakers (set aside for security experts, reinsurance partners, etc.)
-  mapping(bytes32 => uint256) nonStakersPercentage;
+  mapping(bytes32 => uint256) internal nonStakersPercentage;
 
   // The premium per second paid by each protocol is stored in this mapping
-  mapping(bytes32 => uint256) premiums_;
+  mapping(bytes32 => uint256) internal premiums_;
 
   // Each protocol should keep an active balance (in USDC) which is drawn against to pay stakers, nonstakers, etc.
   // This "active balance" is really just an accounting concept, doesn't mean tokens have been transferred or not
-  mapping(bytes32 => uint256) activeBalances;
+  mapping(bytes32 => uint256) internal activeBalances;
 
   // The timestamp at which Sherlock last ran this internal accounting (on the active balance) for each protocol
-  mapping(bytes32 => uint256) lastAccountedEachProtocol;
+  mapping(bytes32 => uint256) internal lastAccountedEachProtocol;
 
   // The amount that can be claimed by nonstakers for each protocol
   // We need this value so we can track how much payment is coming from each protocol
-  mapping(bytes32 => uint256) nonStakersClaimableByProtocol;
+  mapping(bytes32 => uint256) internal nonStakersClaimableByProtocol;
 
   // The last time where the global accounting was run (to calc allPremiumsPerSecToStakers below)
-  uint256 lastAccountedGlobal;
+  uint256 internal lastAccountedGlobal;
 
   // This is the total amount of premiums paid (per second) by all the covered protocols (added up)
-  uint256 allPremiumsPerSecToStakers;
+  uint256 internal allPremiumsPerSecToStakers;
 
   // This is the amount that was claimable by stakers the last time the accounting was run
   // The claimable amount presumably changes every second so this value is marked "last" because it is usually out-of-date
-  uint256 lastClaimablePremiumsForStakers;
+  uint256 internal lastClaimablePremiumsForStakers;
 
   // The minimum active balance (measured in USDC) a protocol must keep before arbitragers can remove the protocol from coverage
   // This is one of two criteria a protocol must meet in order to avoid removal (the other is MIN_SECONDS_OF_COVERAGE)
   uint256 public override minActiveBalance;
 
   // Removed protocols can still make a claim up until this timestamp (will be 10 days or something)
-  mapping(bytes32 => uint256) removedProtocolClaimDeadline;
+  mapping(bytes32 => uint256) internal removedProtocolClaimDeadline;
 
   // Mapping to store the protocolAgents for removed protocols (useful for claims made by a removed protocol)
-  mapping(bytes32 => address) removedProtocolAgent;
+  mapping(bytes32 => address) internal removedProtocolAgent;
 
   // Current amount of coverage (i.e. 20M USDC) for a protocol
-  mapping(bytes32 => uint256) currentCoverage;
+  mapping(bytes32 => uint256) internal currentCoverage;
 
   // Previous amount of coverage for a protocol
   // Previous is also tracked in case a protocol lowers their coverage amount but still needs to make a claim on the old, higher amount
-  mapping(bytes32 => uint256) previousCoverage;
+  mapping(bytes32 => uint256) internal previousCoverage;
 
   // Setting the token to USDC
   constructor(IERC20 _token) {

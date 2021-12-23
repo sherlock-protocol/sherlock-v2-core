@@ -24,39 +24,39 @@ contract SherlockClaimManager is ISherlockClaimManager, ReentrancyGuard, Manager
 
   // The bond required for a protocol agent to escalate a claim to UMA Optimistic Oracle (OO)
   /// @dev at time of writing will result in a 20k cost of escalating
-  uint256 constant BOND = 9_600 * 10**6; // 20k bond
+  uint256 internal constant BOND = 9_600 * 10**6; // 20k bond
 
   // The amount of time the protocol agent has to escalate a claim
-  uint256 constant ESCALATE_TIME = 4 weeks;
+  uint256 public constant ESCALATE_TIME = 4 weeks;
 
   // The UMA Halt Operator (UMAHO) is the multisig (controlled by UMA) who gives final approval to pay out a claim
   // After the OO has voted to pay out
   // This variable represents the amount of time during which UMAHO can block a claim that was approved by the OO
   // After this time period, the claim (which was approved by the OO) is inferred to be approved by UMAHO as well
-  uint256 constant UMAHO_TIME = 24 hours;
+  uint256 public constant UMAHO_TIME = 24 hours;
 
   // The amount of time the Sherlock Protocol Claims Committee (SPCC) gets to decide on a claim
   // If no action is taken by SPCC during this time, then the protocol agent can escalate the decision to the UMA OO
-  uint256 constant SPCC_TIME = 7 days;
+  uint256 public constant SPCC_TIME = 7 days;
 
   // A pre-defined amount of time for the proposed price ($0) to be disputed within the OO
   // Note This value is not important as we immediately dispute the proposed price
   // 7200 represents 2 hours
-  uint256 constant LIVENESS = 7200;
+  uint256 internal constant LIVENESS = 7200;
 
   // This is how UMA will know that Sherlock is requesting a decision from the OO
   // This is "SHERLOCK_CLAIM" in hex value
   bytes32 public constant override UMA_IDENTIFIER =
     bytes32(0x534845524c4f434b5f434c41494d000000000000000000000000000000000000);
 
-  uint256 MAX_CALLBACKS = 4;
+  uint256 public constant MAX_CALLBACKS = 4;
 
   // The Optimistic Oracle contract that we interact with
-  SkinnyOptimisticOracleInterface constant UMA =
+  SkinnyOptimisticOracleInterface public constant UMA =
     SkinnyOptimisticOracleInterface(0xeE3Afe347D5C74317041E2618C49534dAf887c24);
 
   // USDC
-  IERC20 constant TOKEN = IERC20(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48);
+  IERC20 public constant TOKEN = IERC20(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48);
 
   // The address of the multisig controlled by UMA that can emergency halt a claim that was approved by the OO
   address public override umaHaltOperator;
