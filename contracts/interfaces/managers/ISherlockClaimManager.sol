@@ -96,7 +96,7 @@ interface ISherlockClaimManager is IManager, OptimisticRequester {
   /// @notice gov is able to renounce the role
   function renounceUmaHaltOperator() external;
 
-  function claims(uint256 _claimID) external view returns (Claim memory);
+  function claim(uint256 _claimID) external view returns (Claim memory);
 
   /// @notice Initiate a claim for a specific protocol as the protocol agent
   /// @param _protocol protocol ID (different from the internal or public claim ID fields)

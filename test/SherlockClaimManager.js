@@ -595,7 +595,7 @@ describe('SherlockClaimManager ─ Functional', function () {
       expect(claim[6]).to.eq(1);
       expect(claim[7]).to.eq(STATE.SpccPending);
       expect(claim[8]).to.eq('0x1212');
-      const claim2 = await this.scm.claims(1);
+      const claim2 = await this.scm.claim(1);
       expect(claim2[0]).to.eq(this.t1.time);
     });
     it('Do', async function () {
@@ -626,7 +626,7 @@ describe('SherlockClaimManager ─ Functional', function () {
       expect(claim[6]).to.eq(0);
       expect(claim[7]).to.eq(STATE.NonExistent);
       expect(claim[8]).to.eq('0x');
-      await expect(this.scm.claims(1)).to.be.revertedWith('InvalidArgument');
+      await expect(this.scm.claim(1)).to.be.revertedWith('InvalidArgument');
     });
   });
   describe('startClaim(), active', function () {
@@ -699,7 +699,7 @@ describe('SherlockClaimManager ─ Functional', function () {
       expect(claim[6]).to.eq(0);
       expect(claim[7]).to.eq(STATE.NonExistent);
       expect(claim[8]).to.eq('0x');
-      await expect(this.scm.claims(1)).to.be.revertedWith('InvalidArgument');
+      await expect(this.scm.claim(1)).to.be.revertedWith('InvalidArgument');
     });
     it('Do', async function () {
       this.t1 = await meta(
@@ -733,7 +733,7 @@ describe('SherlockClaimManager ─ Functional', function () {
       expect(claim[6]).to.eq(1);
       expect(claim[7]).to.eq(STATE.SpccPending);
       expect(claim[8]).to.eq('0x1212');
-      const claim2 = await this.scm.claims(1);
+      const claim2 = await this.scm.claim(1);
       expect(claim2[0]).to.eq(this.t1.time);
     });
     it('Do again', async function () {
@@ -771,7 +771,7 @@ describe('SherlockClaimManager ─ Functional', function () {
       expect(claim[6]).to.eq(1);
       expect(claim[7]).to.eq(STATE.SpccPending);
       expect(claim[8]).to.eq('0x121212');
-      const claim2 = await this.scm.claims(2);
+      const claim2 = await this.scm.claim(2);
       expect(claim2[0]).to.eq(this.t2.time);
     });
     it('Verify old claim state', async function () {
@@ -788,7 +788,7 @@ describe('SherlockClaimManager ─ Functional', function () {
       expect(claim[6]).to.eq(1);
       expect(claim[7]).to.eq(STATE.SpccPending);
       expect(claim[8]).to.eq('0x1212');
-      const claim2 = await this.scm.claims(1);
+      const claim2 = await this.scm.claim(1);
       expect(claim2[0]).to.eq(this.t1.time);
     });
   });
@@ -814,7 +814,7 @@ describe('SherlockClaimManager ─ Functional', function () {
       expect(claim[6]).to.eq(0);
       expect(claim[7]).to.eq(STATE.NonExistent);
       expect(claim[8]).to.eq('0x');
-      await expect(this.scm.claims(1)).to.be.revertedWith('InvalidArgument');
+      await expect(this.scm.claim(1)).to.be.revertedWith('InvalidArgument');
     });
     it('Do', async function () {
       this.t1 = await meta(
@@ -850,7 +850,7 @@ describe('SherlockClaimManager ─ Functional', function () {
       expect(claim[6]).to.eq(1);
       expect(claim[7]).to.eq(STATE.SpccPending);
       expect(claim[8]).to.eq('0x1212');
-      const claim2 = await this.scm.claims(1);
+      const claim2 = await this.scm.claim(1);
       expect(claim2[0]).to.eq(this.t1.time);
     });
   });
@@ -883,7 +883,7 @@ describe('SherlockClaimManager ─ Functional', function () {
         .startClaim(this.protocolX, 1, this.alice.address, 1, '0x1212');
     });
     it('Initial state', async function () {
-      const claim = await this.scm.claims(1);
+      const claim = await this.scm.claim(1);
       expect(claim[7]).to.eq(STATE.SpccPending);
 
       expect(await this.scm.protocolClaimActive(this.protocolX)).to.eq(true);
@@ -898,7 +898,7 @@ describe('SherlockClaimManager ─ Functional', function () {
       expect(this.t1.events[0].args.currentState).to.eq(STATE.SpccApproved);
     });
     it('Verify state', async function () {
-      const claim = await this.scm.claims(1);
+      const claim = await this.scm.claim(1);
       expect(claim[7]).to.eq(STATE.SpccApproved);
 
       expect(await this.scm.protocolClaimActive(this.protocolX)).to.eq(true);
@@ -916,7 +916,7 @@ describe('SherlockClaimManager ─ Functional', function () {
         .startClaim(this.protocolX, 1, this.alice.address, 1, '0x1212');
     });
     it('Initial state', async function () {
-      const claim = await this.scm.claims(1);
+      const claim = await this.scm.claim(1);
       expect(claim[7]).to.eq(STATE.SpccPending);
 
       expect(await this.scm.protocolClaimActive(this.protocolX)).to.eq(true);
@@ -931,7 +931,7 @@ describe('SherlockClaimManager ─ Functional', function () {
       expect(this.t1.events[0].args.currentState).to.eq(STATE.SpccDenied);
     });
     it('Verify state', async function () {
-      const claim = await this.scm.claims(1);
+      const claim = await this.scm.claim(1);
       expect(claim[7]).to.eq(STATE.SpccDenied);
 
       expect(await this.scm.protocolClaimActive(this.protocolX)).to.eq(true);
@@ -988,7 +988,7 @@ describe('SherlockClaimManager ─ Functional', function () {
     it('Initial state', async function () {
       expect(await this.usdc.balanceOf(this.carol.address)).to.eq(parseUnits('20001', 6));
 
-      const claim = await this.scm.claims(1);
+      const claim = await this.scm.claim(1);
       expect(claim[7]).to.eq(STATE.SpccDenied);
 
       expect(await this.scm.protocolClaimActive(this.protocolX)).to.eq(true);
@@ -1085,7 +1085,7 @@ describe('SherlockClaimManager ─ Functional', function () {
     it('Verify state', async function () {
       expect(await this.usdc.balanceOf(this.carol.address)).to.eq(parseUnits('1', 6));
 
-      const claim = await this.scm.claims(1);
+      const claim = await this.scm.claim(1);
       expect(claim[7]).to.eq(STATE.UmaPending);
 
       expect(await this.scm.protocolClaimActive(this.protocolX)).to.eq(true);
@@ -1109,7 +1109,7 @@ describe('SherlockClaimManager ─ Functional', function () {
     it('Initial state', async function () {
       expect(await this.usdc.balanceOf(this.carol.address)).to.eq(parseUnits('29200', 6));
 
-      const claim = await this.scm.claims(1);
+      const claim = await this.scm.claim(1);
       expect(claim[7]).to.eq(STATE.SpccPending);
 
       expect(await this.scm.protocolClaimActive(this.protocolX)).to.eq(true);
@@ -1120,7 +1120,7 @@ describe('SherlockClaimManager ─ Functional', function () {
     it('Verify state', async function () {
       expect(await this.usdc.balanceOf(this.carol.address)).to.eq(parseUnits('9200', 6));
 
-      const claim = await this.scm.claims(1);
+      const claim = await this.scm.claim(1);
       expect(claim[7]).to.eq(STATE.UmaPending);
 
       expect(await this.scm.protocolClaimActive(this.protocolX)).to.eq(true);
@@ -1186,7 +1186,7 @@ describe('SherlockClaimManager ─ Functional', function () {
       expect(await this.scm.viewPublicToInternalID(1)).to.eq(this.internalIdentifier);
       expect(await this.scm.viewInternalToPublicID(this.internalIdentifier)).to.eq(1);
 
-      const claim = await this.scm.claims(1);
+      const claim = await this.scm.claim(1);
       expect(claim[0]).to.eq(this.t0.time);
       expect(claim[1]).to.eq(this.t2.time);
       expect(claim[2]).to.eq(this.carol.address);
@@ -1217,7 +1217,7 @@ describe('SherlockClaimManager ─ Functional', function () {
       expect(await this.scm.viewPublicToInternalID(1)).to.eq(constants.HashZero);
       expect(await this.scm.viewInternalToPublicID(this.internalIdentifier)).to.eq(0);
 
-      await expect(this.scm.claims(1)).to.be.revertedWith('InvalidArgument()');
+      await expect(this.scm.claim(1)).to.be.revertedWith('InvalidArgument()');
     });
   });
   describe('payoutClaim(), by SPCC, no UMAHO', function () {
@@ -1242,7 +1242,7 @@ describe('SherlockClaimManager ─ Functional', function () {
       expect(await this.scm.viewPublicToInternalID(1)).to.eq(this.internalIdentifier);
       expect(await this.scm.viewInternalToPublicID(this.internalIdentifier)).to.eq(1);
 
-      const claim = await this.scm.claims(1);
+      const claim = await this.scm.claim(1);
       expect(claim[0]).to.eq(this.t0.time);
       expect(claim[1]).to.eq(this.t1.time);
       expect(claim[2]).to.eq(this.carol.address);
@@ -1273,7 +1273,7 @@ describe('SherlockClaimManager ─ Functional', function () {
       expect(await this.scm.viewPublicToInternalID(1)).to.eq(constants.HashZero);
       expect(await this.scm.viewInternalToPublicID(this.internalIdentifier)).to.eq(0);
 
-      await expect(this.scm.claims(1)).to.be.revertedWith('InvalidArgument()');
+      await expect(this.scm.claim(1)).to.be.revertedWith('InvalidArgument()');
     });
   });
   describe('payoutClaim(), callback, not exceeding amount', function () {
@@ -1304,7 +1304,7 @@ describe('SherlockClaimManager ─ Functional', function () {
       expect(await this.scm.viewPublicToInternalID(1)).to.eq(this.internalIdentifier);
       expect(await this.scm.viewInternalToPublicID(this.internalIdentifier)).to.eq(1);
 
-      const claim = await this.scm.claims(1);
+      const claim = await this.scm.claim(1);
       expect(claim[0]).to.eq(this.t0.time);
       expect(claim[1]).to.eq(this.t1.time);
       expect(claim[2]).to.eq(this.carol.address);
@@ -1338,7 +1338,7 @@ describe('SherlockClaimManager ─ Functional', function () {
       expect(await this.scm.viewPublicToInternalID(1)).to.eq(constants.HashZero);
       expect(await this.scm.viewInternalToPublicID(this.internalIdentifier)).to.eq(0);
 
-      await expect(this.scm.claims(1)).to.be.revertedWith('InvalidArgument()');
+      await expect(this.scm.claim(1)).to.be.revertedWith('InvalidArgument()');
     });
   });
   describe('payoutClaim(), callback, exceeding amount', function () {
@@ -1368,7 +1368,7 @@ describe('SherlockClaimManager ─ Functional', function () {
       expect(await this.scm.viewPublicToInternalID(1)).to.eq(this.internalIdentifier);
       expect(await this.scm.viewInternalToPublicID(this.internalIdentifier)).to.eq(1);
 
-      const claim = await this.scm.claims(1);
+      const claim = await this.scm.claim(1);
       expect(claim[0]).to.eq(this.t0.time);
       expect(claim[1]).to.eq(this.t1.time);
       expect(claim[2]).to.eq(this.carol.address);
@@ -1402,7 +1402,7 @@ describe('SherlockClaimManager ─ Functional', function () {
       expect(await this.scm.viewPublicToInternalID(1)).to.eq(constants.HashZero);
       expect(await this.scm.viewInternalToPublicID(this.internalIdentifier)).to.eq(0);
 
-      await expect(this.scm.claims(1)).to.be.revertedWith('InvalidArgument()');
+      await expect(this.scm.claim(1)).to.be.revertedWith('InvalidArgument()');
     });
   });
   describe('executeHalt()', function () {
@@ -1451,7 +1451,7 @@ describe('SherlockClaimManager ─ Functional', function () {
       expect(await this.scm.viewPublicToInternalID(1)).to.eq(this.internalIdentifier);
       expect(await this.scm.viewInternalToPublicID(this.internalIdentifier)).to.eq(1);
 
-      const claim = await this.scm.claims(1);
+      const claim = await this.scm.claim(1);
       expect(claim[0]).to.eq(this.t0.time);
       expect(claim[1]).to.eq(this.t2.time);
       expect(claim[2]).to.eq(this.carol.address);
@@ -1482,7 +1482,7 @@ describe('SherlockClaimManager ─ Functional', function () {
       expect(await this.scm.viewPublicToInternalID(1)).to.eq(constants.HashZero);
       expect(await this.scm.viewInternalToPublicID(this.internalIdentifier)).to.eq(0);
 
-      await expect(this.scm.claims(1)).to.be.revertedWith('InvalidArgument()');
+      await expect(this.scm.claim(1)).to.be.revertedWith('InvalidArgument()');
     });
   });
   describe('priceProposed()', function () {
@@ -1519,7 +1519,7 @@ describe('SherlockClaimManager ─ Functional', function () {
       };
     });
     it('Initial state', async function () {
-      const claim = await this.scm.claims(1);
+      const claim = await this.scm.claim(1);
       expect(claim[7]).to.eq(STATE.UmaPending);
     });
     it('Invalid time', async function () {
@@ -1571,7 +1571,7 @@ describe('SherlockClaimManager ─ Functional', function () {
       };
     });
     it('Initial state', async function () {
-      const claim = await this.scm.claims(1);
+      const claim = await this.scm.claim(1);
       expect(claim[7]).to.eq(STATE.UmaPending);
     });
     it('Invalid time', async function () {
@@ -1624,7 +1624,7 @@ describe('SherlockClaimManager ─ Functional', function () {
       };
     });
     it('Initial state', async function () {
-      const claim = await this.scm.claims(1);
+      const claim = await this.scm.claim(1);
       expect(claim[7]).to.eq(STATE.UmaPending);
     });
     it('Do', async function () {
@@ -1641,7 +1641,7 @@ describe('SherlockClaimManager ─ Functional', function () {
       expect(this.t1.events[0].args.currentState).to.eq(STATE.UmaApproved);
     });
     it('Verify state', async function () {
-      const claim = await this.scm.claims(1);
+      const claim = await this.scm.claim(1);
       expect(claim[7]).to.eq(STATE.UmaApproved);
     });
     it('Do again', async function () {
@@ -1685,7 +1685,7 @@ describe('SherlockClaimManager ─ Functional', function () {
       };
     });
     it('Initial state', async function () {
-      const claim = await this.scm.claims(1);
+      const claim = await this.scm.claim(1);
       expect(claim[7]).to.eq(STATE.UmaPending);
     });
     it('Do', async function () {
@@ -1706,7 +1706,7 @@ describe('SherlockClaimManager ─ Functional', function () {
       expect(this.t1.events[1].args.currentState).to.eq(STATE.NonExistent);
     });
     it('Verify state', async function () {
-      await expect(this.scm.claims(1)).to.be.revertedWith('InvalidArgument()');
+      await expect(this.scm.claim(1)).to.be.revertedWith('InvalidArgument()');
     });
     it('Do again', async function () {
       await expect(

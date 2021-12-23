@@ -207,7 +207,7 @@ contract SherlockClaimManager is ISherlockClaimManager, ReentrancyGuard, Manager
   }
 
   // Returns the Claim struct for a given claim ID (function takes public ID but converts to internal ID)
-  function claims(uint256 _claimID) external view override returns (Claim memory claim_) {
+  function claim(uint256 _claimID) external view override returns (Claim memory claim_) {
     bytes32 id_ = publicToInternalID[_claimID];
     if (id_ == bytes32(0)) revert InvalidArgument();
 
