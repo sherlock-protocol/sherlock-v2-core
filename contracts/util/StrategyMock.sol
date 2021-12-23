@@ -14,15 +14,21 @@ contract StrategyMock is IStrategyManager, Manager {
   uint256 public depositCalled;
   uint256 public withdrawCalled;
   uint256 public withdrawAllCalled;
+  bool public fail;
 
   constructor(IERC20 _token) {
     want = _token;
   }
 
+  function setFail() external {
+    fail = true;
+  }
+
   function withdrawAll() external override returns (uint256 b) {
     b = balanceOf();
-    want.transfer(msg.sender, b);
+    if (b != 0) want.transfer(msg.sender, b);
     withdrawAllCalled++;
+    require(!fail, 'FAIL');
   }
 
   function withdraw(uint256 _amount) external override {

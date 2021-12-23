@@ -659,6 +659,29 @@ describe('Sherlock ─ Functional', function () {
       expect(await this.sherlock.yieldStrategy()).to.eq(this.strategy2.address);
     });
   });
+  describe('updateYieldStrategy(), failing', function () {
+    before(async function () {
+      await timeTraveler.revertSnapshot();
+    });
+    it('Initial state', async function () {
+      await this.strategy.setFail();
+
+      expect(await this.sherlock.yieldStrategy()).to.eq(this.strategy.address);
+    });
+    it('Do', async function () {
+      this.t0 = await meta(this.sherlock.updateYieldStrategy(this.strategy2.address));
+
+      expect(this.t0.events.length).to.eq(2);
+      expect(this.t0.events[0].event).to.eq('YieldStrategyUpdateWithdrawAllError');
+      expect(this.t0.events[0].args.error).to.not.eq(constants.HashZero);
+      expect(this.t0.events[1].event).to.eq('YieldStrategyUpdated');
+      expect(this.t0.events[1].args.previous).to.eq(this.strategy.address);
+      expect(this.t0.events[1].args.current).to.eq(this.strategy2.address);
+    });
+    it('Verify state', async function () {
+      expect(await this.sherlock.yieldStrategy()).to.eq(this.strategy2.address);
+    });
+  });
   describe('yieldStrategyDeposit()', function () {
     before(async function () {
       await timeTraveler.revertSnapshot();

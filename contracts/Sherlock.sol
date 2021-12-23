@@ -264,6 +264,14 @@ contract Sherlock is ISherlock, ERC721, Ownable, Pausable {
     if (address(_yieldStrategy) == address(0)) revert ZeroArgument();
     if (yieldStrategy == _yieldStrategy) revert InvalidArgument();
 
+    // This call is surrounded with a try catch as there is a non-zero chance the underlying yield protocol(s) will fail
+    // For example; the Aave V2 withdraw can fail in case there is not enough liquidity available for whatever reason.
+    // In case this happens. We still want the yield strategy to be updated.
+    // As the worst case could be that the Aave V2 withdraw will never work again, forcing us to never use a yield strategy ever again.
+    try yieldStrategy.withdrawAll() {} catch (bytes memory reason) {
+      emit YieldStrategyUpdateWithdrawAllError(reason);
+    }
+
     emit YieldStrategyUpdated(yieldStrategy, _yieldStrategy);
     yieldStrategy = _yieldStrategy;
   }

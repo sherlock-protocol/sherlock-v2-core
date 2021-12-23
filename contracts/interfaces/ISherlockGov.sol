@@ -15,6 +15,7 @@ import './managers/IStrategyManager.sol';
 /// @author Evert Kors
 interface ISherlockGov {
   event ClaimPayout(address receiver, uint256 amount);
+  event YieldStrategyUpdateWithdrawAllError(bytes error);
   event YieldStrategyUpdated(IStrategyManager previous, IStrategyManager current);
   event ProtocolManagerUpdated(ISherlockProtocolManager previous, ISherlockProtocolManager current);
   event ClaimManagerUpdated(ISherlockClaimManager previous, ISherlockClaimManager current);
