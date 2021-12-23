@@ -576,7 +576,7 @@ contract SherlockClaimManager is ISherlockClaimManager, ReentrancyGuard, Manager
     }
   }
 
-  // Once priceDisputed() is executed in UMA's contracts, this function gets called
+  // Once priceSettled() is executed in UMA's contracts, this function gets called
   // UMA OO gives back a resolved price (either 0 or claim.amount) and
   // Claim's state is changed to either UmaApproved or UmaDenied
   // If UmaDenied, the claim is dead and state is immediately changed to NonExistent and cleaned up
