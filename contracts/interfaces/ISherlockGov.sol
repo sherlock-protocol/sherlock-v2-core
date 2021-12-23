@@ -44,8 +44,9 @@ interface ISherlockGov {
   function stakingPeriods(uint256 _period) external view returns (bool);
 
   /// @notice Update SHER distribution manager contract
-  /// @param _manager New adddress of the manager
-  function updateSherDistributionManager(ISherDistributionManager _manager) external;
+  /// @param _sherDistributionManager New adddress of the manager
+  function updateSherDistributionManager(ISherDistributionManager _sherDistributionManager)
+    external;
 
   /// @notice Remove SHER token rewards
   function removeSherDistributionManager() external;
@@ -76,8 +77,8 @@ interface ISherlockGov {
   function sherlockClaimManager() external view returns (ISherlockClaimManager);
 
   /// @notice Transfer claim manager role to different address
-  /// @param _sherlockClaimManager New address of claim manager
-  function updateSherlockClaimManager(ISherlockClaimManager _sherlockClaimManager) external;
+  /// @param _claimManager New address of claim manager
+  function updateSherlockClaimManager(ISherlockClaimManager _claimManager) external;
 
   /// @notice Update yield strategy
   /// @param _yieldStrategy News address of the strategy

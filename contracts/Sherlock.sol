@@ -190,17 +190,17 @@ contract Sherlock is ISherlock, ERC721, Ownable, Pausable {
 
   // Sets a new contract to be the active SHER distribution manager
   /// @notice Update SHER distribution manager contract
-  /// @param _manager New adddress of the manager
-  function updateSherDistributionManager(ISherDistributionManager _manager)
+  /// @param _sherDistributionManager New adddress of the manager
+  function updateSherDistributionManager(ISherDistributionManager _sherDistributionManager)
     external
     override
     onlyOwner
   {
-    if (address(_manager) == address(0)) revert ZeroArgument();
-    if (sherDistributionManager == _manager) revert InvalidArgument();
+    if (address(_sherDistributionManager) == address(0)) revert ZeroArgument();
+    if (sherDistributionManager == _sherDistributionManager) revert InvalidArgument();
 
-    emit SherDistributionManagerUpdated(sherDistributionManager, _manager);
-    sherDistributionManager = _manager;
+    emit SherDistributionManagerUpdated(sherDistributionManager, _sherDistributionManager);
+    sherDistributionManager = _sherDistributionManager;
   }
 
   // Deletes the SHER distribution manager altogether (if Sherlock decides to no longer pay out SHER rewards)
@@ -243,17 +243,17 @@ contract Sherlock is ISherlock, ERC721, Ownable, Pausable {
 
   // Sets a new claim manager contract
   /// @notice Transfer claim manager role to different address
-  /// @param _sherlockClaimManager New address of claim manager
-  function updateSherlockClaimManager(ISherlockClaimManager _sherlockClaimManager)
+  /// @param _claimManager New address of claim manager
+  function updateSherlockClaimManager(ISherlockClaimManager _claimManager)
     external
     override
     onlyOwner
   {
-    if (address(_sherlockClaimManager) == address(0)) revert ZeroArgument();
-    if (sherlockClaimManager == _sherlockClaimManager) revert InvalidArgument();
+    if (address(_claimManager) == address(0)) revert ZeroArgument();
+    if (sherlockClaimManager == _claimManager) revert InvalidArgument();
 
-    emit ClaimManagerUpdated(sherlockClaimManager, _sherlockClaimManager);
-    sherlockClaimManager = _sherlockClaimManager;
+    emit ClaimManagerUpdated(sherlockClaimManager, _claimManager);
+    sherlockClaimManager = _claimManager;
   }
 
   // Sets a new yield strategy manager contract
