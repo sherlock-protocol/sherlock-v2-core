@@ -32,6 +32,7 @@ contract SherDistributionManager is ISherDistributionManager, Manager {
   // SHER token contract address
   IERC20 immutable sher;
 
+  /// @dev With `_maxRewardsRate` being 10**18, 1 USDC == 1 SHER per second (on flat part of curve)
   constructor(
     uint256 _maxRewardsEndTVL,
     uint256 _zeroRewardsStartTVL,
@@ -111,7 +112,7 @@ contract SherDistributionManager is ISherDistributionManager, Manager {
       // And if the entire stake is still within the maxRewardsAvailable amount
       if (_amount <= maxRewardsAvailable) {
         // Then the entire stake amount should accrue max SHER rewards
-        return (_amount * maxRewardsRate * _period) * DECIMALS;
+        return (_amount * maxRewardsRate * _period) / DECIMALS;
       } else {
         // Otherwise, the stake takes all the maxRewardsAvailable left and the calc continues
         // We add the maxRewardsAvailable amount to the TVL (now _tvl should be equal to maxRewardsEndTVL)
@@ -122,7 +123,7 @@ contract SherDistributionManager is ISherDistributionManager, Manager {
         // We accrue the max rewards available at the max rewards rate for the stake period to the SHER balance
         // This could be: $20M of maxRewardsAvailable which gets paid .01 SHER per second (max rate) for 3 months worth of seconds
         // Calculation continues after this
-        _sher += (maxRewardsAvailable * maxRewardsRate * _period) * DECIMALS;
+        _sher += (maxRewardsAvailable * maxRewardsRate * _period) / DECIMALS;
       }
     }
 
@@ -143,7 +144,7 @@ contract SherDistributionManager is ISherDistributionManager, Manager {
       // Multiply by the _period to get the total SHER amount owed to this position
       _sher +=
         (((zeroRewardsStartTVL - position) * _amount * maxRewardsRate * _period) /
-          (zeroRewardsStartTVL - maxRewardsEndTVL)) *
+          (zeroRewardsStartTVL - maxRewardsEndTVL)) /
         DECIMALS;
     }
   }

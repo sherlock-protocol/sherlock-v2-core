@@ -21,14 +21,14 @@ describe('SherDistributionManager, 6 dec', function () {
       [
         'sdm',
         this.SherDistributionManager,
-        [parseUnits('100', 6), parseUnits('600', 6), parseUnits('5', 6), this.sher.address],
+        [parseUnits('100', 6), parseUnits('600', 6), parseUnits('5', 18), this.sher.address],
       ],
     ]);
     await deploy(this, [
       [
         'sdmMAX',
         this.SherDistributionManager,
-        [billie.mul(100), billie.mul(10000), parseUnits('500', 6), this.sher.address],
+        [billie.mul(100), billie.mul(10000), parseUnits('500', 18), this.sher.address],
       ],
     ]);
     await deploy(this, [['sherlock', this.SherlockMock, []]]);
