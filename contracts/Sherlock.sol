@@ -394,21 +394,14 @@ contract Sherlock is ISherlock, ERC721, Ownable, Pausable {
     uint256 before = sher.balanceOf(address(this));
 
     // pullReward() calcs then actually transfers the SHER tokens to this contract
-    try sherDistributionManager.pullReward(_amount, _period, _id, _receiver) returns (
-      uint256 amount
-    ) {
-      _sher = amount;
-    } catch (bytes memory reason) {
-      // If for whatever reason the sherDistributionManager call fails
-      emit SherRewardsError(reason);
-      return 0;
-    }
+    // in case this call fails, whole (re)staking transaction fails
+    _sher = sherDistributionManager.pullReward(_amount, _period, _id, _receiver);
 
     // actualAmount should represent the amount of SHER tokens transferred to this contract for the current stake position
     uint256 actualAmount = sher.balanceOf(address(this)) - before;
     if (actualAmount != _sher) revert InvalidSherAmount(_sher, actualAmount);
     // Assigns the newly created SHER tokens to the current stake position
-    sherRewards_[_id] = _sher;
+    if (_sher != 0) sherRewards_[_id] = _sher;
   }
 
   // Checks to see if the NFT owner is the caller and that the position is unlockable

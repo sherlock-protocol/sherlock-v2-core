@@ -914,12 +914,9 @@ describe('Sherlock ─ Functional', function () {
       await this.sherdist.setCustomRewardReturnValue(constants.MaxUint256);
       await this.sherdist.setRewardRevert(true);
 
-      this.t3 = await meta(this.sherlock.initialStake(this.amount, 20, this.bob.address));
-      expect(this.t3.events.length).to.eq(4);
-      expect(this.t3.events[2].event).to.eq('SherRewardsError');
-
-      expect(await this.sherlock.lockupEnd(4)).to.eq(this.t3.time.add(20));
-      expect(await this.sherlock.sherRewards(4)).to.eq(0);
+      await expect(
+        this.sherlock.initialStake(this.amount, 20, this.bob.address),
+      ).to.be.revertedWith('REV');
     });
   });
   describe('initialStake(), multi', function () {
