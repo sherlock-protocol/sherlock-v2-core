@@ -309,21 +309,37 @@ contract Sherlock is ISherlock, ERC721, Ownable, Pausable {
   }
 
   /// @notice Pause external functions in all contracts
+  /// @dev A manager can be replaced with the new contract in a `paused` state
+  /// @dev To ensure we are still able to pause all contracts, we check if the manager is unpaused
   function pause() external onlyOwner {
     _pause();
-    yieldStrategy.pause();
-    sherDistributionManager.pause();
-    sherlockProtocolManager.pause();
-    sherlockClaimManager.pause();
+    if (!Pausable(address(yieldStrategy)).paused()) yieldStrategy.pause();
+    // sherDistributionManager can be 0, pause isn't needed in that case
+    if (
+      address(sherDistributionManager) != address(0) &&
+      !Pausable(address(sherDistributionManager)).paused()
+    ) {
+      sherDistributionManager.pause();
+    }
+    if (!Pausable(address(sherlockProtocolManager)).paused()) sherlockProtocolManager.pause();
+    if (!Pausable(address(sherlockClaimManager)).paused()) sherlockClaimManager.pause();
   }
 
   /// @notice Unpause external functions in all contracts
+  /// @dev A manager can be replaced with the new contract in an `unpaused` state
+  /// @dev To ensure we are still able to unpause all contracts, we check if the manager is paused
   function unpause() external onlyOwner {
     _unpause();
-    yieldStrategy.unpause();
-    sherDistributionManager.unpause();
-    sherlockProtocolManager.unpause();
-    sherlockClaimManager.unpause();
+    if (Pausable(address(yieldStrategy)).paused()) yieldStrategy.unpause();
+    // sherDistributionManager can be 0, unpause isn't needed in that case
+    if (
+      address(sherDistributionManager) != address(0) &&
+      Pausable(address(sherDistributionManager)).paused()
+    ) {
+      sherDistributionManager.unpause();
+    }
+    if (Pausable(address(sherlockProtocolManager)).paused()) sherlockProtocolManager.unpause();
+    if (Pausable(address(sherlockClaimManager)).paused()) sherlockClaimManager.unpause();
   }
 
   //

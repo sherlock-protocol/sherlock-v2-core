@@ -23,6 +23,7 @@ describe('Pausable', function () {
       'ERC20Mock18d',
       'SherlockClaimManager',
       'SherlockTest',
+      'PausableMock',
     ]);
 
     this.nonStaker = this.bob;
@@ -39,6 +40,11 @@ describe('Pausable', function () {
       ['claimManager', this.SherlockClaimManager, [this.bob.address, this.bob.address]],
     ]);
 
+    await deploy(this, [['strategyMock', this.PausableMock, []]]);
+    await deploy(this, [['protmanagerMock', this.PausableMock, []]]);
+    await deploy(this, [['sherdistMock', this.PausableMock, []]]);
+    await deploy(this, [['claimManagerMock', this.PausableMock, []]]);
+
     await deploy(this, [
       [
         'sherlock',
@@ -53,6 +59,24 @@ describe('Pausable', function () {
           this.nonStaker.address,
           this.protmanager.address,
           this.claimManager.address,
+          [10, 20],
+        ],
+      ],
+    ]);
+    await deploy(this, [
+      [
+        'sherlockM',
+        this.SherlockTest,
+        [
+          this.token.address,
+          this.sher.address,
+          'SHER POSITION',
+          'SPS',
+          this.strategyMock.address,
+          this.sherdistMock.address,
+          this.nonStaker.address,
+          this.protmanagerMock.address,
+          this.claimManagerMock.address,
           [10, 20],
         ],
       ],
@@ -613,6 +637,142 @@ describe('Pausable', function () {
       await expect(
         this.claimManager.priceSettled(id('x'), 1, '0x1212', this.requestData),
       ).to.be.revertedWith('InvalidArgument()');
+    });
+  });
+  describe('strategy - pause checks', function () {
+    before(async function () {
+      await timeTraveler.revertSnapshot();
+    });
+    it('Do already paused', async function () {
+      await this.strategyMock.pause();
+      expect(await this.strategyMock.paused()).to.eq(true);
+
+      await this.sherlockM.pause();
+
+      expect(await this.sherlockM.paused()).to.eq(true);
+      expect(await this.strategyMock.paused()).to.eq(true);
+      expect(await this.sherdistMock.paused()).to.eq(true);
+      expect(await this.protmanagerMock.paused()).to.eq(true);
+      expect(await this.claimManagerMock.paused()).to.eq(true);
+    });
+    it('Do already unpaused', async function () {
+      await this.strategyMock.unpause();
+      expect(await this.strategyMock.paused()).to.eq(false);
+
+      await this.sherlockM.unpause();
+
+      expect(await this.sherlockM.paused()).to.eq(false);
+      expect(await this.strategyMock.paused()).to.eq(false);
+      expect(await this.sherdistMock.paused()).to.eq(false);
+      expect(await this.protmanagerMock.paused()).to.eq(false);
+      expect(await this.claimManagerMock.paused()).to.eq(false);
+    });
+  });
+  describe('sherdist - pause checks', function () {
+    before(async function () {
+      await timeTraveler.revertSnapshot();
+    });
+    it('Do already paused', async function () {
+      await this.sherdistMock.pause();
+      expect(await this.sherdistMock.paused()).to.eq(true);
+
+      await this.sherlockM.pause();
+
+      expect(await this.sherlockM.paused()).to.eq(true);
+      expect(await this.strategyMock.paused()).to.eq(true);
+      expect(await this.sherdistMock.paused()).to.eq(true);
+      expect(await this.protmanagerMock.paused()).to.eq(true);
+      expect(await this.claimManagerMock.paused()).to.eq(true);
+    });
+    it('Do already unpaused', async function () {
+      await this.sherdistMock.unpause();
+      expect(await this.sherdistMock.paused()).to.eq(false);
+
+      await this.sherlockM.unpause();
+
+      expect(await this.sherlockM.paused()).to.eq(false);
+      expect(await this.strategyMock.paused()).to.eq(false);
+      expect(await this.sherdistMock.paused()).to.eq(false);
+      expect(await this.protmanagerMock.paused()).to.eq(false);
+      expect(await this.claimManagerMock.paused()).to.eq(false);
+    });
+    it('Do remove & pause', async function () {
+      await this.sherlockM.removeSherDistributionManager();
+
+      await this.sherlockM.pause();
+
+      expect(await this.sherlockM.paused()).to.eq(true);
+      expect(await this.strategyMock.paused()).to.eq(true);
+      expect(await this.sherdistMock.paused()).to.eq(false);
+      expect(await this.protmanagerMock.paused()).to.eq(true);
+      expect(await this.claimManagerMock.paused()).to.eq(true);
+    });
+    it('Do remove & unpause', async function () {
+      await this.sherlockM.unpause();
+
+      expect(await this.sherlockM.paused()).to.eq(false);
+      expect(await this.strategyMock.paused()).to.eq(false);
+      expect(await this.sherdistMock.paused()).to.eq(false);
+      expect(await this.protmanagerMock.paused()).to.eq(false);
+      expect(await this.claimManagerMock.paused()).to.eq(false);
+    });
+  });
+  describe('protmanager - pause checks', function () {
+    before(async function () {
+      await timeTraveler.revertSnapshot();
+    });
+    it('Do already paused', async function () {
+      await this.protmanagerMock.pause();
+      expect(await this.protmanagerMock.paused()).to.eq(true);
+
+      await this.sherlockM.pause();
+
+      expect(await this.sherlockM.paused()).to.eq(true);
+      expect(await this.strategyMock.paused()).to.eq(true);
+      expect(await this.sherdistMock.paused()).to.eq(true);
+      expect(await this.protmanagerMock.paused()).to.eq(true);
+      expect(await this.claimManagerMock.paused()).to.eq(true);
+    });
+    it('Do already unpaused', async function () {
+      await this.protmanagerMock.unpause();
+      expect(await this.protmanagerMock.paused()).to.eq(false);
+
+      await this.sherlockM.unpause();
+
+      expect(await this.sherlockM.paused()).to.eq(false);
+      expect(await this.strategyMock.paused()).to.eq(false);
+      expect(await this.sherdistMock.paused()).to.eq(false);
+      expect(await this.protmanagerMock.paused()).to.eq(false);
+      expect(await this.claimManagerMock.paused()).to.eq(false);
+    });
+  });
+  describe('claim manager - pause checks', function () {
+    before(async function () {
+      await timeTraveler.revertSnapshot();
+    });
+    it('Do already paused', async function () {
+      await this.claimManagerMock.pause();
+      expect(await this.claimManagerMock.paused()).to.eq(true);
+
+      await this.sherlockM.pause();
+
+      expect(await this.sherlockM.paused()).to.eq(true);
+      expect(await this.strategyMock.paused()).to.eq(true);
+      expect(await this.sherdistMock.paused()).to.eq(true);
+      expect(await this.protmanagerMock.paused()).to.eq(true);
+      expect(await this.claimManagerMock.paused()).to.eq(true);
+    });
+    it('Do already unpaused', async function () {
+      await this.claimManagerMock.unpause();
+      expect(await this.claimManagerMock.paused()).to.eq(false);
+
+      await this.sherlockM.unpause();
+
+      expect(await this.sherlockM.paused()).to.eq(false);
+      expect(await this.strategyMock.paused()).to.eq(false);
+      expect(await this.sherdistMock.paused()).to.eq(false);
+      expect(await this.protmanagerMock.paused()).to.eq(false);
+      expect(await this.claimManagerMock.paused()).to.eq(false);
     });
   });
 });
