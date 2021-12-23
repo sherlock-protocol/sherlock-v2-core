@@ -2014,6 +2014,9 @@ describe('SherlockProtocolManager ─ Functional', function () {
 
       expect(await this.spm.minActiveBalance()).to.eq(this.b2);
     });
+    it('do same', async function () {
+      await expect(this.spm.setMinActiveBalance(this.b2)).to.be.revertedWith('InvalidArgument()');
+    });
   });
   describe('setProtocolPremium()', function () {
     before(async function () {

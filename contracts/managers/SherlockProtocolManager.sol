@@ -420,6 +420,8 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
   /// @param _minActiveBalance Minimum balance needed (in USDC)
   /// @dev Only gov
   function setMinActiveBalance(uint256 _minActiveBalance) external override onlyOwner {
+    // New value cannot be the same as current value
+    if (minActiveBalance == _minActiveBalance) revert InvalidArgument();
     // Can't set a value that is too high to be reasonable
     require(_minActiveBalance < MIN_BALANCE_SANITY_CEILING, 'INSANE');
 
