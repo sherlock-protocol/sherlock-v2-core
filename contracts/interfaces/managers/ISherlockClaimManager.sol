@@ -24,7 +24,7 @@ interface ISherlockClaimManager is IManager, OptimisticRequester {
     bytes32 indexed protocol,
     uint256 amount,
     address receiver,
-    bool previousCoverageAmount
+    bool previousCoverageUsed
   );
 
   event CallbackAdded(ISherlockClaimManagerCallbackReceiver callback);

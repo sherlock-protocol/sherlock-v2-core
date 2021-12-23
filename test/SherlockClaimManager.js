@@ -712,7 +712,7 @@ describe('SherlockClaimManager ─ Functional', function () {
       expect(this.t1.events[0].args.protocol).to.eq(this.protocolX);
       expect(this.t1.events[0].args.amount).to.eq(1);
       expect(this.t1.events[0].args.receiver).to.eq(this.alice.address);
-      expect(this.t1.events[0].args.previousCoverageAmount).to.eq(false);
+      expect(this.t1.events[0].args.previousCoverageUsed).to.eq(false);
       expect(this.t1.events[1].event).to.eq('ClaimStatusChanged');
       expect(this.t1.events[1].args.claimID).to.eq(1);
       expect(this.t1.events[1].args.previousState).to.eq(STATE.NonExistent);
@@ -750,7 +750,7 @@ describe('SherlockClaimManager ─ Functional', function () {
       expect(this.t2.events[0].args.protocol).to.eq(this.protocolY);
       expect(this.t2.events[0].args.amount).to.eq(1);
       expect(this.t2.events[0].args.receiver).to.eq(this.alice.address);
-      expect(this.t2.events[0].args.previousCoverageAmount).to.eq(false);
+      expect(this.t2.events[0].args.previousCoverageUsed).to.eq(false);
       expect(this.t2.events[1].event).to.eq('ClaimStatusChanged');
       expect(this.t2.events[1].args.claimID).to.eq(2);
       expect(this.t2.events[1].args.previousState).to.eq(STATE.NonExistent);
@@ -829,7 +829,7 @@ describe('SherlockClaimManager ─ Functional', function () {
       expect(this.t1.events[0].args.protocol).to.eq(this.protocolX);
       expect(this.t1.events[0].args.amount).to.eq(COVERAGE_AMOUNT);
       expect(this.t1.events[0].args.receiver).to.eq(this.alice.address);
-      expect(this.t1.events[0].args.previousCoverageAmount).to.eq(true);
+      expect(this.t1.events[0].args.previousCoverageUsed).to.eq(true);
       expect(this.t1.events[1].event).to.eq('ClaimStatusChanged');
       expect(this.t1.events[1].args.claimID).to.eq(1);
       expect(this.t1.events[1].args.previousState).to.eq(STATE.NonExistent);
