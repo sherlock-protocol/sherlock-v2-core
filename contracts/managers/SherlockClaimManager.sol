@@ -226,12 +226,12 @@ contract SherlockClaimManager is ISherlockClaimManager, ReentrancyGuard, Manager
     nonReentrant
   {
     if (address(_callback) == address(0)) revert ZeroArgument();
+    // Checks to see if the max amount of callback contracts has been reached
+    if (claimCallbacks.length == MAX_CALLBACKS) revert InvalidState();
     // Checks to see if this callback contract already exists
     for (uint256 i; i < claimCallbacks.length; i++) {
       if (claimCallbacks[i] == _callback) revert InvalidArgument();
     }
-    // Checks to see if the max amount of callback contracts has been reached
-    if (claimCallbacks.length == MAX_CALLBACKS) revert InvalidState();
 
     claimCallbacks.push(_callback);
     emit CallbackAdded(_callback);
