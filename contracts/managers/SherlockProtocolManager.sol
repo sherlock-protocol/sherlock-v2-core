@@ -193,7 +193,7 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
   function _secondsOfCoverageLeft(bytes32 _protocol) internal view returns (uint256) {
     uint256 premium = premiums_[_protocol];
     if (premium == 0) return 0;
-    return _activeBalance(_protocol) / premiums_[_protocol];
+    return _activeBalance(_protocol) / premium;
   }
 
   /// @notice View current active balance of covered protocol
