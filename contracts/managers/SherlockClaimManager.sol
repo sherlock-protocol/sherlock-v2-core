@@ -292,6 +292,9 @@ contract SherlockClaimManager is ISherlockClaimManager, ReentrancyGuard, Manager
   /// @param ancillaryData other data associated with the claim, such as the coverage agreement
   /// @dev The protocol agent that starts a claim will be the protocol agent during the claims lifecycle
   /// @dev Even if the protocol agent role is tranferred during the lifecycle
+  /// @dev This is done because a protocols coverage can end after an exploit, either wilfully or forcefully.
+  /// @dev The protocol agent is still active for 7 days after coverage ends, so a claim can still be submitted.
+  /// @dev But in case the claim is approved after the 7 day period, `payoutClaim()` can not be called as the protocol agent is 0
   function startClaim(
     bytes32 _protocol,
     uint256 _amount,
