@@ -96,22 +96,21 @@ contract SherDistributionManager is ISherDistributionManager, Manager {
   ) public view override returns (uint256 _sher) {
     if (_amount == 0) return 0;
 
-    uint256 maxRewardsEndTVL_ = maxRewardsEndTVL;
     // Figures out how much of this stake should receive max rewards
     // _tvl is the pre-stake TVL (call it $80M) and maxRewardsEndTVL could be $100M
     // If maxRewardsEndTVL is bigger than the pre-stake TVL, then some or all of the stake could receive max rewards
     // In this case, the amount of the stake to receive max rewards is maxRewardsEndTVL - _tvl
     // Otherwise, the pre-stake TVL could be bigger than the maxRewardsEndTVL, in which case 0 max rewards are available
-    uint256 maxRewardsAvailable = maxRewardsEndTVL_ > _tvl ? maxRewardsEndTVL_ - _tvl : 0;
+    uint256 maxRewardsAvailable = maxRewardsEndTVL > _tvl ? maxRewardsEndTVL - _tvl : 0;
 
     uint256 zeroRewardsStartTVL_ = zeroRewardsStartTVL;
     // Same logic as above for the TVL at which all SHER rewards end
     // If the pre-stake TVL is lower than the zeroRewardsStartTVL, then SHER rewards are still available to all or part of the stake
     // The starting point of the slopeRewards is calculated using max(maxRewardsEndTVL, tvl).
-    // The starting point is either the beginning of the slope --> maxRewardsEndTVL_
+    // The starting point is either the beginning of the slope --> maxRewardsEndTVL
     // Or it's the current amount of TVL in case the point on the curve is already on the slope.
     uint256 slopeRewardsAvailable = zeroRewardsStartTVL_ > _tvl
-      ? zeroRewardsStartTVL_ - Math.max(maxRewardsEndTVL_, _tvl)
+      ? zeroRewardsStartTVL_ - Math.max(maxRewardsEndTVL, _tvl)
       : 0;
 
     // If there are some max rewards available...
