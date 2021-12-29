@@ -140,6 +140,7 @@ contract Sherlock is ISherlock, ERC721, Ownable, Pausable {
   /// @notice View the current token balance claimable upon reaching end of the lockup
   /// @return Amount of tokens assigned to owner when unstaking position
   function tokenBalanceOf(uint256 _tokenID) public view override returns (uint256) {
+    if (!_exists(_tokenID)) revert NonExistent();
     // Finds the fraction of total shares owed to this position and multiplies by the total amount of tokens (USDC) owed to stakers
     return (stakeShares[_tokenID] * totalTokenBalanceStakers()) / totalStakeShares;
   }

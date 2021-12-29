@@ -845,6 +845,7 @@ describe('Sherlock ─ Functional', function () {
     it('Initial state', async function () {
       await expect(this.sherlock.lockupEnd(1)).to.be.revertedWith('NonExistent()');
       await expect(this.sherlock.sherRewards(1)).to.be.revertedWith('NonExistent()');
+      await expect(this.sherlock.tokenBalanceOf(1)).to.be.revertedWith('NonExistent()');
     });
     it('Do', async function () {
       this.amount = parseUnits('100', 6);
@@ -854,6 +855,7 @@ describe('Sherlock ─ Functional', function () {
     it('Verify state', async function () {
       expect(await this.sherlock.lockupEnd(1)).to.eq(this.t0.time.add(10));
       expect(await this.sherlock.sherRewards(1)).to.eq(0);
+      expect(await this.sherlock.tokenBalanceOf(1)).to.eq(this.amount);
     });
   });
   describe('initialStake(), _stake()', function () {
@@ -874,6 +876,7 @@ describe('Sherlock ─ Functional', function () {
     it('Verify state', async function () {
       expect(await this.sherlock.lockupEnd(1)).to.eq(this.t0.time.add(10));
       expect(await this.sherlock.sherRewards(1)).to.eq(0);
+      expect(await this.sherlock.tokenBalanceOf(1)).to.eq(this.amount);
       expect(await this.sher.balanceOf(this.sherlock.address)).to.eq(0);
     });
     it('Do one', async function () {
@@ -886,6 +889,7 @@ describe('Sherlock ─ Functional', function () {
     it('Verify state', async function () {
       expect(await this.sherlock.lockupEnd(2)).to.eq(this.t1.time.add(20));
       expect(await this.sherlock.sherRewards(2)).to.eq(parseEther('1'));
+      expect(await this.sherlock.tokenBalanceOf(2)).to.eq(this.amount);
       expect(await this.sher.balanceOf(this.sherlock.address)).to.eq(parseEther('1'));
     });
     it('Do two', async function () {
@@ -898,6 +902,7 @@ describe('Sherlock ─ Functional', function () {
     it('Verify state', async function () {
       expect(await this.sherlock.lockupEnd(3)).to.eq(this.t2.time.add(20));
       expect(await this.sherlock.sherRewards(3)).to.eq(parseEther('2'));
+      expect(await this.sherlock.tokenBalanceOf(3)).to.eq(this.amount);
       expect(await this.sher.balanceOf(this.sherlock.address)).to.eq(parseEther('3'));
     });
     it('Do wrong return value', async function () {
@@ -1001,6 +1006,7 @@ describe('Sherlock ─ Functional', function () {
       expect(await this.sherlock.ownerOf(1)).to.eq(this.carol.address);
       expect(await this.sherlock.lockupEnd(1)).to.eq(this.t1.time.add(10));
       expect(await this.sherlock.sherRewards(1)).to.eq(0);
+      expect(await this.sherlock.tokenBalanceOf(1)).to.eq(this.amount);
     });
     it('Non owner', async function () {
       await expect(this.sherlock.connect(this.bob).redeemNFT(1)).to.be.revertedWith(
@@ -1029,6 +1035,7 @@ describe('Sherlock ─ Functional', function () {
       await expect(this.sherlock.ownerOf(1)).to.be.reverted;
       await expect(this.sherlock.lockupEnd(1)).to.be.revertedWith('NonExistent()');
       await expect(this.sherlock.sherRewards(1)).to.be.revertedWith('NonExistent()');
+      await expect(this.sherlock.tokenBalanceOf(1)).to.be.revertedWith('NonExistent()');
     });
   });
   describe('redeemNFT(), !0amount, !0sher', function () {
@@ -1053,6 +1060,7 @@ describe('Sherlock ─ Functional', function () {
       expect(await this.sherlock.ownerOf(1)).to.eq(this.carol.address);
       expect(await this.sherlock.lockupEnd(1)).to.eq(this.t1.time.add(10));
       expect(await this.sherlock.sherRewards(1)).to.eq(this.reward);
+      expect(await this.sherlock.tokenBalanceOf(1)).to.eq(this.amount);
     });
     it('Do', async function () {
       await timeTraveler.mine(10);
@@ -1068,6 +1076,7 @@ describe('Sherlock ─ Functional', function () {
       await expect(this.sherlock.ownerOf(1)).to.be.reverted;
       await expect(this.sherlock.lockupEnd(1)).to.be.revertedWith('NonExistent()');
       await expect(this.sherlock.sherRewards(1)).to.be.revertedWith('NonExistent()');
+      await expect(this.sherlock.tokenBalanceOf(1)).to.be.revertedWith('NonExistent()');
     });
   });
   describe('ownerRestake(), zero rewards', function () {
@@ -1090,6 +1099,7 @@ describe('Sherlock ─ Functional', function () {
       expect(await this.sherlock.ownerOf(1)).to.eq(this.carol.address);
       expect(await this.sherlock.lockupEnd(1)).to.eq(this.t1.time.add(10));
       expect(await this.sherlock.sherRewards(1)).to.eq(0);
+      expect(await this.sherlock.tokenBalanceOf(1)).to.eq(this.amount);
     });
     it('Non owner', async function () {
       await expect(this.sherlock.connect(this.bob).ownerRestake(1, 10)).to.be.revertedWith(
@@ -1128,6 +1138,7 @@ describe('Sherlock ─ Functional', function () {
       expect(await this.sherlock.ownerOf(1)).to.eq(this.carol.address);
       expect(await this.sherlock.lockupEnd(1)).to.eq(this.t2.time.add(10));
       expect(await this.sherlock.sherRewards(1)).to.eq(0);
+      expect(await this.sherlock.tokenBalanceOf(1)).to.eq(0);
     });
   });
   describe('ownerRestake()', function () {
@@ -1153,6 +1164,7 @@ describe('Sherlock ─ Functional', function () {
       expect(await this.sherlock.ownerOf(1)).to.eq(this.carol.address);
       expect(await this.sherlock.lockupEnd(1)).to.eq(this.t1.time.add(10));
       expect(await this.sherlock.sherRewards(1)).to.eq(this.reward);
+      expect(await this.sherlock.tokenBalanceOf(1)).to.eq(this.amount);
     });
     it('Do', async function () {
       await timeTraveler.mine(10);
@@ -1176,6 +1188,7 @@ describe('Sherlock ─ Functional', function () {
       expect(await this.sherlock.ownerOf(1)).to.eq(this.carol.address);
       expect(await this.sherlock.lockupEnd(1)).to.eq(this.t2.time.add(20));
       expect(await this.sherlock.sherRewards(1)).to.eq(this.reward);
+      expect(await this.sherlock.tokenBalanceOf(1)).to.eq(this.amount);
     });
   });
   describe('arbRestake(), calcs and after 2 weeks', function () {
@@ -1202,6 +1215,7 @@ describe('Sherlock ─ Functional', function () {
       expect(await this.sherlock.ownerOf(1)).to.eq(this.carol.address);
       expect(await this.sherlock.lockupEnd(1)).to.eq(this.t1.time.add(10));
       expect(await this.sherlock.sherRewards(1)).to.eq(this.reward);
+      expect(await this.sherlock.tokenBalanceOf(1)).to.eq(this.amount);
     });
     it('Fail, within lockup', async function () {
       const res = await this.sherlock.connect(this.bob).viewRewardForArbRestake(1);
@@ -1305,6 +1319,7 @@ describe('Sherlock ─ Functional', function () {
       expect(await this.sherlock.ownerOf(1)).to.eq(this.carol.address);
       expect(await this.sherlock.lockupEnd(1)).to.eq(this.t2.time.add(weeks12));
       expect(await this.sherlock.sherRewards(1)).to.eq(this.reward.mul(2));
+      expect(await this.sherlock.tokenBalanceOf(1)).to.eq(this.amount.div(10).mul(8));
     });
     it('Verify disabled', async function () {
       const res = await this.sherlock.connect(this.bob).viewRewardForArbRestake(1);
@@ -1345,6 +1360,7 @@ describe('Sherlock ─ Functional', function () {
       expect(await this.sherlock.ownerOf(1)).to.eq(this.carol.address);
       expect(await this.sherlock.lockupEnd(1)).to.eq(this.t1.time.add(10));
       expect(await this.sherlock.sherRewards(1)).to.eq(this.reward);
+      expect(await this.sherlock.tokenBalanceOf(1)).to.eq(this.amount);
     });
     it('Fail, block before deadline', async function () {
       await timeTraveler.setNextBlockTimestamp(
@@ -1383,6 +1399,7 @@ describe('Sherlock ─ Functional', function () {
       expect(await this.sherlock.ownerOf(1)).to.eq(this.carol.address);
       expect(await this.sherlock.lockupEnd(1)).to.eq(this.t2.time.add(weeks12));
       expect(await this.sherlock.sherRewards(1)).to.eq(this.reward);
+      expect(await this.sherlock.tokenBalanceOf(1)).to.eq(this.amount.div(10).mul(9));
     });
     it('Verify disabled', async function () {
       const res = await this.sherlock.connect(this.bob).viewRewardForArbRestake(1);
