@@ -41,8 +41,6 @@ contract SherDistributionManager is ISherDistributionManager, Manager {
     uint256 _maxRewardsRate,
     IERC20 _sher
   ) {
-    // Question Are we sure we want to revert if these are equal to? Then we can't cleanly turn off rewards entirely?
-    // Answer: If we want to change Kors Curve variables, we will just deploy a new distribution manager contract
     if (_maxRewardsEndTVL >= _zeroRewardsStartTVL) revert InvalidArgument();
     if (_maxRewardsRate == 0) revert ZeroArgument();
     if (address(_sher) == address(0)) revert ZeroArgument();
@@ -156,7 +154,7 @@ contract SherDistributionManager is ISherDistributionManager, Manager {
 
   /// @notice Function used to check if this is the current active distribution manager
   /// @return Boolean indicating it's active
-  /// @dev If inactive the owner can pull all ERC20s
+  /// @dev If inactive the owner can pull all ERC20s and ETH
   /// @dev Will be checked by calling the sherlock contract
   function isActive() public view override returns (bool) {
     return address(sherlockCore.sherDistributionManager()) == address(this);

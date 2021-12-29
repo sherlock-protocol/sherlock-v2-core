@@ -122,8 +122,8 @@ interface ISherlockClaimManager is IManager, OptimisticRequester {
   /// @param _claimID Public claim ID
   /// @param _amount Bond amount sent by protocol agent
   /// @dev Use hardcoded USDC address
-  /// @dev Use hardcoded bond amount (upgradable with a large timelock)
-  /// @dev Use hardcoded liveness 7200
+  /// @dev Use hardcoded bond amount
+  /// @dev Use hardcoded liveness 7200 (2 hours)
   /// @dev proposedPrice = _amount
   function escalate(uint256 _claimID, uint256 _amount) external;
 

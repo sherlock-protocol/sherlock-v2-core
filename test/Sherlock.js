@@ -252,7 +252,7 @@ describe('Sherlock ─ Stateless', function () {
         this.sherlock.connect(this.bob).removeSherDistributionManager(),
       ).to.be.revertedWith('Ownable: caller is not the owner');
     });
-    it('Succes', async function () {
+    it('Success', async function () {
       await this.sherlock.removeSherDistributionManager();
     });
     it('Do again', async function () {

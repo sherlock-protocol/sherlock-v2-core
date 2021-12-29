@@ -24,6 +24,7 @@ contract SherlockClaimManager is ISherlockClaimManager, ReentrancyGuard, Manager
 
   // The bond required for a protocol agent to escalate a claim to UMA Optimistic Oracle (OO)
   /// @dev at time of writing will result in a 20k cost of escalating
+  /// @dev the actual amount is based on the value returned here https://github.com/UMAprotocol/protocol/blob/master/packages/core/contracts/oracle/implementation/Store.sol#L131
   uint256 internal constant BOND = 9_600 * 10**6; // 20k bond
 
   // The amount of time the protocol agent has to escalate a claim
@@ -256,7 +257,7 @@ contract SherlockClaimManager is ISherlockClaimManager, ReentrancyGuard, Manager
     emit CallbackRemoved(_callback);
   }
 
-  /// @notice Cleanup claim if escalation is pursued
+  /// @notice Cleanup claim if escalation is not pursued
   /// @param _protocol protocol ID
   /// @param _claimID public claim ID
   /// @dev Retrieves current protocol agent for cleanup
@@ -386,9 +387,9 @@ contract SherlockClaimManager is ISherlockClaimManager, ReentrancyGuard, Manager
   /// @param _claimID Public claim ID
   /// @param _amount Bond amount sent by protocol agent
   /// @dev Use hardcoded USDC address
-  /// @dev Use hardcoded bond amount (upgradable with a large timelock)
-  /// @dev Use hardcoded liveness 7200
-  /// @dev proposedPrice = _amount
+  /// @dev Use hardcoded bond amount
+  /// @dev Use hardcoded liveness 7200 (2 hours)
+  /// @dev Requires the caller to be the account that initially started the claim
   // Amount sent needs to be at least equal to the BOND amount required
   function escalate(uint256 _claimID, uint256 _amount)
     external
@@ -404,7 +405,7 @@ contract SherlockClaimManager is ISherlockClaimManager, ReentrancyGuard, Manager
 
     // Retrieves the claim struct
     Claim storage claim = claims_[claimIdentifier];
-    // Requires the caller to be the protocol agent
+    // Requires the caller to be the account that initially started the claim
     if (msg.sender != claim.initiator) revert InvalidSender();
 
     // Timestamp when claim was last updated
@@ -534,7 +535,7 @@ contract SherlockClaimManager is ISherlockClaimManager, ReentrancyGuard, Manager
   //
 
   // Once requestAndProposePriceFor() is executed in UMA's contracts, this function gets called
-  // We change the claim's state from UmaPriceProposed to UmaDisputeProposed
+  // We change the claim's state from UmaPriceProposed to ReadyToProposeUmaDispute
   // Then we call the next function in the process, disputePriceFor()
   // @note reentrancy is allowed for this call
   function priceProposed(

@@ -278,8 +278,6 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
 
   // Internal function to set a new protocolAgent for a specific protocol
   // _oldAgent is only included as part of emitting an event
-  // Question Why don't we just read the old agent before we update it? Less potential for error?
-  // Answer: The function is internal and we save gas doing it this way
   function _setProtocolAgent(
     bytes32 _protocol,
     address _oldAgent,
@@ -303,7 +301,7 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
       // Pulls the stored active balance of the protocol
       uint256 balance = activeBalances[_protocol];
       // This is the start of handling an edge case where arbitragers don't remove this protocol before debt becomes greater than active balance
-      // Economically spearking, this point should never be reached as arbs will get rewarded for removing the protocol before this point
+      // Economically speaking, this point should never be reached as arbs will get rewarded for removing the protocol before this point
       // The arb would use forceRemoveByActiveBalance and forceRemoveBySecondsOfCoverage
       // However, if arbs don't come in, the premium for this protocol should be set to 0 asap otherwise accounting for stakers/nonstakers gets messed up
       if (debt > balance) {
@@ -322,8 +320,8 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
         // This insufficient tokens var is simply how we know (emitted as an event) how many tokens the protocol is short
         uint256 insufficientTokens;
 
-        // The idea here is that claimablePremiumsStored has gotten too big accidentally
-        // We need to decrease the balance of claimablePremiumsStored by the amount that was added in error
+        // The idea here is that lastClaimablePremiumsForStakers has gotten too big accidentally
+        // We need to decrease the balance of lastClaimablePremiumsForStakers by the amount that was added in error
         // This first line can be true if claimPremiumsForStakers() has been called and
         // lastClaimablePremiumsForStakers would be 0 but a faulty protocol could cause claimablePremiumError to be >0 still
         if (claimablePremiumError > lastClaimablePremiumsForStakers_) {
@@ -389,8 +387,6 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
     uint256 balance = activeBalances[_protocol];
 
     // If there's still some active balance, delete the entry and send the remaining balance to the protocol agent
-    // Question Should we make it so that only the balance above MIN_SECONDS_LEFT can be sent to the protocol agent? Rest is kept by stakers/nonstakers?
-    // Answer: Not worth it because it's either called by onlyOwner or it can't easily be gamed as an arb
     if (balance != 0) {
       delete activeBalances[_protocol];
       token.safeTransfer(_agent, balance);
@@ -460,14 +456,13 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
 
     // Sets the claimable amount to whatever is left over after this amount is pulled
     nonStakersClaimableByProtocol[_protocol] = balance - _amount;
-    // Transfers the amount requested to the nonstaker address
+    // Transfers the amount requested to the `_receiver` address
     token.safeTransfer(_receiver, _amount);
   }
 
   // Transfers funds owed to stakers from this contract to the Sherlock core contract (where we handle paying out stakers)
   /// @notice Transfer current claimable premiums (for stakers) to core Sherlock address
   /// @dev Callable by everyone
-  /// @dev Will be called by burn() in Sherlock core contract
   /// @dev Funds will be transferred to Sherlock core contract
   function claimPremiumsForStakers() external override whenNotPaused {
     // Gets address of core Sherlock contract
@@ -555,6 +550,7 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
   /// @param _nonStakers Percentage of premium payments to nonstakers, scaled by 10**18
   /// @param _coverageAmount Max amount claimable by this protocol
   /// @dev Only callable by governance
+  /// @dev `_nonStakers` can be 0
   function protocolUpdate(
     bytes32 _protocol,
     bytes32 _coverage,
@@ -776,13 +772,12 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
   }
 
   // If a protocol has paid too much into the active balance (which is how a protocol pays the premium)
-  // Then the protocol can remove some of the active balance (up until there is 3 days worth of balance left)
+  // Then the protocol can remove some of the active balance (up until there is 7 days worth of balance left)
   /// @notice Withdraws `_amount` of token from the active balance of `_protocol`
   /// @param _protocol Protocol identifier
   /// @param _amount Amount of tokens to withdraw
   /// @dev Only protocol agent is able to withdraw
-  /// @dev Balance can be withdrawn up until 3 days worth of active balance
-  /// @dev In case coverage is not active (0 premium), full balance can be withdrawn
+  /// @dev Balance can be withdrawn up until 7 days worth of active balance
   function withdrawActiveBalance(bytes32 _protocol, uint256 _amount)
     external
     override
@@ -802,7 +797,7 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
 
     // Removes the _amount to be withdrawn from the active balance
     activeBalances[_protocol] = currentBalance - _amount;
-    // Reverts if a protocol has less than 3 days worth of active balance left
+    // Reverts if a protocol has less than 7 days worth of active balance left
     if (_secondsOfCoverageLeft(_protocol) < MIN_SECONDS_LEFT) revert InsufficientBalance(_protocol);
 
     // Transfers the amount to the msg.sender (protocol agent)
@@ -831,7 +826,7 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
 
   /// @notice Function used to check if this is the current active protocol manager
   /// @return Boolean indicating it's active
-  /// @dev If inactive the owner can pull all ERC20s
+  /// @dev If inactive the owner can pull all ERC20s and ETH
   /// @dev Will be checked by calling the sherlock contract
   function isActive() public view returns (bool) {
     return address(sherlockCore.sherlockProtocolManager()) == address(this);

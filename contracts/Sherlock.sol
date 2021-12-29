@@ -450,8 +450,6 @@ contract Sherlock is ISherlock, ERC721, Ownable, Pausable {
   // Transfers USDC to the receiver (arbitrager OR NFT owner) based on the stakeShares inputted
   // Also burns the requisite amount of shares associated with this NFT position
   // Returns the amount of USDC owed to these shares
-  // Question Do we need to make sure the NFT position has at least this many stakeShares?
-  // Answer: No, it's an internal function and will fail if it tries to subtract too many stakeShares
   function _redeemShares(
     uint256 _id,
     uint256 _stakeShares,
@@ -480,7 +478,7 @@ contract Sherlock is ISherlock, ERC721, Ownable, Pausable {
     // NOTE This function deletes the SHER reward mapping for this NFT ID
     _sendSherRewardsToOwner(_id, _nftOwner);
 
-    // balanceOf() returns the USDC amount owed to this NFT ID
+    // tokenBalanceOf() returns the USDC amount owed to this NFT ID
     // _stake() restakes that amount of USDC for the period inputted
     // We use the same ID that we just deleted the SHER rewards mapping for
     // Resets the lockupEnd mapping and SHER token rewards mapping for this ID
@@ -626,7 +624,7 @@ contract Sherlock is ISherlock, ERC721, Ownable, Pausable {
   /// @return _sher Amount of SHER tokens to be released to position owner on expiry of the 3 month lockup
   /// @return _arbReward Amount of tokens (USDC) sent to caller (the arbitrager) in return for calling the function
   /// @dev Can only be called after lockup `_period` is more than 2 weeks in the past (assuming ARB_RESTAKE_WAIT_TIME is 2 weeks)
-  /// @dev Max 10% (ARB_RESTAKE_MAX_PERCENTAGE) of tokens associated with a position are used to incentivize arbs (x)
+  /// @dev Max 20% (ARB_RESTAKE_MAX_PERCENTAGE) of tokens associated with a position are used to incentivize arbs (x)
   /// @dev During a 2 week period the reward ratio will move from 0% to 100% (* x)
   function arbRestake(uint256 _id)
     external

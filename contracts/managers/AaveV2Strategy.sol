@@ -67,7 +67,6 @@ contract AaveV2Strategy is IStrategyManager, Manager {
     if (amount == 0) revert InvalidConditions();
 
     // If allowance for this contract is too low, approve the max allowance
-    // Question Should it approve only the amount necessary instead of max?
     if (want.allowance(address(this), address(lp)) < amount) {
       want.safeApprove(address(lp), type(uint256).max);
     }
@@ -91,7 +90,6 @@ contract AaveV2Strategy is IStrategyManager, Manager {
   /// @notice Withdraws a specific amount of USDC from Aave's lending pool back into the Sherlock core contract
   /// @param _amount Amount of USDC to withdraw
   function withdraw(uint256 _amount) external override onlySherlockCore {
-    // Question: What if balanceOf() is equal to zero? Or if _amount is equal to zero?
     // Why do we only check if _amount is equal to the max value?
     if (_amount == type(uint256).max) revert InvalidArgument();
 
@@ -108,13 +106,14 @@ contract AaveV2Strategy is IStrategyManager, Manager {
     // Sets the slot equal to the address of aUSDC
     assets[0] = address(aWant);
 
-    // Claims all the rewards on aUSDC and sends them to the aaveLmReceiver (a Sherlock address)
+    // Claims all the rewards on aUSDC and sends them to the aaveLmReceiver (an address controlled by governance)
+    // Tokens are NOT meant to be (directly) distributed to stakers.
     aaveIncentivesController.claimRewards(assets, type(uint256).max, aaveLmReceiver);
   }
 
   /// @notice Function used to check if this is the current active yield strategy
   /// @return Boolean indicating it's active
-  /// @dev If inactive the owner can pull all ERC20s
+  /// @dev If inactive the owner can pull all ERC20s and ETH
   /// @dev Will be checked by calling the sherlock contract
   function isActive() public view returns (bool) {
     return address(sherlockCore.yieldStrategy()) == address(this);
