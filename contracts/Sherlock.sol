@@ -405,10 +405,8 @@ contract Sherlock is ISherlock, ERC721, Ownable, Pausable {
   }
 
   // Checks to see if the NFT owner is the caller and that the position is unlockable
-  function _verifyUnlockableByOwner(uint256 _id) internal view returns (address _nftOwner) {
-    _nftOwner = ownerOf(_id);
-
-    if (_nftOwner != msg.sender) revert Unauthorized();
+  function _verifyUnlockableByOwner(uint256 _id) internal view {
+    if (ownerOf(_id) != msg.sender) revert Unauthorized();
     if (lockupEnd_[_id] > block.timestamp) revert InvalidConditions();
   }
 
@@ -543,15 +541,15 @@ contract Sherlock is ISherlock, ERC721, Ownable, Pausable {
   /// @dev Can only be called after lockup `_period` has ended
   function redeemNFT(uint256 _id) external override whenNotPaused returns (uint256 _amount) {
     // Checks to make sure caller is the owner of the NFT position, and that the lockup period is over
-    address nftOwner = _verifyUnlockableByOwner(_id);
+    _verifyUnlockableByOwner(_id);
 
     // Transfers USDC to the NFT owner based on the stake shares associated with this NFT ID
     // Also burns the requisite amount of shares associated with this NFT position
     // Returns the amount of USDC owed to these shares
-    _amount = _redeemShares(_id, stakeShares[_id], nftOwner);
+    _amount = _redeemShares(_id, stakeShares[_id], msg.sender);
 
     // Sends the SHER tokens associated with this NFT ID to the NFT owner
-    _sendSherRewardsToOwner(_id, nftOwner);
+    _sendSherRewardsToOwner(_id, msg.sender);
     // This is the ERC-721 function to destroy an NFT (with owner's approval)
     _burn(_id);
 
@@ -574,13 +572,13 @@ contract Sherlock is ISherlock, ERC721, Ownable, Pausable {
     returns (uint256 _sher)
   {
     // Checks to make sure caller is the owner of the NFT position, and that the lockup period is over
-    address nftOwner = _verifyUnlockableByOwner(_id);
+    _verifyUnlockableByOwner(_id);
 
     // Checks to make sure the staking period is a whitelisted one
     if (!stakingPeriods[_period]) revert InvalidArgument();
 
     // Sends the previously earned SHER token rewards to the owner and restakes the USDC value of the position
-    _sher = _restake(_id, _period, nftOwner);
+    _sher = _restake(_id, _period, msg.sender);
   }
 
   // Calcs the reward (in stake shares) an arb would get for restaking a position
