@@ -98,7 +98,7 @@ describe('AaveV2 ─ Functional', function () {
     expect(await this.aaveStrategy.aaveIncentivesController()).to.eq(this.incentives.address);
     expect(await this.aaveStrategy.aaveLmReceiver()).to.eq(this.bob.address);
 
-    expect(await this.aaveStrategy.lpAddressProvider()).to.eq(this.lpAddProvider);
+    expect(await this.aaveStrategy.LP_ADDRESS_PROVIDER()).to.eq(this.lpAddProvider);
 
     expect(await this.usdc.allowance(this.aaveStrategy.address, this.lp)).to.eq(0);
   });

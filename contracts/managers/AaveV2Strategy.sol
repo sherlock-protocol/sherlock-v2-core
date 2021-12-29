@@ -21,7 +21,7 @@ contract AaveV2Strategy is IStrategyManager, Manager {
   using SafeERC20 for IERC20;
 
   // Need to call a provider because Aave has the ability to change the lending pool address
-  ILendingPoolAddressesProvider public constant lpAddressProvider =
+  ILendingPoolAddressesProvider public constant LP_ADDRESS_PROVIDER =
     ILendingPoolAddressesProvider(0xB53C1a33016B2DC2fF3653530bfF1848a515c8c5);
 
   // Aave contract that controls stkAAVE rewards
@@ -51,7 +51,7 @@ contract AaveV2Strategy is IStrategyManager, Manager {
 
   // Returns the current Aave lending pool address that should be used
   function getLp() internal view returns (ILendingPool) {
-    return ILendingPool(lpAddressProvider.getLendingPool());
+    return ILendingPool(LP_ADDRESS_PROVIDER.getLendingPool());
   }
 
   /// @notice Checks the aUSDC balance in this contract
