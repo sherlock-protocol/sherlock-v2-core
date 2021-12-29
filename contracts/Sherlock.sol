@@ -605,9 +605,7 @@ contract Sherlock is ISherlock, ERC721, Ownable, Pausable {
     // Calcs what % of the max reward an arb gets based on the timestamp at which they call this function
     // If targetTime == maxRewardArbTime, then the arb gets 100% of the maxRewardScaled
     return (
-      ((targetTime - initialArbTime) * maxRewardScaled) /
-        (maxRewardArbTime - initialArbTime) /
-        10**18,
+      ((targetTime - initialArbTime) * maxRewardScaled) / (ARB_RESTAKE_GROWTH_TIME) / 10**18,
       true
     );
   }
