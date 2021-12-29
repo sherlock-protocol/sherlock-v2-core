@@ -617,10 +617,11 @@ contract Sherlock is ISherlock, ERC721, Ownable, Pausable {
   /// @return able If the transaction can be executed (the current timestamp is during an arb period, etc.)
   function viewRewardForArbRestake(uint256 _id) external view returns (uint256 profit, bool able) {
     // Returns the stake shares that an arb would get, and whether the position can currently be arbed
-    (uint256 sharesAmount, bool _able) = _calcSharesForArbRestake(_id);
+    // `profit` variable is used to store the amount of shares
+    (profit, able) = _calcSharesForArbRestake(_id);
     // Calculates the tokens (USDC) represented by that amount of stake shares
-    profit = _redeemSharesCalc(sharesAmount);
-    able = _able;
+    // Amount of shares stored in `profit` is used to calculate the reward in USDC, which is stored in `profit`
+    profit = _redeemSharesCalc(profit);
   }
 
   /// @notice Allows someone who doesn't own the position (an arbitrager) to restake the position for 3 months (ARB_RESTAKE_PERIOD)
