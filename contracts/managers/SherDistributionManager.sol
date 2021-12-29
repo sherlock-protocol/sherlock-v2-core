@@ -6,6 +6,8 @@ pragma solidity 0.8.10;
 * Sherlock Protocol: https://sherlock.xyz
 /******************************************************************************/
 
+import '@openzeppelin/contracts/utils/math/Math.sol';
+
 import './Manager.sol';
 import '../interfaces/managers/ISherDistributionManager.sol';
 
@@ -105,7 +107,12 @@ contract SherDistributionManager is ISherDistributionManager, Manager {
     uint256 zeroRewardsStartTVL_ = zeroRewardsStartTVL;
     // Same logic as above for the TVL at which all SHER rewards end
     // If the pre-stake TVL is lower than the zeroRewardsStartTVL, then SHER rewards are still available to all or part of the stake
-    uint256 slopeRewardsAvailable = zeroRewardsStartTVL_ > _tvl ? zeroRewardsStartTVL_ - _tvl : 0;
+    // The starting point of the slopeRewards is calculated using max(maxRewardsEndTVL, tvl).
+    // The starting point is either the beginning of the slope --> maxRewardsEndTVL_
+    // Or it's the current amount of TVL in case the point on the curve is already on the slope.
+    uint256 slopeRewardsAvailable = zeroRewardsStartTVL_ > _tvl
+      ? zeroRewardsStartTVL_ - Math.max(maxRewardsEndTVL_, _tvl)
+      : 0;
 
     // If there are some max rewards available...
     if (maxRewardsAvailable != 0) {

@@ -93,15 +93,15 @@ describe('SherDistributionManager, 6 dec', function () {
       );
 
       expect(await this.sdm.calcReward(parseUnits('0', 6), parseUnits('10000', 6), 1)).to.eq(
-        parseUnits('1700', 18),
+        parseUnits('1750', 18),
       );
 
       expect(await this.sdm.calcReward(parseUnits('0', 6), parseUnits('10000', 6), 2)).to.eq(
-        parseUnits('3400', 18),
+        parseUnits('3500', 18),
       );
 
       expect(await this.sdm.calcReward(parseUnits('0', 6), parseUnits('10000', 6), 20)).to.eq(
-        parseUnits('34000', 18),
+        parseUnits('35000', 18),
       );
 
       // nowwhere near overflow
