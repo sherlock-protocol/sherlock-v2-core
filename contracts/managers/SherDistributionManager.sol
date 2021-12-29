@@ -103,14 +103,13 @@ contract SherDistributionManager is ISherDistributionManager, Manager {
     // Otherwise, the pre-stake TVL could be bigger than the maxRewardsEndTVL, in which case 0 max rewards are available
     uint256 maxRewardsAvailable = maxRewardsEndTVL > _tvl ? maxRewardsEndTVL - _tvl : 0;
 
-    uint256 zeroRewardsStartTVL_ = zeroRewardsStartTVL;
     // Same logic as above for the TVL at which all SHER rewards end
     // If the pre-stake TVL is lower than the zeroRewardsStartTVL, then SHER rewards are still available to all or part of the stake
     // The starting point of the slopeRewards is calculated using max(maxRewardsEndTVL, tvl).
     // The starting point is either the beginning of the slope --> maxRewardsEndTVL
     // Or it's the current amount of TVL in case the point on the curve is already on the slope.
-    uint256 slopeRewardsAvailable = zeroRewardsStartTVL_ > _tvl
-      ? zeroRewardsStartTVL_ - Math.max(maxRewardsEndTVL, _tvl)
+    uint256 slopeRewardsAvailable = zeroRewardsStartTVL > _tvl
+      ? zeroRewardsStartTVL - Math.max(maxRewardsEndTVL, _tvl)
       : 0;
 
     // If there are some max rewards available...
