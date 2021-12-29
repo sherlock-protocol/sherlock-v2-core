@@ -99,15 +99,6 @@ contract SherlockClaimManager is ISherlockClaimManager, ReentrancyGuard, Manager
     _;
   }
 
-  // We pass in the contract addresses (both will be multisigs) in the constructor
-  constructor(address _umaho, address _spcc) {
-    if (_umaho == address(0)) revert ZeroArgument();
-    if (_spcc == address(0)) revert ZeroArgument();
-
-    umaHaltOperator = _umaho;
-    sherlockProtocolClaimsCommittee = _spcc;
-  }
-
   // Only the Sherlock Claims Committee multisig can call a function with this modifier
   modifier onlySPCC() {
     if (msg.sender != sherlockProtocolClaimsCommittee) revert InvalidSender();
@@ -118,6 +109,15 @@ contract SherlockClaimManager is ISherlockClaimManager, ReentrancyGuard, Manager
   modifier onlyUMAHO() {
     if (msg.sender != umaHaltOperator) revert InvalidSender();
     _;
+  }
+
+  // We pass in the contract addresses (both will be multisigs) in the constructor
+  constructor(address _umaho, address _spcc) {
+    if (_umaho == address(0)) revert ZeroArgument();
+    if (_spcc == address(0)) revert ZeroArgument();
+
+    umaHaltOperator = _umaho;
+    sherlockProtocolClaimsCommittee = _spcc;
   }
 
   // Checks to see if a claim can be escalated to the UMA OO
