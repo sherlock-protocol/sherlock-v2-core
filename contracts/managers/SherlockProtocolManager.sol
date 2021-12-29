@@ -404,6 +404,7 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
     // Cleans up other mappings for this protocol
     delete nonStakersPercentage[_protocol];
     delete lastAccountedEachProtocol[_protocol];
+    // `premiums_` mapping is not deleted here as it's already 0 because of the `_setSingleAndGlobalProtocolPremium` call above
 
     // Sets a deadline in the future until which this protocol agent can still make claims for this removed protocol
     removedProtocolClaimDeadline[_protocol] = block.timestamp + PROTOCOL_CLAIM_DEADLINE;
