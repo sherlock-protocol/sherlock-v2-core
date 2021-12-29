@@ -156,9 +156,10 @@ contract SherlockClaimManager is ISherlockClaimManager, ReentrancyGuard, Manager
     return false;
   }
 
-  function _isCleanupState(State _oldState) internal view returns (bool) {
+  function _isCleanupState(State _oldState) internal pure returns (bool) {
     if (_oldState == State.SpccDenied) return true;
     if (_oldState == State.SpccPending) return true;
+    return false;
   }
 
   // Deletes the data associated with a claim (after claim has reached its final state)
