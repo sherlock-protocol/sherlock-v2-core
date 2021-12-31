@@ -46,6 +46,7 @@ async function main() {
     MILLION_USDC.mul(100),
     MILLION_USDC.mul(600),
     SHER_RATE_CODE,
+    SHER,
   );
   await sherDistributionManager.deployed();
   console.log('2 - Deployed sherDistributionManager @', sherDistributionManager.address);

@@ -34,7 +34,7 @@ module.exports = {
     },
     local: {
       url: 'http://127.0.0.1:8545',
-      gasPrice: 50000000000,
+      gasPrice: 500000000000,
     },
     mainnet: {
       timeout: 999999999,
