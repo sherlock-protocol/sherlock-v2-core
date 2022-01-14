@@ -21,6 +21,7 @@ import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 // The max amount that can be bought is based on the USDC value of the position, using a fixed rate.
 // On every buy USDC will be sent to the owner, which will be multisig.
 // The owner is able to claim leftover SHER tokens if the balance get's below SHER_DUST_AMOUNT
+// SHER tokens will be transferred to this contract after deployment
 contract BuySher is Ownable {
   using SafeERC20 for IERC20;
 
@@ -46,7 +47,12 @@ contract BuySher is Ownable {
   error AlreadyUsed();
   error InvalidAmount();
   error ZeroArgument();
-  error InsufficientSher();
+
+  /// @notice Emitted when SHER tokens are bought
+  /// @param buyer Account that bought SHER tokens
+  /// @param paid How much USDC is paid
+  /// @param bought How much SHER tokens are bought
+  event Bought(address indexed buyer, uint256 paid, uint256 bought);
 
   constructor(
     IERC20 _sher,
@@ -78,34 +84,56 @@ contract BuySher is Ownable {
     // It is known that the underlying usdc amount will be higher as the strategy yield and premiums come in
     // This will increase the buying power over time
     uint256 usdcBalance = sherlockPosition.tokenBalanceOf(_sherlockPositionID);
+    // How much SHER can be bought using the stored rate
     uint256 maxSherAmount = (usdcBalance * rate) / USDC_DECIMALS;
+    // How much SHER is actually in the contract
     uint256 contractSherBalance = sher.balanceOf(address(this));
 
-    return (contractSherBalance > maxSherAmount) ? contractSherBalance : maxSherAmount;
+    // Return `maxSherAmount` if enough SHER tokens are available
+    // If not, return the available amount
+    return (maxSherAmount > contractSherBalance) ? maxSherAmount : contractSherBalance;
   }
 
+  /// @notice View how much USDC it will cost to buy `_amountOfSher` SHER
+  /// @param _amountOfSher The amount of SHER tokens to buy
+  /// @return Amount of USDC it will cost
   function viewCosts(uint256 _amountOfSher) public view returns (uint256) {
     return (_amountOfSher * price) / SHER_DECIMALS;
   }
 
+  /// @notice Buy `_amountOfSher` SHER tokens using positions with ID: `_sherlockPositionID`
+  /// @param _sherlockPositionID The ID of the Sherlock position
+  /// @param _amountOfSher The amount of SHER to buy
+  /// @dev Will transfer USDC amount to owner
   function buy(uint256 _sherlockPositionID, uint256 _amountOfSher) external {
     if (_sherlockPositionID == 0) revert ZeroArgument();
     if (_amountOfSher == 0) revert ZeroArgument();
+    // Verify if the sender is actually the owner of the referenced positiond ID
     if (msg.sender != sherlockPosition.ownerOf(_sherlockPositionID)) revert InvalidSender();
 
     // viewBuyLimit will revert is sherlockPositionUsed = true
     if (_amountOfSher > viewBuyLimit(_sherlockPositionID)) revert InvalidAmount();
+    // Register the positions as being used to buy SHER tokens
     sherlockPositionUsed[_sherlockPositionID] = true;
 
-    // USDC will be send to owner, which is a multisig
-    usdc.safeTransferFrom(msg.sender, owner(), viewCosts(_amountOfSher));
+    // The costs of buying `_amountOfSher`
+    uint256 costs = viewCosts(_amountOfSher);
+    // USDC will be sent to owner, which is a multisig
+    usdc.safeTransferFrom(msg.sender, owner(), costs);
+    // SHER will be sent to the sender
     sher.safeTransfer(msg.sender, _amountOfSher);
+
+    // Emit event about the purchase of the sender
+    emit Bought(msg.sender, costs, _amountOfSher);
   }
 
+  /// @notice Send leftover SHER tokens back to owner
   function claimLeftOverSHER() external onlyOwner {
+    // View SHER balance of contract
     uint256 balance = sher.balanceOf(address(this));
+    // Verify if the balance is above SHER_DUST_AMOUNT
     if (balance > SHER_DUST_AMOUNT) revert InvalidAmount();
-
+    // Send all remaining SHER tokens back to owner
     sher.safeTransfer(msg.sender, balance);
   }
 }
