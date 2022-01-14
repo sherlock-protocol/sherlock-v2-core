@@ -112,7 +112,7 @@ contract BuySher {
   /// @notice Buy `_amountOfSher` SHER tokens using positions with ID: `_sherlockPositionID`
   /// @param _sherlockPositionID The ID of the Sherlock position
   /// @param _amountOfSher The amount of SHER to buy
-  /// @dev Will transfer USDC amount to recevier
+  /// @dev Will transfer USDC amount to receiver
   function buy(uint256 _sherlockPositionID, uint256 _amountOfSher) external {
     if (_sherlockPositionID == 0) revert ZeroArgument();
     if (_amountOfSher == 0) revert ZeroArgument();
