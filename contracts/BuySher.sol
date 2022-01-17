@@ -10,6 +10,7 @@ import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 
 import './interfaces/ISherlock.sol';
+import './interfaces/IBuySher.sol';
 
 /// @title Sherlock core interface for stakers
 /// @author Evert Kors
@@ -20,7 +21,7 @@ import './interfaces/ISherlock.sol';
 // The max amount that can be bought is based on the USDC value of the position, using a fixed rate.
 // On every buy USDC will be sent to the received (multisig)
 // SHER tokens will be transferred to this contract after deployment
-contract BuySher {
+contract BuySher is IBuySher {
   using SafeERC20 for IERC20;
 
   error InvalidSender();
@@ -50,7 +51,7 @@ contract BuySher {
   /// @param buyer Account that bought SHER tokens
   /// @param paid How much USDC is paid
   /// @param received How much SHER tokens are bought
-  event Purchase(address indexed buyer, uint256 paid, uint256 received);
+  event Purchase(address indexed buyer, address indexed receiver, uint256 paid, uint256 received);
 
   /// @notice Construct BuySher contract
   /// @param _sher ERC20 contract for SHER token
@@ -80,6 +81,23 @@ contract BuySher {
     price = _price;
     sherlockPosition = _sherlockPosition;
     receiver = _receiver;
+  }
+
+  function viewFundsNeeded(uint256 _maxSher)
+    external
+    view
+    override
+    returns (
+      uint256 sherAmount,
+      uint256 stake,
+      uint256 price
+    )
+  {
+    uint256 available = sher.balanceOf(address(this));
+    sherAmount = available < _maxSher ? available : _maxSher;
+
+    stake = (sherAmount * USDC_DECIMALS) / rate;
+    price = (sherAmount * price) / SHER_DECIMALS;
   }
 
   /// @notice View how much SHER you can buy using a staking position
@@ -113,7 +131,11 @@ contract BuySher {
   /// @param _sherlockPositionID The ID of the Sherlock position
   /// @param _amountOfSher The amount of SHER to buy
   /// @dev Will transfer USDC amount to receiver
-  function buy(uint256 _sherlockPositionID, uint256 _amountOfSher) external {
+  function buy(
+    uint256 _sherlockPositionID,
+    uint256 _amountOfSher,
+    address _sherReceiver
+  ) external override {
     if (_sherlockPositionID == 0) revert ZeroArgument();
     if (_amountOfSher == 0) revert ZeroArgument();
     // Verify if the sender is actually the owner of the referenced positiond ID
@@ -129,9 +151,9 @@ contract BuySher {
     // USDC will be sent to receiver, which is a multisig
     usdc.safeTransferFrom(msg.sender, receiver, costs);
     // SHER will be sent to the sender
-    sher.safeTransfer(msg.sender, _amountOfSher);
+    sher.safeTransfer(_sherReceiver, _amountOfSher);
 
     // Emit event about the purchase of the sender
-    emit Purchase(msg.sender, costs, _amountOfSher);
+    emit Purchase(msg.sender, _sherReceiver, costs, _amountOfSher);
   }
 }
