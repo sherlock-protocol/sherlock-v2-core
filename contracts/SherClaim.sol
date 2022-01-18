@@ -33,6 +33,7 @@ contract SherClaim is ISherClaim {
   mapping(address => uint256) public userClaims;
 
   constructor(IERC20 _sher, uint256 _claimableAt) {
+    if (address(_sher) == address(0)) revert ZeroArgument();
     if (_claimableAt < block.timestamp + CLAIM_PERIOD_SANITY_BOTTOM) revert InvalidState();
     if (_claimableAt > block.timestamp + CLAIM_PERIOD_SANITY_CEILING) revert InvalidState();
 

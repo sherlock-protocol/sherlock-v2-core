@@ -15,7 +15,7 @@ const weeks12 = 60 * 60 * 24 * 7 * 12;
 
 const claimableAt = parseInt(Date.now() / 1000) + weeks1 + 60; // 1 week and 60 seconds after now
 
-describe.only('SherBuy', function () {
+describe('SherBuy', function () {
   before(async function () {
     timeTraveler = new TimeTraveler(network.provider);
 
