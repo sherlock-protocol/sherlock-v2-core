@@ -13,10 +13,6 @@ const weeks1 = 60 * 60 * 24 * 7 * 1;
 const weeks2 = 60 * 60 * 24 * 7 * 2;
 const weeks12 = 60 * 60 * 24 * 7 * 12;
 
-const claimableAtBottom = parseInt(Date.now() / 1000) + weeks1; // 1 week and 60 seconds after now
-const claimableAtCeiling = parseInt(Date.now() / 1000) + weeks2; // 1 week and 60 seconds after now
-const claimableAt = parseInt(Date.now() / 1000) + weeks2 - 60; // 2 week - 60 seconds after now
-
 describe('SherClaim', function () {
   before(async function () {
     timeTraveler = new TimeTraveler(network.provider);
@@ -62,26 +58,30 @@ describe('SherClaim', function () {
         ],
       ],
     ]);
-    await this.sherlock.enableStakingPeriod(weeks1 * 26);
+    var ts = await meta(this.sherlock.enableStakingPeriod(weeks1 * 26));
 
-    await deploy(this, [['sherClaim', this.SherClaim, [this.sher.address, claimableAt]]]);
+    this.claimableAtBottom = ts.time.add(weeks1 + 60).toNumber();
+    this.claimableAtCeiling = ts.time.add(weeks2 + 60).toNumber();
+
+    this.claimableAt = ts.time.add(weeks1 + 60).toNumber(); // 1 week and 60 seconds after now
+    await deploy(this, [['sherClaim', this.SherClaim, [this.sher.address, this.claimableAt]]]);
 
     await timeTraveler.snapshot();
   });
   describe('constructor', function () {
     it('Zero sher', async function () {
-      await expect(this.SherClaim.deploy(constants.AddressZero, claimableAt)).to.be.revertedWith(
-        'ZeroArgument()',
-      );
+      await expect(
+        this.SherClaim.deploy(constants.AddressZero, this.claimableAt),
+      ).to.be.revertedWith('ZeroArgument()');
     });
     it('Period bottom', async function () {
-      await expect(this.SherClaim.deploy(this.sher.address, claimableAtBottom)).to.be.revertedWith(
-        'InvalidState()',
-      );
+      await expect(
+        this.SherClaim.deploy(this.sher.address, this.claimableAtBottom - 100),
+      ).to.be.revertedWith('InvalidState()');
     });
     it('Period ceiling', async function () {
       await expect(
-        this.SherClaim.deploy(this.sher.address, claimableAtCeiling + 100),
+        this.SherClaim.deploy(this.sher.address, this.claimableAtCeiling + 100),
       ).to.be.revertedWith('InvalidState()');
     });
   });
@@ -136,7 +136,7 @@ describe('SherClaim', function () {
       expect(await this.sherClaim.userClaims(this.carol.address)).to.eq(amount.mul(2));
     });
     it('Invalid state', async function () {
-      await timeTraveler.setNextBlockTimestamp(claimableAt);
+      await timeTraveler.setNextBlockTimestamp(this.claimableAt);
 
       await expect(this.sherClaim.add(this.carol.address, 1)).to.be.revertedWith('InvalidState()');
     });
@@ -153,7 +153,7 @@ describe('SherClaim', function () {
       await expect(this.sherClaim.connect(this.carol).claim()).to.be.revertedWith('InvalidState()');
     });
     it('Zero amount', async function () {
-      await timeTraveler.setNextBlockTimestamp(claimableAt);
+      await timeTraveler.setNextBlockTimestamp(this.claimableAt);
       await expect(this.sherClaim.connect(this.alice).claim()).to.be.revertedWith(
         'InvalidAmount()',
       );

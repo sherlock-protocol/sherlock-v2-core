@@ -13,8 +13,6 @@ const weeks1 = 60 * 60 * 24 * 7 * 1;
 const weeks2 = 60 * 60 * 24 * 7 * 2;
 const weeks12 = 60 * 60 * 24 * 7 * 12;
 
-const claimableAt = parseInt(Date.now() / 1000) + weeks1 + 60; // 1 week and 60 seconds after now
-
 describe('SherBuy', function () {
   before(async function () {
     timeTraveler = new TimeTraveler(network.provider);
@@ -60,9 +58,10 @@ describe('SherBuy', function () {
         ],
       ],
     ]);
-    await this.sherlock.enableStakingPeriod(weeks1 * 26);
+    var ts = await meta(this.sherlock.enableStakingPeriod(weeks1 * 26));
 
-    await deploy(this, [['sherClaim', this.SherClaim, [this.sher.address, claimableAt]]]);
+    this.claimableAt = ts.time.add(weeks1 + 60).toNumber(); // 1 week and 60 seconds after now
+    await deploy(this, [['sherClaim', this.SherClaim, [this.sher.address, this.claimableAt]]]);
 
     await deploy(this, [
       [
@@ -224,7 +223,7 @@ describe('SherBuy', function () {
       expect(await this.sherBuySimple.active()).to.eq(true);
     });
     it('skip time t-1', async function () {
-      await timeTraveler.setNextBlockTimestamp(claimableAt - 1);
+      await timeTraveler.setNextBlockTimestamp(this.claimableAt - 1);
       await timeTraveler.mine(1);
 
       expect(await this.sherBuySimple.active()).to.eq(true);
@@ -281,7 +280,7 @@ describe('SherBuy', function () {
       ).to.be.revertedWith('InvalidAmount()');
     });
     it('not active', async function () {
-      await timeTraveler.setNextBlockTimestamp(claimableAt);
+      await timeTraveler.setNextBlockTimestamp(this.claimableAt);
       await timeTraveler.mine(1);
 
       await expect(this.sherBuySimple.viewCapitalRequirements(1)).to.be.revertedWith(
@@ -351,7 +350,7 @@ describe('SherBuy', function () {
       expect(await this.sherClaim.userClaims(this.alice.address)).to.be.eq(SHER);
     });
     it('not active', async function () {
-      await timeTraveler.setNextBlockTimestamp(claimableAt);
+      await timeTraveler.setNextBlockTimestamp(this.claimableAt);
 
       await expect(this.sherBuySimple.execute(1)).to.be.revertedWith('InvalidState()');
     });
@@ -411,7 +410,7 @@ describe('SherBuy', function () {
       ).to.be.revertedWith('InvalidSender()');
     });
     it('Do', async function () {
-      await timeTraveler.setNextBlockTimestamp(claimableAt);
+      await timeTraveler.setNextBlockTimestamp(this.claimableAt);
 
       expect(await this.sher.balanceOf(this.sherBuyComplex.address)).to.eq(parseEther('1000'));
       expect(await this.sher.balanceOf(this.carol.address)).to.eq(0);
