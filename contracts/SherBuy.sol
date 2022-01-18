@@ -13,6 +13,7 @@ import './interfaces/ISherlock.sol';
 
 /// @title Sherlock core interface for stakers
 /// @author Evert Kors
+/// @dev Send SHER tokens to the contract rounded by 0.01 SHER, otherwise functionality can break.
 contract SherBuy {
   using SafeERC20 for IERC20;
 
@@ -20,6 +21,7 @@ contract SherBuy {
   error InvalidAmount();
   error ZeroArgument();
   error InvalidState();
+  error SoldOut();
 
   event Purchase(address indexed buyer, uint256 amount, uint256 staked, uint256 paid);
 
@@ -99,10 +101,17 @@ contract SherBuy {
     if (_sherAmountWant == 0) revert ZeroArgument();
 
     uint256 available = sher.balanceOf(address(this));
+    if (available == 0) revert SoldOut();
+
+    // sherAmount is not able to be zero as both 'available' and '_sherAmountWant' will be bigger than 0
     sherAmount = available < _sherAmountWant ? available : _sherAmountWant;
     // Only allows SHER amounts with certain precision steps
     // To ensure there is no rounding error at loss for the contract in stake / price calculation
-    if (sherAmount == 0 || sherAmount % SHER_STEPS != 0) revert InvalidAmount();
+    // Theoretically, if `available` is used, the function can fail if '% SHER_STEPS != 0' will be true
+    // This can be caused by a griefer sending a small amount of SHER to the contract
+    // Realistically, no SHER tokens will be on the market when this function is active
+    // So it can only be caused if the admin sends too small amounts (comment at top of file with @dev)
+    if (sherAmount % SHER_STEPS != 0) revert InvalidAmount();
 
     stake = (sherAmount * stakeRate) / SHER_DECIMALS;
     price = (sherAmount * buyRate) / SHER_DECIMALS;
