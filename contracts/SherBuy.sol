@@ -17,7 +17,6 @@ contract SherBuy {
   using SafeERC20 for IERC20;
 
   error InvalidSender();
-  error AlreadyUsed();
   error InvalidAmount();
   error ZeroArgument();
   error InvalidState();
@@ -69,7 +68,7 @@ contract SherBuy {
 
     // Verify is PERIOD is active
     // Theoretically this period can be disabled during the lifetime of this contract, which will cause issues
-    if (_sherlockPositions.stakingPeriods(PERIOD) == false) revert InvalidState();
+    if (_sherlockPosition.stakingPeriods(PERIOD) == false) revert InvalidState();
 
     sher = _sher;
     usdc = _usdc;

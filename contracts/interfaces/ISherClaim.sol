@@ -7,8 +7,6 @@ pragma solidity 0.8.10;
 /******************************************************************************/
 
 interface ISherClaim {
-  error InvalidSender();
-  error AlreadyUsed();
   error InvalidAmount();
   error ZeroArgument();
   error InvalidState();
