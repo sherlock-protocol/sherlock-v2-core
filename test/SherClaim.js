@@ -85,6 +85,30 @@ describe('SherClaim', function () {
       ).to.be.revertedWith('InvalidState()');
     });
   });
+  describe('active()', function () {
+    before(async function () {
+      await timeTraveler.revertSnapshot();
+    });
+    it('default', async function () {
+      expect(await this.sherClaim.active()).to.eq(false);
+    });
+    it('skip time t-1', async function () {
+      await timeTraveler.setNextBlockTimestamp(this.claimableAt - 1);
+      await timeTraveler.mine(1);
+
+      expect(await this.sherClaim.active()).to.eq(false);
+    });
+    it('skip time t', async function () {
+      await timeTraveler.mine(1);
+
+      expect(await this.sherClaim.active()).to.eq(true);
+    });
+    it('skip time t+1', async function () {
+      await timeTraveler.mine(1);
+
+      expect(await this.sherClaim.active()).to.eq(true);
+    });
+  });
   describe('add()', function () {
     before(async function () {
       await timeTraveler.revertSnapshot();

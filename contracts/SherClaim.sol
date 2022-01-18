@@ -41,10 +41,14 @@ contract SherClaim is ISherClaim {
     claimableAt = _claimableAt;
   }
 
+  function active() public view returns (bool) {
+    return block.timestamp >= claimableAt;
+  }
+
   function add(address _user, uint256 _amount) external override {
     if (_user == address(0)) revert ZeroArgument();
     if (_amount == 0) revert ZeroArgument();
-    if (block.timestamp >= claimableAt) revert InvalidState();
+    if (active()) revert InvalidState();
 
     sher.safeTransferFrom(msg.sender, address(this), _amount);
     userClaims[_user] += _amount;
@@ -53,7 +57,7 @@ contract SherClaim is ISherClaim {
   }
 
   function claim() external {
-    if (block.timestamp < claimableAt) revert InvalidState();
+    if (active() == false) revert InvalidState();
 
     uint256 amount = userClaims[msg.sender];
     if (amount == 0) revert InvalidAmount();
