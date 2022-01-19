@@ -27,6 +27,11 @@ interface ISherlockStake {
   /// @dev Will calculate the most up to date value for each piece
   function totalTokenBalanceStakers() external view returns (uint256);
 
+  // Returns the tokens (USDC) owed to an address
+  /// @notice View the current token balance claimable upon reaching all underlying positions at end of the lockup
+  /// @return Amount of tokens assigned to owner when unstaking all positions
+  function tokenBalanceOfAddress(address _staker) external view returns (uint256);
+
   /// @notice Stakes `_amount` of tokens and locks up for `_period` seconds, `_receiver` will receive the NFT receipt
   /// @param _amount Amount of tokens to stake
   /// @param _period Period of time, in seconds, to lockup your funds

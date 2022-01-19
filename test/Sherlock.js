@@ -1407,4 +1407,89 @@ describe('Sherlock ─ Functional', function () {
       expect(res[1]).to.eq(false);
     });
   });
+  describe('tokenBalanceOfAddress()', function () {
+    before(async function () {
+      await timeTraveler.revertSnapshot();
+
+      this.amount = parseUnits('100', 6);
+
+      await this.token.approve(this.sherlock.address, maxTokens);
+    });
+    it('Initial state', async function () {
+      expect(await this.sherlock.tokenBalanceOfAddress(this.alice.address)).to.eq(0);
+      expect(await this.sherlock.tokenBalanceOfAddress(this.bob.address)).to.eq(0);
+      expect(await this.sherlock.tokenBalanceOfAddress(this.carol.address)).to.eq(0);
+    });
+    it('t=0, stake', async function () {
+      await this.sherlock.initialStake(this.amount, 10, this.carol.address);
+
+      expect(await this.sherlock.tokenBalanceOfAddress(this.alice.address)).to.eq(0);
+      expect(await this.sherlock.tokenBalanceOfAddress(this.bob.address)).to.eq(0);
+      expect(await this.sherlock.tokenBalanceOfAddress(this.carol.address)).to.eq(this.amount);
+    });
+    it('t=1, stake', async function () {
+      await this.sherlock.initialStake(this.amount, 10, this.carol.address);
+
+      expect(await this.sherlock.tokenBalanceOfAddress(this.alice.address)).to.eq(0);
+      expect(await this.sherlock.tokenBalanceOfAddress(this.bob.address)).to.eq(0);
+      expect(await this.sherlock.tokenBalanceOfAddress(this.carol.address)).to.eq(
+        this.amount.mul(2),
+      );
+    });
+    it('t=2, stake', async function () {
+      await this.sherlock.initialStake(this.amount.mul(3), 10, this.bob.address);
+
+      expect(await this.sherlock.tokenBalanceOfAddress(this.alice.address)).to.eq(0);
+      expect(await this.sherlock.tokenBalanceOfAddress(this.bob.address)).to.eq(this.amount.mul(3));
+      expect(await this.sherlock.tokenBalanceOfAddress(this.carol.address)).to.eq(
+        this.amount.mul(2),
+      );
+    });
+    it('t=3, transfer', async function () {
+      await this.sherlock
+        .connect(this.carol)
+        .transferFrom(this.carol.address, this.alice.address, 2);
+
+      expect(await this.sherlock.tokenBalanceOfAddress(this.alice.address)).to.eq(this.amount);
+      expect(await this.sherlock.tokenBalanceOfAddress(this.bob.address)).to.eq(this.amount.mul(3));
+      expect(await this.sherlock.tokenBalanceOfAddress(this.carol.address)).to.eq(this.amount);
+    });
+    it('t=4, transfer', async function () {
+      await this.sherlock.connect(this.bob).transferFrom(this.bob.address, this.alice.address, 3);
+
+      expect(await this.sherlock.tokenBalanceOfAddress(this.alice.address)).to.eq(
+        this.amount.mul(4),
+      );
+      expect(await this.sherlock.tokenBalanceOfAddress(this.bob.address)).to.eq(0);
+      expect(await this.sherlock.tokenBalanceOfAddress(this.carol.address)).to.eq(this.amount);
+    });
+    it('redeem 1', async function () {
+      await timeTraveler.mine(10);
+
+      await this.sherlock.connect(this.carol).redeemNFT(1);
+
+      expect(await this.sherlock.tokenBalanceOfAddress(this.alice.address)).to.eq(
+        this.amount.mul(4),
+      );
+      expect(await this.sherlock.tokenBalanceOfAddress(this.bob.address)).to.eq(0);
+      expect(await this.sherlock.tokenBalanceOfAddress(this.carol.address)).to.eq(0);
+    });
+    it('redeem 2', async function () {
+      await this.sherlock.connect(this.alice).redeemNFT(2);
+
+      expect(await this.sherlock.tokenBalanceOfAddress(this.alice.address)).to.eq(
+        this.amount.mul(3),
+      );
+      expect(await this.sherlock.tokenBalanceOfAddress(this.bob.address)).to.eq(0);
+      expect(await this.sherlock.tokenBalanceOfAddress(this.carol.address)).to.eq(0);
+    });
+    it('redeem 3', async function () {
+      await this.sherlock.connect(this.alice).redeemNFT(3);
+
+      expect(await this.sherlock.tokenBalanceOfAddress(this.alice.address)).to.eq(0);
+      expect(await this.sherlock.tokenBalanceOfAddress(this.bob.address)).to.eq(0);
+      expect(await this.sherlock.tokenBalanceOfAddress(this.carol.address)).to.eq(0);
+    });
+  });
+  7;
 });
