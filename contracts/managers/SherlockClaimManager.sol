@@ -24,39 +24,40 @@ contract SherlockClaimManager is ISherlockClaimManager, ReentrancyGuard, Manager
 
   // The bond required for a protocol agent to escalate a claim to UMA Optimistic Oracle (OO)
   /// @dev at time of writing will result in a 20k cost of escalating
-  uint256 constant BOND = 9_600 * 10**6; // 20k bond
+  /// @dev the actual amount is based on the value returned here https://github.com/UMAprotocol/protocol/blob/master/packages/core/contracts/oracle/implementation/Store.sol#L131
+  uint256 internal constant BOND = 9_600 * 10**6; // 20k bond
 
   // The amount of time the protocol agent has to escalate a claim
-  uint256 constant ESCALATE_TIME = 4 weeks;
+  uint256 public constant ESCALATE_TIME = 4 weeks;
 
   // The UMA Halt Operator (UMAHO) is the multisig (controlled by UMA) who gives final approval to pay out a claim
   // After the OO has voted to pay out
   // This variable represents the amount of time during which UMAHO can block a claim that was approved by the OO
   // After this time period, the claim (which was approved by the OO) is inferred to be approved by UMAHO as well
-  uint256 constant UMAHO_TIME = 24 hours;
+  uint256 public constant UMAHO_TIME = 24 hours;
 
   // The amount of time the Sherlock Protocol Claims Committee (SPCC) gets to decide on a claim
   // If no action is taken by SPCC during this time, then the protocol agent can escalate the decision to the UMA OO
-  uint256 constant SPCC_TIME = 7 days;
+  uint256 public constant SPCC_TIME = 7 days;
 
   // A pre-defined amount of time for the proposed price ($0) to be disputed within the OO
   // Note This value is not important as we immediately dispute the proposed price
   // 7200 represents 2 hours
-  uint256 constant LIVENESS = 7200;
+  uint256 internal constant LIVENESS = 7200;
 
   // This is how UMA will know that Sherlock is requesting a decision from the OO
   // This is "SHERLOCK_CLAIM" in hex value
   bytes32 public constant override UMA_IDENTIFIER =
     bytes32(0x534845524c4f434b5f434c41494d000000000000000000000000000000000000);
 
-  uint256 MAX_CALLBACKS = 4;
+  uint256 public constant MAX_CALLBACKS = 4;
 
   // The Optimistic Oracle contract that we interact with
-  SkinnyOptimisticOracleInterface constant UMA =
+  SkinnyOptimisticOracleInterface public constant UMA =
     SkinnyOptimisticOracleInterface(0xeE3Afe347D5C74317041E2618C49534dAf887c24);
 
   // USDC
-  IERC20 constant TOKEN = IERC20(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48);
+  IERC20 public constant TOKEN = IERC20(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48);
 
   // The address of the multisig controlled by UMA that can emergency halt a claim that was approved by the OO
   address public override umaHaltOperator;
@@ -99,15 +100,6 @@ contract SherlockClaimManager is ISherlockClaimManager, ReentrancyGuard, Manager
     _;
   }
 
-  // We pass in the contract addresses (both will be multisigs) in the constructor
-  constructor(address _umaho, address _spcc) {
-    if (_umaho == address(0)) revert ZeroArgument();
-    if (_spcc == address(0)) revert ZeroArgument();
-
-    umaHaltOperator = _umaho;
-    sherlockProtocolClaimsCommittee = _spcc;
-  }
-
   // Only the Sherlock Claims Committee multisig can call a function with this modifier
   modifier onlySPCC() {
     if (msg.sender != sherlockProtocolClaimsCommittee) revert InvalidSender();
@@ -118,6 +110,15 @@ contract SherlockClaimManager is ISherlockClaimManager, ReentrancyGuard, Manager
   modifier onlyUMAHO() {
     if (msg.sender != umaHaltOperator) revert InvalidSender();
     _;
+  }
+
+  // We pass in the contract addresses (both will be multisigs) in the constructor
+  constructor(address _umaho, address _spcc) {
+    if (_umaho == address(0)) revert ZeroArgument();
+    if (_spcc == address(0)) revert ZeroArgument();
+
+    umaHaltOperator = _umaho;
+    sherlockProtocolClaimsCommittee = _spcc;
   }
 
   // Checks to see if a claim can be escalated to the UMA OO
@@ -156,9 +157,10 @@ contract SherlockClaimManager is ISherlockClaimManager, ReentrancyGuard, Manager
     return false;
   }
 
-  function _isCleanupState(State _oldState) internal view returns (bool) {
+  function _isCleanupState(State _oldState) internal pure returns (bool) {
     if (_oldState == State.SpccDenied) return true;
     if (_oldState == State.SpccPending) return true;
+    return false;
   }
 
   // Deletes the data associated with a claim (after claim has reached its final state)
@@ -207,7 +209,7 @@ contract SherlockClaimManager is ISherlockClaimManager, ReentrancyGuard, Manager
   }
 
   // Returns the Claim struct for a given claim ID (function takes public ID but converts to internal ID)
-  function claims(uint256 _claimID) external view override returns (Claim memory claim_) {
+  function claim(uint256 _claimID) external view override returns (Claim memory claim_) {
     bytes32 id_ = publicToInternalID[_claimID];
     if (id_ == bytes32(0)) revert InvalidArgument();
 
@@ -226,12 +228,12 @@ contract SherlockClaimManager is ISherlockClaimManager, ReentrancyGuard, Manager
     nonReentrant
   {
     if (address(_callback) == address(0)) revert ZeroArgument();
+    // Checks to see if the max amount of callback contracts has been reached
+    if (claimCallbacks.length == MAX_CALLBACKS) revert InvalidState();
     // Checks to see if this callback contract already exists
     for (uint256 i; i < claimCallbacks.length; i++) {
       if (claimCallbacks[i] == _callback) revert InvalidArgument();
     }
-    // Checks to see if the max amount of callback contracts has been reached
-    if (claimCallbacks.length == MAX_CALLBACKS) revert InvalidState();
 
     claimCallbacks.push(_callback);
     emit CallbackAdded(_callback);
@@ -255,7 +257,7 @@ contract SherlockClaimManager is ISherlockClaimManager, ReentrancyGuard, Manager
     emit CallbackRemoved(_callback);
   }
 
-  /// @notice Cleanup claim if escalation is pursued
+  /// @notice Cleanup claim if escalation is not pursued
   /// @param _protocol protocol ID
   /// @param _claimID public claim ID
   /// @dev Retrieves current protocol agent for cleanup
@@ -292,6 +294,9 @@ contract SherlockClaimManager is ISherlockClaimManager, ReentrancyGuard, Manager
   /// @param ancillaryData other data associated with the claim, such as the coverage agreement
   /// @dev The protocol agent that starts a claim will be the protocol agent during the claims lifecycle
   /// @dev Even if the protocol agent role is tranferred during the lifecycle
+  /// @dev This is done because a protocols coverage can end after an exploit, either wilfully or forcefully.
+  /// @dev The protocol agent is still active for 7 days after coverage ends, so a claim can still be submitted.
+  /// @dev But in case the claim is approved after the 7 day period, `payoutClaim()` can not be called as the protocol agent is 0
   function startClaim(
     bytes32 _protocol,
     uint256 _amount,
@@ -350,8 +355,8 @@ contract SherlockClaimManager is ISherlockClaimManager, ReentrancyGuard, Manager
       _amount,
       _receiver,
       _timestamp,
-      ancillaryData,
-      State.SpccPending
+      State.SpccPending,
+      ancillaryData
     );
 
     emit ClaimCreated(claimID, _protocol, _amount, _receiver, prevCoverage);
@@ -382,9 +387,9 @@ contract SherlockClaimManager is ISherlockClaimManager, ReentrancyGuard, Manager
   /// @param _claimID Public claim ID
   /// @param _amount Bond amount sent by protocol agent
   /// @dev Use hardcoded USDC address
-  /// @dev Use hardcoded bond amount (upgradable with a large timelock)
-  /// @dev Use hardcoded liveness 7200
-  /// @dev proposedPrice = _amount
+  /// @dev Use hardcoded bond amount
+  /// @dev Use hardcoded liveness 7200 (2 hours)
+  /// @dev Requires the caller to be the account that initially started the claim
   // Amount sent needs to be at least equal to the BOND amount required
   function escalate(uint256 _claimID, uint256 _amount)
     external
@@ -400,7 +405,7 @@ contract SherlockClaimManager is ISherlockClaimManager, ReentrancyGuard, Manager
 
     // Retrieves the claim struct
     Claim storage claim = claims_[claimIdentifier];
-    // Requires the caller to be the protocol agent
+    // Requires the caller to be the account that initially started the claim
     if (msg.sender != claim.initiator) revert InvalidSender();
 
     // Timestamp when claim was last updated
@@ -530,7 +535,7 @@ contract SherlockClaimManager is ISherlockClaimManager, ReentrancyGuard, Manager
   //
 
   // Once requestAndProposePriceFor() is executed in UMA's contracts, this function gets called
-  // We change the claim's state from UmaPriceProposed to UmaDisputeProposed
+  // We change the claim's state from UmaPriceProposed to ReadyToProposeUmaDispute
   // Then we call the next function in the process, disputePriceFor()
   // @note reentrancy is allowed for this call
   function priceProposed(
@@ -573,7 +578,7 @@ contract SherlockClaimManager is ISherlockClaimManager, ReentrancyGuard, Manager
     }
   }
 
-  // Once priceDisputed() is executed in UMA's contracts, this function gets called
+  // Once priceSettled() is executed in UMA's contracts, this function gets called
   // UMA OO gives back a resolved price (either 0 or claim.amount) and
   // Claim's state is changed to either UmaApproved or UmaDenied
   // If UmaDenied, the claim is dead and state is immediately changed to NonExistent and cleaned up

@@ -21,7 +21,7 @@ contract AaveV2Strategy is IStrategyManager, Manager {
   using SafeERC20 for IERC20;
 
   // Need to call a provider because Aave has the ability to change the lending pool address
-  ILendingPoolAddressesProvider public constant lpAddressProvider =
+  ILendingPoolAddressesProvider public constant LP_ADDRESS_PROVIDER =
     ILendingPoolAddressesProvider(0xB53C1a33016B2DC2fF3653530bfF1848a515c8c5);
 
   // Aave contract that controls stkAAVE rewards
@@ -37,6 +37,9 @@ contract AaveV2Strategy is IStrategyManager, Manager {
 
   // Constructor takes the aUSDC address and the rewards receiver address (a Sherlock address) as args
   constructor(IAToken _aWant, address _aaveLmReceiver) {
+    if (address(_aWant) == address(0)) revert ZeroArgument();
+    if (_aaveLmReceiver == address(0)) revert ZeroArgument();
+
     aWant = _aWant;
     // This gets the underlying token associated with aUSDC (USDC)
     want = IERC20(_aWant.UNDERLYING_ASSET_ADDRESS());
@@ -48,7 +51,7 @@ contract AaveV2Strategy is IStrategyManager, Manager {
 
   // Returns the current Aave lending pool address that should be used
   function getLp() internal view returns (ILendingPool) {
-    return ILendingPool(lpAddressProvider.getLendingPool());
+    return ILendingPool(LP_ADDRESS_PROVIDER.getLendingPool());
   }
 
   /// @notice Checks the aUSDC balance in this contract
@@ -64,7 +67,6 @@ contract AaveV2Strategy is IStrategyManager, Manager {
     if (amount == 0) revert InvalidConditions();
 
     // If allowance for this contract is too low, approve the max allowance
-    // Question Should it approve only the amount necessary instead of max?
     if (want.allowance(address(this), address(lp)) < amount) {
       want.safeApprove(address(lp), type(uint256).max);
     }
@@ -88,7 +90,6 @@ contract AaveV2Strategy is IStrategyManager, Manager {
   /// @notice Withdraws a specific amount of USDC from Aave's lending pool back into the Sherlock core contract
   /// @param _amount Amount of USDC to withdraw
   function withdraw(uint256 _amount) external override onlySherlockCore {
-    // Question: What if balanceOf() is equal to zero? Or if _amount is equal to zero?
     // Why do we only check if _amount is equal to the max value?
     if (_amount == type(uint256).max) revert InvalidArgument();
 
@@ -105,13 +106,14 @@ contract AaveV2Strategy is IStrategyManager, Manager {
     // Sets the slot equal to the address of aUSDC
     assets[0] = address(aWant);
 
-    // Claims all the rewards on aUSDC and sends them to the aaveLmReceiver (a Sherlock address)
+    // Claims all the rewards on aUSDC and sends them to the aaveLmReceiver (an address controlled by governance)
+    // Tokens are NOT meant to be (directly) distributed to stakers.
     aaveIncentivesController.claimRewards(assets, type(uint256).max, aaveLmReceiver);
   }
 
   /// @notice Function used to check if this is the current active yield strategy
   /// @return Boolean indicating it's active
-  /// @dev If inactive the owner can pull all ERC20s
+  /// @dev If inactive the owner can pull all ERC20s and ETH
   /// @dev Will be checked by calling the sherlock contract
   function isActive() public view returns (bool) {
     return address(sherlockCore.yieldStrategy()) == address(this);
@@ -120,6 +122,7 @@ contract AaveV2Strategy is IStrategyManager, Manager {
   // Only contract owner can call this
   // Sends all specified tokens in this contract to the receiver's address (as well as ETH)
   function sweep(address _receiver, IERC20[] memory _extraTokens) external onlyOwner {
+    if (_receiver == address(0)) revert ZeroArgument();
     // This contract must NOT be the current assigned yield strategy contract
     if (isActive()) revert InvalidConditions();
     // Executes the sweep for ERC-20s specified in _extraTokens as well as for ETH

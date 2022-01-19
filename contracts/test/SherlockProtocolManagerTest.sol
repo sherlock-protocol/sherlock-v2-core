@@ -40,6 +40,10 @@ contract SherlockProtocolManagerTest is SherlockProtocolManager {
     return nonStakersPercentage[_protocol];
   }
 
+  function viewPremium(bytes32 _protocol) external view returns (uint256) {
+    return premiums_[_protocol];
+  }
+
   function viewCurrentCoverage(bytes32 _protocol) external view returns (uint256) {
     return currentCoverage[_protocol];
   }

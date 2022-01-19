@@ -31,7 +31,7 @@ interface IManager {
   /// @dev One time function, will revert once `sherlock` != address(0)
   /// @dev This contract will be deployed first, passed on as argument in core constuctor
   /// @dev ^ that's needed for tvl accounting, once core is deployed this function is called
-  /// @dev throws `SherlockCoreSet`
+  /// @dev emits `SherlockCoreSet`
   function setSherlockCoreAddress(ISherlock _sherlock) external;
 
   /// @notice Pause external functions in contract

@@ -31,7 +31,7 @@ interface ISherlock is ISherlockStake, ISherlockGov, ISherlockPayout, ISherlockS
   // Checks the ERC-721 functions _exists() to see if an NFT ID actually exists and errors if not
   error NonExistent();
 
-  event ArbRestaked(uint256 tokenID, uint256 reward);
+  event ArbRestaked(uint256 indexed tokenID, uint256 reward);
 
-  event Restaked(uint256 tokenID);
+  event Restaked(uint256 indexed tokenID);
 }

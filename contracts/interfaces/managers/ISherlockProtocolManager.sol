@@ -25,28 +25,28 @@ interface ISherlockProtocolManager is IManager {
 
   event MinBalance(uint256 previous, uint256 current);
 
-  event AccountingError(bytes32 protocol, uint256 amount, uint256 insufficientTokens);
+  event AccountingError(bytes32 indexed protocol, uint256 amount, uint256 insufficientTokens);
 
-  event ProtocolAdded(bytes32 protocol);
+  event ProtocolAdded(bytes32 indexed protocol);
 
-  event ProtocolRemovedByArb(bytes32 protocol, address arb, uint256 profit);
+  event ProtocolRemovedByArb(bytes32 indexed protocol, address arb, uint256 profit);
 
-  event ProtocolRemoved(bytes32 protocol);
+  event ProtocolRemoved(bytes32 indexed protocol);
 
   event ProtocolUpdated(
-    bytes32 protocol,
+    bytes32 indexed protocol,
     bytes32 coverage,
     uint256 nonStakers,
     uint256 coverageAmount
   );
 
-  event ProtocolAgentTransfer(bytes32 protocol, address from, address to);
+  event ProtocolAgentTransfer(bytes32 indexed protocol, address from, address to);
 
-  event ProtocolBalanceDeposited(bytes32 protocol, uint256 amount);
+  event ProtocolBalanceDeposited(bytes32 indexed protocol, uint256 amount);
 
-  event ProtocolBalanceWithdrawn(bytes32 protocol, uint256 amount);
+  event ProtocolBalanceWithdrawn(bytes32 indexed protocol, uint256 amount);
 
-  event ProtocolPremiumChanged(bytes32 protocol, uint256 oldPremium, uint256 newPremium);
+  event ProtocolPremiumChanged(bytes32 indexed protocol, uint256 oldPremium, uint256 newPremium);
 
   /// @notice View current amount of all premiums that are owed to stakers
   /// @return Premiums claimable
@@ -56,7 +56,6 @@ interface ISherlockProtocolManager is IManager {
 
   /// @notice Transfer current claimable premiums (for stakers) to core Sherlock address
   /// @dev Callable by everyone
-  /// @dev Will be called by burn() in Sherlock core contract
   /// @dev Funds will be transferred to Sherlock core contract
   function claimPremiumsForStakers() external;
 
@@ -162,8 +161,7 @@ interface ISherlockProtocolManager is IManager {
   /// @param _protocol Protocol identifier
   /// @param _amount Amount of tokens to withdraw
   /// @dev Only protocol agent is able to withdraw
-  /// @dev Balance can be withdrawn up until 3 days worth of active balance
-  /// @dev In case coverage is not active (0 premium), full balance can be withdrawn
+  /// @dev Balance can be withdrawn up until 7 days worth of active balance
   function withdrawActiveBalance(bytes32 _protocol, uint256 _amount) external;
 
   /// @notice Transfer protocol agent role
@@ -198,7 +196,7 @@ interface ISherlockProtocolManager is IManager {
 
   /// @notice Function used to check if this is the current active protocol manager
   /// @return Boolean indicating it's active
-  /// @dev If inactive the owner can pull all ERC20s
+  /// @dev If inactive the owner can pull all ERC20s and ETH
   /// @dev Will be checked by calling the sherlock contract
   function isActive() external view returns (bool);
 }

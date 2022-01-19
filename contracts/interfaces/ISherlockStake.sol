@@ -62,7 +62,7 @@ interface ISherlockStake {
   /// @return _sher Amount of SHER tokens to be released to position owner on expiry of the 3 month lockup
   /// @return _arbReward Amount of tokens (USDC) sent to caller (the arbitrager) in return for calling the function
   /// @dev Can only be called after lockup `_period` is more than 2 weeks in the past (assuming ARB_RESTAKE_WAIT_TIME is 2 weeks)
-  /// @dev Max 10% (ARB_RESTAKE_MAX_PERCENTAGE) of tokens associated with a position are used to incentivize arbs (x)
+  /// @dev Max 20% (ARB_RESTAKE_MAX_PERCENTAGE) of tokens associated with a position are used to incentivize arbs (x)
   /// @dev During a 2 week period the reward ratio will move from 0% to 100% (* x)
   function arbRestake(uint256 _id) external returns (uint256 _sher, uint256 _arbReward);
 }

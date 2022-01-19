@@ -22,16 +22,16 @@ contract Sherlock is ISherlock, ERC721, Ownable, Pausable {
   using SafeERC20 for IERC20;
 
   // The initial period for a staker to restake/withdraw without being auto-restaked
-  uint256 constant ARB_RESTAKE_WAIT_TIME = 2 weeks;
+  uint256 public constant ARB_RESTAKE_WAIT_TIME = 2 weeks;
 
   // The period during which the reward for restaking an account (after the inital period) grows
-  uint256 constant ARB_RESTAKE_GROWTH_TIME = 1 weeks;
+  uint256 public constant ARB_RESTAKE_GROWTH_TIME = 1 weeks;
 
   // Anyone who gets auto-restaked is restaked for this period (3 months)
-  uint256 constant ARB_RESTAKE_PERIOD = 12 weeks;
+  uint256 public constant ARB_RESTAKE_PERIOD = 12 weeks;
 
   // The percentage of someone's stake that can be paid to an arb for restaking
-  uint256 constant ARB_RESTAKE_MAX_PERCENTAGE = (10**18 / 100) * 20; // 20%
+  uint256 public constant ARB_RESTAKE_MAX_PERCENTAGE = (10**18 / 100) * 20; // 20%
 
   // USDC address
   IERC20 public immutable token;
@@ -68,8 +68,9 @@ contract Sherlock is ISherlock, ERC721, Ownable, Pausable {
 
   // Stores the ID of the most recently created NFT
   // This variable is incremented by 1 to create a new NFT ID
-  uint256 nftCounter;
+  uint256 internal nftCounter;
 
+  // Even though `_sherDistributionManager` can be removed once deployed, every initial deployment will have an active instance.
   constructor(
     IERC20 _token, // USDC address
     IERC20 _sher, // SHER token address
@@ -85,6 +86,7 @@ contract Sherlock is ISherlock, ERC721, Ownable, Pausable {
     if (address(_token) == address(0)) revert ZeroArgument();
     if (address(_sher) == address(0)) revert ZeroArgument();
     if (address(_yieldStrategy) == address(0)) revert ZeroArgument();
+    if (address(_sherDistributionManager) == address(0)) revert ZeroArgument();
     if (_nonStakersAddress == address(0)) revert ZeroArgument();
     if (address(_sherlockProtocolManager) == address(0)) revert ZeroArgument();
     if (address(_sherlockClaimManager) == address(0)) revert ZeroArgument();
@@ -138,6 +140,7 @@ contract Sherlock is ISherlock, ERC721, Ownable, Pausable {
   /// @notice View the current token balance claimable upon reaching end of the lockup
   /// @return Amount of tokens assigned to owner when unstaking position
   function tokenBalanceOf(uint256 _tokenID) public view override returns (uint256) {
+    if (!_exists(_tokenID)) revert NonExistent();
     // Finds the fraction of total shares owed to this position and multiplies by the total amount of tokens (USDC) owed to stakers
     return (stakeShares[_tokenID] * totalTokenBalanceStakers()) / totalStakeShares;
   }
@@ -188,17 +191,17 @@ contract Sherlock is ISherlock, ERC721, Ownable, Pausable {
 
   // Sets a new contract to be the active SHER distribution manager
   /// @notice Update SHER distribution manager contract
-  /// @param _manager New adddress of the manager
-  function updateSherDistributionManager(ISherDistributionManager _manager)
+  /// @param _sherDistributionManager New adddress of the manager
+  function updateSherDistributionManager(ISherDistributionManager _sherDistributionManager)
     external
     override
     onlyOwner
   {
-    if (address(_manager) == address(0)) revert ZeroArgument();
-    if (sherDistributionManager == _manager) revert InvalidArgument();
+    if (address(_sherDistributionManager) == address(0)) revert ZeroArgument();
+    if (sherDistributionManager == _sherDistributionManager) revert InvalidArgument();
 
-    emit SherDistributionManagerUpdated(sherDistributionManager, _manager);
-    sherDistributionManager = _manager;
+    emit SherDistributionManagerUpdated(sherDistributionManager, _sherDistributionManager);
+    sherDistributionManager = _sherDistributionManager;
   }
 
   // Deletes the SHER distribution manager altogether (if Sherlock decides to no longer pay out SHER rewards)
@@ -241,17 +244,17 @@ contract Sherlock is ISherlock, ERC721, Ownable, Pausable {
 
   // Sets a new claim manager contract
   /// @notice Transfer claim manager role to different address
-  /// @param _sherlockClaimManager New address of claim manager
-  function updateSherlockClaimManager(ISherlockClaimManager _sherlockClaimManager)
+  /// @param _claimManager New address of claim manager
+  function updateSherlockClaimManager(ISherlockClaimManager _claimManager)
     external
     override
     onlyOwner
   {
-    if (address(_sherlockClaimManager) == address(0)) revert ZeroArgument();
-    if (sherlockClaimManager == _sherlockClaimManager) revert InvalidArgument();
+    if (address(_claimManager) == address(0)) revert ZeroArgument();
+    if (sherlockClaimManager == _claimManager) revert InvalidArgument();
 
-    emit ClaimManagerUpdated(sherlockClaimManager, _sherlockClaimManager);
-    sherlockClaimManager = _sherlockClaimManager;
+    emit ClaimManagerUpdated(sherlockClaimManager, _claimManager);
+    sherlockClaimManager = _claimManager;
   }
 
   // Sets a new yield strategy manager contract
@@ -261,6 +264,14 @@ contract Sherlock is ISherlock, ERC721, Ownable, Pausable {
   function updateYieldStrategy(IStrategyManager _yieldStrategy) external override onlyOwner {
     if (address(_yieldStrategy) == address(0)) revert ZeroArgument();
     if (yieldStrategy == _yieldStrategy) revert InvalidArgument();
+
+    // This call is surrounded with a try catch as there is a non-zero chance the underlying yield protocol(s) will fail
+    // For example; the Aave V2 withdraw can fail in case there is not enough liquidity available for whatever reason.
+    // In case this happens. We still want the yield strategy to be updated.
+    // As the worst case could be that the Aave V2 withdraw will never work again, forcing us to never use a yield strategy ever again.
+    try yieldStrategy.withdrawAll() {} catch (bytes memory reason) {
+      emit YieldStrategyUpdateWithdrawAllError(reason);
+    }
 
     emit YieldStrategyUpdated(yieldStrategy, _yieldStrategy);
     yieldStrategy = _yieldStrategy;
@@ -299,21 +310,37 @@ contract Sherlock is ISherlock, ERC721, Ownable, Pausable {
   }
 
   /// @notice Pause external functions in all contracts
+  /// @dev A manager can be replaced with the new contract in a `paused` state
+  /// @dev To ensure we are still able to pause all contracts, we check if the manager is unpaused
   function pause() external onlyOwner {
     _pause();
-    yieldStrategy.pause();
-    sherDistributionManager.pause();
-    sherlockProtocolManager.pause();
-    sherlockClaimManager.pause();
+    if (!Pausable(address(yieldStrategy)).paused()) yieldStrategy.pause();
+    // sherDistributionManager can be 0, pause isn't needed in that case
+    if (
+      address(sherDistributionManager) != address(0) &&
+      !Pausable(address(sherDistributionManager)).paused()
+    ) {
+      sherDistributionManager.pause();
+    }
+    if (!Pausable(address(sherlockProtocolManager)).paused()) sherlockProtocolManager.pause();
+    if (!Pausable(address(sherlockClaimManager)).paused()) sherlockClaimManager.pause();
   }
 
   /// @notice Unpause external functions in all contracts
+  /// @dev A manager can be replaced with the new contract in an `unpaused` state
+  /// @dev To ensure we are still able to unpause all contracts, we check if the manager is paused
   function unpause() external onlyOwner {
     _unpause();
-    yieldStrategy.unpause();
-    sherDistributionManager.unpause();
-    sherlockProtocolManager.unpause();
-    sherlockClaimManager.unpause();
+    if (Pausable(address(yieldStrategy)).paused()) yieldStrategy.unpause();
+    // sherDistributionManager can be 0, unpause isn't needed in that case
+    if (
+      address(sherDistributionManager) != address(0) &&
+      Pausable(address(sherDistributionManager)).paused()
+    ) {
+      sherDistributionManager.unpause();
+    }
+    if (Pausable(address(sherlockProtocolManager)).paused()) sherlockProtocolManager.unpause();
+    if (Pausable(address(sherlockClaimManager)).paused()) sherlockClaimManager.unpause();
   }
 
   //
@@ -368,28 +395,19 @@ contract Sherlock is ISherlock, ERC721, Ownable, Pausable {
     uint256 before = sher.balanceOf(address(this));
 
     // pullReward() calcs then actually transfers the SHER tokens to this contract
-    try sherDistributionManager.pullReward(_amount, _period, _id, _receiver) returns (
-      uint256 amount
-    ) {
-      _sher = amount;
-    } catch (bytes memory reason) {
-      // If for whatever reason the sherDistributionManager call fails
-      emit SherRewardsError(reason);
-      return 0;
-    }
+    // in case this call fails, whole (re)staking transaction fails
+    _sher = sherDistributionManager.pullReward(_amount, _period, _id, _receiver);
 
     // actualAmount should represent the amount of SHER tokens transferred to this contract for the current stake position
     uint256 actualAmount = sher.balanceOf(address(this)) - before;
     if (actualAmount != _sher) revert InvalidSherAmount(_sher, actualAmount);
     // Assigns the newly created SHER tokens to the current stake position
-    sherRewards_[_id] = _sher;
+    if (_sher != 0) sherRewards_[_id] = _sher;
   }
 
   // Checks to see if the NFT owner is the caller and that the position is unlockable
-  function _verifyUnlockableByOwner(uint256 _id) internal view returns (address _nftOwner) {
-    _nftOwner = ownerOf(_id);
-
-    if (_nftOwner != msg.sender) revert Unauthorized();
+  function _verifyUnlockableByOwner(uint256 _id) internal view {
+    if (ownerOf(_id) != msg.sender) revert Unauthorized();
     if (lockupEnd_[_id] > block.timestamp) revert InvalidConditions();
   }
 
@@ -432,8 +450,6 @@ contract Sherlock is ISherlock, ERC721, Ownable, Pausable {
   // Transfers USDC to the receiver (arbitrager OR NFT owner) based on the stakeShares inputted
   // Also burns the requisite amount of shares associated with this NFT position
   // Returns the amount of USDC owed to these shares
-  // Question Do we need to make sure the NFT position has at least this many stakeShares?
-  // Answer: No, it's an internal function and will fail if it tries to subtract too many stakeShares
   function _redeemShares(
     uint256 _id,
     uint256 _stakeShares,
@@ -462,7 +478,7 @@ contract Sherlock is ISherlock, ERC721, Ownable, Pausable {
     // NOTE This function deletes the SHER reward mapping for this NFT ID
     _sendSherRewardsToOwner(_id, _nftOwner);
 
-    // balanceOf() returns the USDC amount owed to this NFT ID
+    // tokenBalanceOf() returns the USDC amount owed to this NFT ID
     // _stake() restakes that amount of USDC for the period inputted
     // We use the same ID that we just deleted the SHER rewards mapping for
     // Resets the lockupEnd mapping and SHER token rewards mapping for this ID
@@ -524,15 +540,15 @@ contract Sherlock is ISherlock, ERC721, Ownable, Pausable {
   /// @dev Can only be called after lockup `_period` has ended
   function redeemNFT(uint256 _id) external override whenNotPaused returns (uint256 _amount) {
     // Checks to make sure caller is the owner of the NFT position, and that the lockup period is over
-    address nftOwner = _verifyUnlockableByOwner(_id);
+    _verifyUnlockableByOwner(_id);
 
     // Transfers USDC to the NFT owner based on the stake shares associated with this NFT ID
     // Also burns the requisite amount of shares associated with this NFT position
     // Returns the amount of USDC owed to these shares
-    _amount = _redeemShares(_id, stakeShares[_id], nftOwner);
+    _amount = _redeemShares(_id, stakeShares[_id], msg.sender);
 
     // Sends the SHER tokens associated with this NFT ID to the NFT owner
-    _sendSherRewardsToOwner(_id, nftOwner);
+    _sendSherRewardsToOwner(_id, msg.sender);
     // This is the ERC-721 function to destroy an NFT (with owner's approval)
     _burn(_id);
 
@@ -555,13 +571,13 @@ contract Sherlock is ISherlock, ERC721, Ownable, Pausable {
     returns (uint256 _sher)
   {
     // Checks to make sure caller is the owner of the NFT position, and that the lockup period is over
-    address nftOwner = _verifyUnlockableByOwner(_id);
+    _verifyUnlockableByOwner(_id);
 
     // Checks to make sure the staking period is a whitelisted one
     if (!stakingPeriods[_period]) revert InvalidArgument();
 
     // Sends the previously earned SHER token rewards to the owner and restakes the USDC value of the position
-    _sher = _restake(_id, _period, nftOwner);
+    _sher = _restake(_id, _period, msg.sender);
   }
 
   // Calcs the reward (in stake shares) an arb would get for restaking a position
@@ -586,9 +602,7 @@ contract Sherlock is ISherlock, ERC721, Ownable, Pausable {
     // Calcs what % of the max reward an arb gets based on the timestamp at which they call this function
     // If targetTime == maxRewardArbTime, then the arb gets 100% of the maxRewardScaled
     return (
-      ((targetTime - initialArbTime) * maxRewardScaled) /
-        (maxRewardArbTime - initialArbTime) /
-        10**18,
+      ((targetTime - initialArbTime) * maxRewardScaled) / (ARB_RESTAKE_GROWTH_TIME) / 10**18,
       true
     );
   }
@@ -598,10 +612,11 @@ contract Sherlock is ISherlock, ERC721, Ownable, Pausable {
   /// @return able If the transaction can be executed (the current timestamp is during an arb period, etc.)
   function viewRewardForArbRestake(uint256 _id) external view returns (uint256 profit, bool able) {
     // Returns the stake shares that an arb would get, and whether the position can currently be arbed
-    (uint256 sharesAmount, bool _able) = _calcSharesForArbRestake(_id);
+    // `profit` variable is used to store the amount of shares
+    (profit, able) = _calcSharesForArbRestake(_id);
     // Calculates the tokens (USDC) represented by that amount of stake shares
-    profit = _redeemSharesCalc(sharesAmount);
-    able = _able;
+    // Amount of shares stored in `profit` is used to calculate the reward in USDC, which is stored in `profit`
+    profit = _redeemSharesCalc(profit);
   }
 
   /// @notice Allows someone who doesn't own the position (an arbitrager) to restake the position for 3 months (ARB_RESTAKE_PERIOD)
@@ -609,7 +624,7 @@ contract Sherlock is ISherlock, ERC721, Ownable, Pausable {
   /// @return _sher Amount of SHER tokens to be released to position owner on expiry of the 3 month lockup
   /// @return _arbReward Amount of tokens (USDC) sent to caller (the arbitrager) in return for calling the function
   /// @dev Can only be called after lockup `_period` is more than 2 weeks in the past (assuming ARB_RESTAKE_WAIT_TIME is 2 weeks)
-  /// @dev Max 10% (ARB_RESTAKE_MAX_PERCENTAGE) of tokens associated with a position are used to incentivize arbs (x)
+  /// @dev Max 20% (ARB_RESTAKE_MAX_PERCENTAGE) of tokens associated with a position are used to incentivize arbs (x)
   /// @dev During a 2 week period the reward ratio will move from 0% to 100% (* x)
   function arbRestake(uint256 _id)
     external

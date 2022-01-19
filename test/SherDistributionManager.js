@@ -21,14 +21,14 @@ describe('SherDistributionManager, 6 dec', function () {
       [
         'sdm',
         this.SherDistributionManager,
-        [parseUnits('100', 6), parseUnits('600', 6), parseUnits('5', 6), this.sher.address],
+        [parseUnits('100', 6), parseUnits('600', 6), parseUnits('5', 18), this.sher.address],
       ],
     ]);
     await deploy(this, [
       [
         'sdmMAX',
         this.SherDistributionManager,
-        [billie.mul(100), billie.mul(10000), parseUnits('500', 6), this.sher.address],
+        [billie.mul(100), billie.mul(10000), parseUnits('500', 18), this.sher.address],
       ],
     ]);
     await deploy(this, [['sherlock', this.SherlockMock, []]]);
@@ -93,15 +93,15 @@ describe('SherDistributionManager, 6 dec', function () {
       );
 
       expect(await this.sdm.calcReward(parseUnits('0', 6), parseUnits('10000', 6), 1)).to.eq(
-        parseUnits('1700', 18),
+        parseUnits('1750', 18),
       );
 
       expect(await this.sdm.calcReward(parseUnits('0', 6), parseUnits('10000', 6), 2)).to.eq(
-        parseUnits('3400', 18),
+        parseUnits('3500', 18),
       );
 
       expect(await this.sdm.calcReward(parseUnits('0', 6), parseUnits('10000', 6), 20)).to.eq(
-        parseUnits('34000', 18),
+        parseUnits('35000', 18),
       );
 
       // nowwhere near overflow
@@ -164,12 +164,19 @@ describe('SherDistributionManager, 6 dec', function () {
 
       expect(await this.erc20.balanceOf(this.bob.address)).to.eq(0);
     });
+    it('Do zero', async function () {
+      await expect(this.sdm.sweep(constants.AddressZero, [this.erc20.address])).to.be.revertedWith(
+        'ZeroArgument()',
+      );
+    });
     it('Set core', async function () {
       await this.sherlock.updateSherDistributionManager(this.sdm.address);
       await this.sdm.setSherlockCoreAddress(this.sherlock.address);
 
       expect(await this.sdm.isActive()).to.eq(true);
-      await expect(this.sdm.sweep(this.bob.address, [this.erc20.address])).to.be.reverted;
+      await expect(this.sdm.sweep(this.bob.address, [this.erc20.address])).to.be.revertedWith(
+        'InvalidConditions()',
+      );
     });
     it('Do', async function () {
       await this.sherlock.updateSherDistributionManager(constants.AddressZero);

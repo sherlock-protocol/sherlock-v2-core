@@ -172,7 +172,9 @@ describe('SherlockProtocolManager ─ Stateless', function () {
       );
     });
     it('Insane', async function () {
-      await expect(this.spm.setMinActiveBalance(parseEther('1'))).to.be.revertedWith('INSANE');
+      await expect(this.spm.setMinActiveBalance(parseEther('1'))).to.be.revertedWith(
+        'InvalidConditions()',
+      );
     });
   });
   describe('setProtocolPremium()', function () {
@@ -354,6 +356,7 @@ describe('SherlockProtocolManager ─ Functional', function () {
       expect(await this.spm.viewLastAccountedEachProtocol(this.protocolX)).to.eq(0);
       expect(await this.spm.viewNonStakersClaimableByProtocol(this.protocolX)).to.eq(0);
       expect(await this.spm.viewNonStakersPercentage(this.protocolX)).to.eq(0);
+      expect(await this.spm.viewPremium(this.protocolX)).to.eq(0);
       expect(await this.spm.viewCurrentCoverage(this.protocolX)).to.eq(0);
       expect(await this.spm.viewPreviousCoverage(this.protocolX)).to.eq(0);
 
@@ -397,6 +400,7 @@ describe('SherlockProtocolManager ─ Functional', function () {
       expect(await this.spm.viewLastAccountedEachProtocol(this.protocolX)).to.eq(this.t0.time);
       expect(await this.spm.viewNonStakersClaimableByProtocol(this.protocolX)).to.eq(0);
       expect(await this.spm.viewNonStakersPercentage(this.protocolX)).to.eq(parseEther('0.1'));
+      expect(await this.spm.viewPremium(this.protocolX)).to.eq(0);
       expect(await this.spm.viewCurrentCoverage(this.protocolX)).to.eq(500);
       expect(await this.spm.viewPreviousCoverage(this.protocolX)).to.eq(0);
 
@@ -444,6 +448,7 @@ describe('SherlockProtocolManager ─ Functional', function () {
       expect(await this.spm.viewLastAccountedEachProtocol(this.protocolX)).to.eq(0);
       expect(await this.spm.viewNonStakersClaimableByProtocol(this.protocolX)).to.eq(0);
       expect(await this.spm.viewNonStakersPercentage(this.protocolX)).to.eq(0);
+      expect(await this.spm.viewPremium(this.protocolX)).to.eq(0);
       expect(await this.spm.viewCurrentCoverage(this.protocolX)).to.eq(1500);
       expect(await this.spm.viewPreviousCoverage(this.protocolX)).to.eq(500);
 
@@ -492,6 +497,7 @@ describe('SherlockProtocolManager ─ Functional', function () {
       expect(await this.spm.viewLastAccountedEachProtocol(this.protocolX)).to.eq(this.t0.time);
       expect(await this.spm.viewNonStakersClaimableByProtocol(this.protocolX)).to.eq(0);
       expect(await this.spm.viewNonStakersPercentage(this.protocolX)).to.eq(parseEther('0.1'));
+      expect(await this.spm.viewPremium(this.protocolX)).to.eq(0);
       expect(await this.spm.viewCurrentCoverage(this.protocolX)).to.eq(500);
       expect(await this.spm.viewPreviousCoverage(this.protocolX)).to.eq(0);
 
@@ -540,6 +546,7 @@ describe('SherlockProtocolManager ─ Functional', function () {
       expect(await this.spm.viewLastAccountedEachProtocol(this.protocolX)).to.eq(this.t1.time);
       expect(await this.spm.viewNonStakersClaimableByProtocol(this.protocolX)).to.eq(0);
       expect(await this.spm.viewNonStakersPercentage(this.protocolX)).to.eq(parseEther('0.1'));
+      expect(await this.spm.viewPremium(this.protocolX)).to.eq(this.premium);
       expect(await this.spm.viewCurrentCoverage(this.protocolX)).to.eq(500);
       expect(await this.spm.viewPreviousCoverage(this.protocolX)).to.eq(0);
 
@@ -593,6 +600,7 @@ describe('SherlockProtocolManager ─ Functional', function () {
         this.premiumNonStakers.mul(11),
       );
       expect(await this.spm.viewNonStakersPercentage(this.protocolX)).to.eq(parseEther('0.2'));
+      expect(await this.spm.viewPremium(this.protocolX)).to.eq(this.premium);
       expect(await this.spm.viewCurrentCoverage(this.protocolX)).to.eq(1500);
       expect(await this.spm.viewPreviousCoverage(this.protocolX)).to.eq(500);
 
@@ -634,6 +642,7 @@ describe('SherlockProtocolManager ─ Functional', function () {
         this.premiumNonStakers.mul(11),
       );
       expect(await this.spm.viewNonStakersPercentage(this.protocolX)).to.eq(parseEther('0.2'));
+      expect(await this.spm.viewPremium(this.protocolX)).to.eq(this.premium);
       expect(await this.spm.viewCurrentCoverage(this.protocolX)).to.eq(1500);
       expect(await this.spm.viewPreviousCoverage(this.protocolX)).to.eq(500);
 
@@ -681,6 +690,7 @@ describe('SherlockProtocolManager ─ Functional', function () {
       expect(await this.spm.viewLastAccountedEachProtocol(this.protocolX)).to.eq(this.t0.time);
       expect(await this.spm.viewNonStakersClaimableByProtocol(this.protocolX)).to.eq(0);
       expect(await this.spm.viewNonStakersPercentage(this.protocolX)).to.eq(parseEther('0.1'));
+      expect(await this.spm.viewPremium(this.protocolX)).to.eq(0);
       expect(await this.spm.viewCurrentCoverage(this.protocolX)).to.eq(500);
       expect(await this.spm.viewPreviousCoverage(this.protocolX)).to.eq(0);
 
@@ -724,6 +734,7 @@ describe('SherlockProtocolManager ─ Functional', function () {
       expect(await this.spm.viewLastAccountedEachProtocol(this.protocolX)).to.eq(0);
       expect(await this.spm.viewNonStakersClaimableByProtocol(this.protocolX)).to.eq(0);
       expect(await this.spm.viewNonStakersPercentage(this.protocolX)).to.eq(0);
+      expect(await this.spm.viewPremium(this.protocolX)).to.eq(0);
       expect(await this.spm.viewCurrentCoverage(this.protocolX)).to.eq(500);
       expect(await this.spm.viewPreviousCoverage(this.protocolX)).to.eq(0);
 
@@ -756,6 +767,7 @@ describe('SherlockProtocolManager ─ Functional', function () {
       expect(await this.spm.viewLastAccountedEachProtocol(this.protocolX)).to.eq(0);
       expect(await this.spm.viewNonStakersClaimableByProtocol(this.protocolX)).to.eq(0);
       expect(await this.spm.viewNonStakersPercentage(this.protocolX)).to.eq(0);
+      expect(await this.spm.viewPremium(this.protocolX)).to.eq(0);
       expect(await this.spm.viewCurrentCoverage(this.protocolX)).to.eq(500);
       expect(await this.spm.viewPreviousCoverage(this.protocolX)).to.eq(0);
 
@@ -794,6 +806,7 @@ describe('SherlockProtocolManager ─ Functional', function () {
       expect(await this.spm.viewLastAccountedEachProtocol(this.protocolX)).to.eq(this.t0.time);
       expect(await this.spm.viewNonStakersClaimableByProtocol(this.protocolX)).to.eq(0);
       expect(await this.spm.viewNonStakersPercentage(this.protocolX)).to.eq(parseEther('0.1'));
+      expect(await this.spm.viewPremium(this.protocolX)).to.eq(0);
       expect(await this.spm.viewCurrentCoverage(this.protocolX)).to.eq(500);
       expect(await this.spm.viewPreviousCoverage(this.protocolX)).to.eq(0);
 
@@ -842,6 +855,7 @@ describe('SherlockProtocolManager ─ Functional', function () {
       expect(await this.spm.viewLastAccountedEachProtocol(this.protocolX)).to.eq(0);
       expect(await this.spm.viewNonStakersClaimableByProtocol(this.protocolX)).to.eq(0);
       expect(await this.spm.viewNonStakersPercentage(this.protocolX)).to.eq(0);
+      expect(await this.spm.viewPremium(this.protocolX)).to.eq(0);
       expect(await this.spm.viewCurrentCoverage(this.protocolX)).to.eq(500);
       expect(await this.spm.viewPreviousCoverage(this.protocolX)).to.eq(0);
 
@@ -890,6 +904,7 @@ describe('SherlockProtocolManager ─ Functional', function () {
       expect(await this.spm.viewLastAccountedEachProtocol(this.protocolX)).to.eq(this.t1.time);
       expect(await this.spm.viewNonStakersClaimableByProtocol(this.protocolX)).to.eq(0);
       expect(await this.spm.viewNonStakersPercentage(this.protocolX)).to.eq(parseEther('0.1'));
+      expect(await this.spm.viewPremium(this.protocolX)).to.eq(this.premium);
       expect(await this.spm.viewCurrentCoverage(this.protocolX)).to.eq(500);
       expect(await this.spm.viewPreviousCoverage(this.protocolX)).to.eq(0);
 
@@ -946,6 +961,7 @@ describe('SherlockProtocolManager ─ Functional', function () {
         this.premiumNonStakers,
       );
       expect(await this.spm.viewNonStakersPercentage(this.protocolX)).to.eq(0);
+      expect(await this.spm.viewPremium(this.protocolX)).to.eq(0);
       expect(await this.spm.viewCurrentCoverage(this.protocolX)).to.eq(500);
       expect(await this.spm.viewPreviousCoverage(this.protocolX)).to.eq(0);
 
@@ -1001,6 +1017,7 @@ describe('SherlockProtocolManager ─ Functional', function () {
       expect(await this.spm.viewLastAccountedEachProtocol(this.protocolX)).to.eq(this.t1.time);
       expect(await this.spm.viewNonStakersClaimableByProtocol(this.protocolX)).to.eq(0);
       expect(await this.spm.viewNonStakersPercentage(this.protocolX)).to.eq(parseEther('0.1'));
+      expect(await this.spm.viewPremium(this.protocolX)).to.eq(this.premium);
       expect(await this.spm.viewCurrentCoverage(this.protocolX)).to.eq(500);
       expect(await this.spm.viewPreviousCoverage(this.protocolX)).to.eq(0);
 
@@ -1063,6 +1080,7 @@ describe('SherlockProtocolManager ─ Functional', function () {
         this.balance.div(10),
       );
       expect(await this.spm.viewNonStakersPercentage(this.protocolX)).to.eq(0);
+      expect(await this.spm.viewPremium(this.protocolX)).to.eq(0);
       expect(await this.spm.viewCurrentCoverage(this.protocolX)).to.eq(500);
       expect(await this.spm.viewPreviousCoverage(this.protocolX)).to.eq(0);
 
@@ -1119,6 +1137,7 @@ describe('SherlockProtocolManager ─ Functional', function () {
       expect(await this.spm.viewLastAccountedEachProtocol(this.protocolX)).to.eq(this.t1.time);
       expect(await this.spm.viewNonStakersClaimableByProtocol(this.protocolX)).to.eq(0);
       expect(await this.spm.viewNonStakersPercentage(this.protocolX)).to.eq(parseEther('0.1'));
+      expect(await this.spm.viewPremium(this.protocolX)).to.eq(this.premium);
       expect(await this.spm.viewCurrentCoverage(this.protocolX)).to.eq(500);
       expect(await this.spm.viewPreviousCoverage(this.protocolX)).to.eq(0);
 
@@ -1189,6 +1208,7 @@ describe('SherlockProtocolManager ─ Functional', function () {
         this.premiumNonStakers.mul(this.skippedSeconds),
       );
       expect(await this.spm.viewNonStakersPercentage(this.protocolX)).to.eq(0);
+      expect(await this.spm.viewPremium(this.protocolX)).to.eq(0);
       expect(await this.spm.viewCurrentCoverage(this.protocolX)).to.eq(500);
       expect(await this.spm.viewPreviousCoverage(this.protocolX)).to.eq(0);
 
@@ -1238,6 +1258,7 @@ describe('SherlockProtocolManager ─ Functional', function () {
         this.premiumNonStakers.mul(this.skippedSeconds),
       );
       expect(await this.spm.viewNonStakersPercentage(this.protocolX)).to.eq(0);
+      expect(await this.spm.viewPremium(this.protocolX)).to.eq(0);
       expect(await this.spm.viewCurrentCoverage(this.protocolX)).to.eq(500);
       expect(await this.spm.viewPreviousCoverage(this.protocolX)).to.eq(0);
 
@@ -1301,6 +1322,7 @@ describe('SherlockProtocolManager ─ Functional', function () {
       expect(await this.spm.viewLastAccountedEachProtocol(this.protocolX)).to.eq(this.t1.time);
       expect(await this.spm.viewNonStakersClaimableByProtocol(this.protocolX)).to.eq(0);
       expect(await this.spm.viewNonStakersPercentage(this.protocolX)).to.eq(parseEther('0.1'));
+      expect(await this.spm.viewPremium(this.protocolX)).to.eq(this.premium);
       expect(await this.spm.viewCurrentCoverage(this.protocolX)).to.eq(500);
       expect(await this.spm.viewPreviousCoverage(this.protocolX)).to.eq(0);
 
@@ -1366,6 +1388,7 @@ describe('SherlockProtocolManager ─ Functional', function () {
         this.premiumNonStakers.mul(this.skippedSeconds - 1),
       );
       expect(await this.spm.viewNonStakersPercentage(this.protocolX)).to.eq(0);
+      expect(await this.spm.viewPremium(this.protocolX)).to.eq(0);
       expect(await this.spm.viewCurrentCoverage(this.protocolX)).to.eq(500);
       expect(await this.spm.viewPreviousCoverage(this.protocolX)).to.eq(0);
 
@@ -1475,6 +1498,7 @@ describe('SherlockProtocolManager ─ Functional', function () {
       expect(await this.spm.viewLastAccountedEachProtocol(this.protocolX)).to.eq(this.t1.time);
       expect(await this.spm.viewNonStakersClaimableByProtocol(this.protocolX)).to.eq(0);
       expect(await this.spm.viewNonStakersPercentage(this.protocolX)).to.eq(parseEther('0.1'));
+      expect(await this.spm.viewPremium(this.protocolX)).to.eq(this.premium);
       expect(await this.spm.viewCurrentCoverage(this.protocolX)).to.eq(500);
       expect(await this.spm.viewPreviousCoverage(this.protocolX)).to.eq(0);
 
@@ -1519,6 +1543,7 @@ describe('SherlockProtocolManager ─ Functional', function () {
       expect(await this.spm.viewLastAccountedEachProtocol(this.protocolX)).to.eq(this.t1.time);
       expect(await this.spm.viewNonStakersClaimableByProtocol(this.protocolX)).to.eq(0);
       expect(await this.spm.viewNonStakersPercentage(this.protocolX)).to.eq(parseEther('0.1'));
+      expect(await this.spm.viewPremium(this.protocolX)).to.eq(this.premium);
       expect(await this.spm.viewCurrentCoverage(this.protocolX)).to.eq(500);
       expect(await this.spm.viewPreviousCoverage(this.protocolX)).to.eq(0);
 
@@ -1585,6 +1610,7 @@ describe('SherlockProtocolManager ─ Functional', function () {
         this.t2.time.sub(this.t1.time).mul(this.premiumNonStakers),
       );
       expect(await this.spm.viewNonStakersPercentage(this.protocolX)).to.eq(0);
+      expect(await this.spm.viewPremium(this.protocolX)).to.eq(0);
       expect(await this.spm.viewCurrentCoverage(this.protocolX)).to.eq(500);
       expect(await this.spm.viewPreviousCoverage(this.protocolX)).to.eq(0);
 
@@ -1784,6 +1810,7 @@ describe('SherlockProtocolManager ─ Functional', function () {
       expect(await this.spm.viewLastAccountedEachProtocol(this.protocolX)).to.eq(this.t1.time);
       expect(await this.spm.viewNonStakersClaimableByProtocol(this.protocolX)).to.eq(0);
       expect(await this.spm.viewNonStakersPercentage(this.protocolX)).to.eq(parseEther('0.1'));
+      expect(await this.spm.viewPremium(this.protocolX)).to.eq(this.premium);
       expect(await this.spm.viewCurrentCoverage(this.protocolX)).to.eq(500);
       expect(await this.spm.viewPreviousCoverage(this.protocolX)).to.eq(0);
 
@@ -1849,6 +1876,7 @@ describe('SherlockProtocolManager ─ Functional', function () {
         this.balance.div(this.premium).mul(this.premiumNonStakers),
       );
       expect(await this.spm.viewNonStakersPercentage(this.protocolX)).to.eq(0);
+      expect(await this.spm.viewPremium(this.protocolX)).to.eq(0);
       expect(await this.spm.viewCurrentCoverage(this.protocolX)).to.eq(500);
       expect(await this.spm.viewPreviousCoverage(this.protocolX)).to.eq(0);
 
@@ -1989,7 +2017,7 @@ describe('SherlockProtocolManager ─ Functional', function () {
     });
     it('do fail', async function () {
       await expect(this.spm.setMinActiveBalance(parseUnits('30001', 6))).to.be.revertedWith(
-        'INSANE',
+        'InvalidConditions()',
       );
     });
     it('do', async function () {
@@ -2014,6 +2042,9 @@ describe('SherlockProtocolManager ─ Functional', function () {
 
       expect(await this.spm.minActiveBalance()).to.eq(this.b2);
     });
+    it('do same', async function () {
+      await expect(this.spm.setMinActiveBalance(this.b2)).to.be.revertedWith('InvalidArgument()');
+    });
   });
   describe('setProtocolPremium()', function () {
     before(async function () {
@@ -2028,6 +2059,7 @@ describe('SherlockProtocolManager ─ Functional', function () {
       expect(await this.spm.viewLastAccountedEachProtocol(this.protocolX)).to.eq(this.t0.time);
       expect(await this.spm.viewNonStakersClaimableByProtocol(this.protocolX)).to.eq(0);
       expect(await this.spm.viewNonStakersPercentage(this.protocolX)).to.eq(parseEther('0.1'));
+      expect(await this.spm.viewPremium(this.protocolX)).to.eq(0);
       expect(await this.spm.viewCurrentCoverage(this.protocolX)).to.eq(500);
       expect(await this.spm.viewPreviousCoverage(this.protocolX)).to.eq(0);
 
@@ -2069,6 +2101,7 @@ describe('SherlockProtocolManager ─ Functional', function () {
       expect(await this.spm.viewLastAccountedEachProtocol(this.protocolX)).to.eq(this.t1.time);
       expect(await this.spm.viewNonStakersClaimableByProtocol(this.protocolX)).to.eq(0);
       expect(await this.spm.viewNonStakersPercentage(this.protocolX)).to.eq(parseEther('0.1'));
+      expect(await this.spm.viewPremium(this.protocolX)).to.eq(0);
       expect(await this.spm.viewCurrentCoverage(this.protocolX)).to.eq(500);
       expect(await this.spm.viewPreviousCoverage(this.protocolX)).to.eq(0);
 
@@ -2105,6 +2138,7 @@ describe('SherlockProtocolManager ─ Functional', function () {
       expect(await this.spm.viewLastAccountedEachProtocol(this.protocolX)).to.eq(this.t2.time);
       expect(await this.spm.viewNonStakersClaimableByProtocol(this.protocolX)).to.eq(0);
       expect(await this.spm.viewNonStakersPercentage(this.protocolX)).to.eq(parseEther('0.1'));
+      expect(await this.spm.viewPremium(this.protocolX)).to.eq(this.premium);
       expect(await this.spm.viewCurrentCoverage(this.protocolX)).to.eq(500);
       expect(await this.spm.viewPreviousCoverage(this.protocolX)).to.eq(0);
 
@@ -2136,6 +2170,7 @@ describe('SherlockProtocolManager ─ Functional', function () {
       expect(await this.spm.viewLastAccountedEachProtocol(this.protocolX)).to.eq(this.t2.time);
       expect(await this.spm.viewNonStakersClaimableByProtocol(this.protocolX)).to.eq(0);
       expect(await this.spm.viewNonStakersPercentage(this.protocolX)).to.eq(parseEther('0.1'));
+      expect(await this.spm.viewPremium(this.protocolX)).to.eq(this.premium);
       expect(await this.spm.viewCurrentCoverage(this.protocolX)).to.eq(500);
       expect(await this.spm.viewPreviousCoverage(this.protocolX)).to.eq(0);
 
@@ -2181,6 +2216,7 @@ describe('SherlockProtocolManager ─ Functional', function () {
         this.premiumNonStakers.mul(2),
       );
       expect(await this.spm.viewNonStakersPercentage(this.protocolX)).to.eq(parseEther('0.1'));
+      expect(await this.spm.viewPremium(this.protocolX)).to.eq(this.newPremium);
       expect(await this.spm.viewCurrentCoverage(this.protocolX)).to.eq(500);
       expect(await this.spm.viewPreviousCoverage(this.protocolX)).to.eq(0);
 
@@ -2222,6 +2258,7 @@ describe('SherlockProtocolManager ─ Functional', function () {
         this.premiumNonStakers.mul(2),
       );
       expect(await this.spm.viewNonStakersPercentage(this.protocolX)).to.eq(parseEther('0.1'));
+      expect(await this.spm.viewPremium(this.protocolX)).to.eq(this.newPremium);
       expect(await this.spm.viewCurrentCoverage(this.protocolX)).to.eq(500);
       expect(await this.spm.viewPreviousCoverage(this.protocolX)).to.eq(0);
 
@@ -2285,6 +2322,7 @@ describe('SherlockProtocolManager ─ Functional', function () {
           .add(remainingBalance),
       );
       expect(await this.spm.viewNonStakersPercentage(this.protocolX)).to.eq(parseEther('0.1'));
+      expect(await this.spm.viewPremium(this.protocolX)).to.eq(0);
       expect(await this.spm.viewCurrentCoverage(this.protocolX)).to.eq(500);
       expect(await this.spm.viewPreviousCoverage(this.protocolX)).to.eq(0);
 
@@ -2318,6 +2356,7 @@ describe('SherlockProtocolManager ─ Functional', function () {
       expect(await this.spm.viewLastAccountedEachProtocol(this.protocolX)).to.eq(this.t0.time);
       expect(await this.spm.viewNonStakersClaimableByProtocol(this.protocolX)).to.eq(0);
       expect(await this.spm.viewNonStakersPercentage(this.protocolX)).to.eq(parseEther('0.1'));
+      expect(await this.spm.viewPremium(this.protocolX)).to.eq(0);
       expect(await this.spm.viewCurrentCoverage(this.protocolX)).to.eq(500);
       expect(await this.spm.viewPreviousCoverage(this.protocolX)).to.eq(0);
 
@@ -2359,6 +2398,7 @@ describe('SherlockProtocolManager ─ Functional', function () {
       expect(await this.spm.viewLastAccountedEachProtocol(this.protocolX)).to.eq(this.t1.time);
       expect(await this.spm.viewNonStakersClaimableByProtocol(this.protocolX)).to.eq(0);
       expect(await this.spm.viewNonStakersPercentage(this.protocolX)).to.eq(parseEther('0.1'));
+      expect(await this.spm.viewPremium(this.protocolX)).to.eq(0);
       expect(await this.spm.viewCurrentCoverage(this.protocolX)).to.eq(500);
       expect(await this.spm.viewPreviousCoverage(this.protocolX)).to.eq(0);
 
@@ -2395,6 +2435,7 @@ describe('SherlockProtocolManager ─ Functional', function () {
       expect(await this.spm.viewLastAccountedEachProtocol(this.protocolX)).to.eq(this.t2.time);
       expect(await this.spm.viewNonStakersClaimableByProtocol(this.protocolX)).to.eq(0);
       expect(await this.spm.viewNonStakersPercentage(this.protocolX)).to.eq(parseEther('0.1'));
+      expect(await this.spm.viewPremium(this.protocolX)).to.eq(this.premium);
       expect(await this.spm.viewCurrentCoverage(this.protocolX)).to.eq(500);
       expect(await this.spm.viewPreviousCoverage(this.protocolX)).to.eq(0);
 
@@ -2426,6 +2467,7 @@ describe('SherlockProtocolManager ─ Functional', function () {
       expect(await this.spm.viewLastAccountedEachProtocol(this.protocolX)).to.eq(this.t2.time);
       expect(await this.spm.viewNonStakersClaimableByProtocol(this.protocolX)).to.eq(0);
       expect(await this.spm.viewNonStakersPercentage(this.protocolX)).to.eq(parseEther('0.1'));
+      expect(await this.spm.viewPremium(this.protocolX)).to.eq(this.premium);
       expect(await this.spm.viewCurrentCoverage(this.protocolX)).to.eq(500);
       expect(await this.spm.viewPreviousCoverage(this.protocolX)).to.eq(0);
 
@@ -2470,6 +2512,7 @@ describe('SherlockProtocolManager ─ Functional', function () {
       expect(await this.spm.viewLastAccountedEachProtocol(this.protocolX)).to.eq(this.t0.time);
       expect(await this.spm.viewNonStakersClaimableByProtocol(this.protocolX)).to.eq(0);
       expect(await this.spm.viewNonStakersPercentage(this.protocolX)).to.eq(parseEther('0.1'));
+      expect(await this.spm.viewPremium(this.protocolX)).to.eq(0);
       expect(await this.spm.viewCurrentCoverage(this.protocolX)).to.eq(500);
       expect(await this.spm.viewPreviousCoverage(this.protocolX)).to.eq(0);
       expect(await this.spm.viewProtocolAgent(this.protocolX)).to.eq(this.alice.address);
@@ -2491,6 +2534,7 @@ describe('SherlockProtocolManager ─ Functional', function () {
       expect(await this.spm.viewLastAccountedEachProtocol(this.protocolY)).to.eq(this.t1.time);
       expect(await this.spm.viewNonStakersClaimableByProtocol(this.protocolY)).to.eq(0);
       expect(await this.spm.viewNonStakersPercentage(this.protocolY)).to.eq(parseEther('0.1'));
+      expect(await this.spm.viewPremium(this.protocolY)).to.eq(0);
       expect(await this.spm.viewCurrentCoverage(this.protocolY)).to.eq(1500);
       expect(await this.spm.viewPreviousCoverage(this.protocolY)).to.eq(0);
       expect(await this.spm.viewProtocolAgent(this.protocolY)).to.eq(this.alice.address);
@@ -2535,6 +2579,7 @@ describe('SherlockProtocolManager ─ Functional', function () {
       expect(await this.spm.viewLastAccountedEachProtocol(this.protocolX)).to.eq(this.t2.time);
       expect(await this.spm.viewNonStakersClaimableByProtocol(this.protocolX)).to.eq(0);
       expect(await this.spm.viewNonStakersPercentage(this.protocolX)).to.eq(parseEther('0.1'));
+      expect(await this.spm.viewPremium(this.protocolX)).to.eq(this.premiumX);
       expect(await this.spm.viewCurrentCoverage(this.protocolX)).to.eq(500);
       expect(await this.spm.viewPreviousCoverage(this.protocolX)).to.eq(0);
       expect(await this.spm.viewProtocolAgent(this.protocolX)).to.eq(this.alice.address);
@@ -2558,6 +2603,7 @@ describe('SherlockProtocolManager ─ Functional', function () {
       expect(await this.spm.viewLastAccountedEachProtocol(this.protocolY)).to.eq(this.t2.time);
       expect(await this.spm.viewNonStakersClaimableByProtocol(this.protocolY)).to.eq(0);
       expect(await this.spm.viewNonStakersPercentage(this.protocolY)).to.eq(parseEther('0.1'));
+      expect(await this.spm.viewPremium(this.protocolY)).to.eq(this.premiumY);
       expect(await this.spm.viewCurrentCoverage(this.protocolY)).to.eq(1500);
       expect(await this.spm.viewPreviousCoverage(this.protocolY)).to.eq(0);
       expect(await this.spm.viewProtocolAgent(this.protocolY)).to.eq(this.alice.address);
@@ -2593,6 +2639,7 @@ describe('SherlockProtocolManager ─ Functional', function () {
       expect(await this.spm.viewLastAccountedEachProtocol(this.protocolX)).to.eq(this.t2.time);
       expect(await this.spm.viewNonStakersClaimableByProtocol(this.protocolX)).to.eq(0);
       expect(await this.spm.viewNonStakersPercentage(this.protocolX)).to.eq(parseEther('0.1'));
+      expect(await this.spm.viewPremium(this.protocolX)).to.eq(this.premiumX);
       expect(await this.spm.viewCurrentCoverage(this.protocolX)).to.eq(500);
       expect(await this.spm.viewPreviousCoverage(this.protocolX)).to.eq(0);
       expect(await this.spm.viewProtocolAgent(this.protocolX)).to.eq(this.alice.address);
@@ -2620,6 +2667,7 @@ describe('SherlockProtocolManager ─ Functional', function () {
       expect(await this.spm.viewLastAccountedEachProtocol(this.protocolY)).to.eq(this.t2.time);
       expect(await this.spm.viewNonStakersClaimableByProtocol(this.protocolY)).to.eq(0);
       expect(await this.spm.viewNonStakersPercentage(this.protocolY)).to.eq(parseEther('0.1'));
+      expect(await this.spm.viewPremium(this.protocolY)).to.eq(this.premiumY);
       expect(await this.spm.viewCurrentCoverage(this.protocolY)).to.eq(1500);
       expect(await this.spm.viewPreviousCoverage(this.protocolY)).to.eq(0);
       expect(await this.spm.viewProtocolAgent(this.protocolY)).to.eq(this.alice.address);
@@ -2678,6 +2726,7 @@ describe('SherlockProtocolManager ─ Functional', function () {
         this.premiumNonStakersX.mul(6),
       );
       expect(await this.spm.viewNonStakersPercentage(this.protocolX)).to.eq(parseEther('0.1'));
+      expect(await this.spm.viewPremium(this.protocolX)).to.eq(this.premiumX2);
       expect(await this.spm.viewCurrentCoverage(this.protocolX)).to.eq(500);
       expect(await this.spm.viewPreviousCoverage(this.protocolX)).to.eq(0);
       expect(await this.spm.viewProtocolAgent(this.protocolX)).to.eq(this.alice.address);
@@ -2709,6 +2758,7 @@ describe('SherlockProtocolManager ─ Functional', function () {
         this.premiumNonStakersY.mul(6),
       );
       expect(await this.spm.viewNonStakersPercentage(this.protocolY)).to.eq(parseEther('0.1'));
+      expect(await this.spm.viewPremium(this.protocolY)).to.eq(this.premiumY2);
       expect(await this.spm.viewCurrentCoverage(this.protocolY)).to.eq(1500);
       expect(await this.spm.viewPreviousCoverage(this.protocolY)).to.eq(0);
       expect(await this.spm.viewProtocolAgent(this.protocolY)).to.eq(this.alice.address);
@@ -3122,6 +3172,11 @@ describe('SherlockProtocolManager ─ Functional', function () {
       );
 
       expect(await this.ERC20Mock6d.balanceOf(this.bob.address)).to.eq(0);
+    });
+    it('Do zero', async function () {
+      await expect(
+        this.spm.sweep(constants.AddressZero, [this.ERC20Mock6d.address]),
+      ).to.be.revertedWith('ZeroArgument()');
     });
     it('Set core', async function () {
       await this.sherlock.updateSherlockProtocolManager(this.spm.address);

@@ -21,17 +21,17 @@ interface ISherlockClaimManager is IManager, OptimisticRequester {
 
   event ClaimCreated(
     uint256 claimID,
-    bytes32 protocol,
+    bytes32 indexed protocol,
     uint256 amount,
     address receiver,
-    bool previousCoverageAmount
+    bool previousCoverageUsed
   );
 
   event CallbackAdded(ISherlockClaimManagerCallbackReceiver callback);
 
   event CallbackRemoved(ISherlockClaimManagerCallbackReceiver callback);
 
-  event ClaimStatusChanged(uint256 claimID, State previousState, State currentState);
+  event ClaimStatusChanged(uint256 indexed claimID, State previousState, State currentState);
 
   event ClaimPayout(uint256 claimID, address receiver, uint256 amount);
 
@@ -62,8 +62,8 @@ interface ISherlockClaimManager is IManager, OptimisticRequester {
     uint256 amount;
     address receiver;
     uint32 timestamp;
-    bytes ancillaryData;
     State state;
+    bytes ancillaryData;
   }
 
   // requestAndProposePriceFor() --> proposer = protocolAgent
@@ -96,7 +96,7 @@ interface ISherlockClaimManager is IManager, OptimisticRequester {
   /// @notice gov is able to renounce the role
   function renounceUmaHaltOperator() external;
 
-  function claims(uint256 _claimID) external view returns (Claim memory);
+  function claim(uint256 _claimID) external view returns (Claim memory);
 
   /// @notice Initiate a claim for a specific protocol as the protocol agent
   /// @param _protocol protocol ID (different from the internal or public claim ID fields)
@@ -122,8 +122,8 @@ interface ISherlockClaimManager is IManager, OptimisticRequester {
   /// @param _claimID Public claim ID
   /// @param _amount Bond amount sent by protocol agent
   /// @dev Use hardcoded USDC address
-  /// @dev Use hardcoded bond amount (upgradable with a large timelock)
-  /// @dev Use hardcoded liveness 7200
+  /// @dev Use hardcoded bond amount
+  /// @dev Use hardcoded liveness 7200 (2 hours)
   /// @dev proposedPrice = _amount
   function escalate(uint256 _claimID, uint256 _amount) external;
 
