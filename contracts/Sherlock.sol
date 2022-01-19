@@ -361,6 +361,8 @@ contract Sherlock is ISherlock, ERC721, Ownable, Pausable {
   // Access control functions
   //
 
+  /// @notice Account sum of all underlying posiiton shares for `_from` and `_to`
+  /// @dev this enables the `tokenBalanceOfAddress` to exist
   function _beforeTokenTransfer(
     address _from,
     address _to,
