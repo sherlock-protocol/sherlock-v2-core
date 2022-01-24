@@ -23,8 +23,11 @@ contract SherlockClaimManager is ISherlockClaimManager, ReentrancyGuard, Manager
   using SafeERC20 for IERC20;
 
   // The bond required for a protocol agent to escalate a claim to UMA Optimistic Oracle (OO)
-  /// @dev at time of writing will result in a 20k cost of escalating
-  /// @dev the actual amount is based on the value returned here https://github.com/UMAprotocol/protocol/blob/master/packages/core/contracts/oracle/implementation/Store.sol#L131
+  /// @dev at time of writing will result in a 22k cost of escalating
+  /// @dev usdcFee = https://github.com/UMAprotocol/protocol/blob/master/packages/core/contracts/oracle/implementation/Store.sol#L131
+  /// @dev price = (BOND * 2) + (usdcFee * 2)
+  /// @dev this is because the price is proposed and disputed in the same transaction
+
   uint256 internal constant BOND = 9_600 * 10**6; // 20k bond
 
   // The amount of time the protocol agent has to escalate a claim
