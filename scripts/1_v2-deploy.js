@@ -1,6 +1,6 @@
 const { parseUnits, id } = require('ethers/lib/utils');
 
-const MONTH = parseInt((60 * 60 * 24 * 365.25) / 12);
+const WEEK = parseInt((60 * 60 * 24 * 7))
 
 async function main() {
   //
@@ -18,12 +18,12 @@ async function main() {
   const NFT_NAME = 'Sherlock Position'; // TBD
   const NFT_SYMBOL = 'SP'; // TBD
 
-  const STAKING_PERIODS = [MONTH * 3, MONTH * 6, MONTH * 12]; // TBD
+  const STAKING_PERIODS = [WEEK * 13, WEEK * 26, WEEK * 52]; // (3, 6 and 12 months) TBD
 
   const MILLION_USDC = parseUnits('1000000', 6);
   // If you stake 1 USDC for a year, you'll get 0.1 SHER token
   const SHER_PER_USDC_PER_YEAR = parseUnits('0.1', 18); // TBD
-  const SHER_RATE_CODE = SHER_PER_USDC_PER_YEAR.div(MONTH * 12);
+  const SHER_RATE_CODE = SHER_PER_USDC_PER_YEAR.div(WEEK * 52);
 
   //
   // END CONFIG
