@@ -17,6 +17,7 @@ async function main() {
 
   this.SherClaim = await ethers.getContractFactory("SherClaim");
   this.SherBuy = await ethers.getContractFactory("SherBuy");
+  this.SherToken = await ethers.getContractFactory("SherToken");
 
   const _10DaysFromNow = Math.round(Date.now() / 1000) + (60 * 60 * 24 * 10);
   const sherClaim = await this.SherClaim.deploy(SHER, _10DaysFromNow);
@@ -34,6 +35,11 @@ async function main() {
   );
   await sherBuy.deployed();
   console.log('1 - Deployed SherBuy');
+
+  const sher = this.SherToken.attach(SHER);
+  const tx = await sher.transfer(sherBuy.address, ethers.utils.parseUnits("100000000", 18));
+  await tx.wait();
+  console.log('2 - Sent SHER tokens to SherBuy');
 
   console.log(`const SherClaim = "${sherClaim.address}";`);
   console.log(`const SherBuy = "${sherBuy.address}";`);
