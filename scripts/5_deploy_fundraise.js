@@ -37,7 +37,7 @@ async function main() {
   console.log('1 - Deployed SherBuy');
 
   const sher = this.SherToken.attach(SHER);
-  const tx = await sher.transfer(sherBuy.address, ethers.utils.parseUnits("100000000", 18));
+  const tx = await sher.transfer(sherBuy.address, ethers.utils.parseUnits("10000000", 18));
   await tx.wait();
   console.log('2 - Sent SHER tokens to SherBuy');
 
