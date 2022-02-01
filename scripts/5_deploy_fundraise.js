@@ -6,8 +6,8 @@ async function main() {
   // CONFIG
   //
   const USDC = '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48';
-  const SHER = '0x666B8EbFbF4D5f0CE56962a25635CfF563F13161'; // TBD
-  const SHERLOCK = '0x08E7dB7d9131a38d01dbBc490615Ea2661bBbce4';
+  const SHER = '0x36EFEd637dd1D3D5d9FB89b185a76E6ACF33493B'; // TBD
+  const SHERLOCK = '0x22Af418Ba0e7EECC188f0D9Aee64E88953394a08';
   const RECEIVER = '0x0B6a04b8D3d050cbeD9A4621A5D503F27743c942'; // TBD: This is Hardhat account #3
   const STAKE_RATE = parseUnits('9', 6);
   const BUY_RATE = parseUnits('1', 6);
