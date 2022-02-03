@@ -9,7 +9,7 @@ async function main() {
   console.log('0 - Attaching to protocol manager');
 
   const sherlockProtocolManager = await this.SherlockProtocolManager.attach(
-    '0xee4b70AE96fFC70563f70964ebDD8635033Bc6b4',
+    '0xE3C37e951F1404b162DFA71A13F0c99c9798Db82',
   );
 
   console.log('1 - Attaching to USDC contract');
