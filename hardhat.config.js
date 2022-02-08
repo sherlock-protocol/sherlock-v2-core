@@ -3,6 +3,8 @@ require('solidity-coverage');
 require('hardhat-gas-reporter');
 require('hardhat-contract-sizer');
 require('dotenv').config();
+require('./tasks/advance_time_with_days');
+
 /**
  * @type import('hardhat/config').HardhatUserConfig
  */
