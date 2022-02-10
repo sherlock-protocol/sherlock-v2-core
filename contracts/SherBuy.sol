@@ -85,7 +85,7 @@ contract SherBuy is ReentrancyGuard {
     if (_receiver == address(0)) revert ZeroArgument();
     if (address(_sherClaim) == address(0)) revert ZeroArgument();
 
-    // Verify is PERIOD is active
+    // Verify if PERIOD is active
     // Theoretically this period can be disabled during the lifetime of this contract, which will cause issues
     if (_sherlockPosition.stakingPeriods(PERIOD) == false) revert InvalidState();
 
