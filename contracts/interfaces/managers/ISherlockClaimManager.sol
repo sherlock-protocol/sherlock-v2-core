@@ -66,15 +66,23 @@ interface ISherlockClaimManager is IManager, OptimisticRequester {
     bytes ancillaryData;
   }
 
-  // requestAndProposePriceFor() --> proposer = protocolAgent
-  // disputePriceFor() --> disputor = sherlock.strategyManager() (current active one)
+  // requestAndProposePriceFor() --> proposer = sherlockCore (address to receive BOND if UMA denies claim)
+  // disputePriceFor() --> disputer = protocolAgent
   // priceSettled will be the the callback that contains the main data
 
-  // user has to pay 7.5k to dispute a claim, we will execute a safeTransferFrom(user, address(this), 7.5k)
-  // we need to approve the contract 7.5k as it will be transferred from address(this)  // + 2x final fee
-  // the bond will be 5k on requestAndProposePriceFor()                                 // + 1x final fee
-  // the bond will be 2.5k on disputePriceFor()                                         // + 1x final fee
-  // on settle eiter strategy gets 7.5k. or the proposer get their bond back.           // + 1x final fee
+  // Assume BOND = 9600, UMA's final fee = 400.
+  // Claim initiator (Sherlock) has to pay 20k to dispute a claim,
+  // so we will execute a safeTransferFrom(claimInitiator, address(this), 20k).
+  // We need to approve the contract 20k as it will be transferred from address(this).
+
+  // The 20k consists of 2 * (BOND + final fee charged by UMA), as follows:
+  // 1. On requestAndProposePriceFor(), the fee will be 10k: 9600 BOND + 400 UMA's final fee;
+  // 2. On disputePriceFor(), the fee will be the same 10k.
+  // note that half of the BOND (4800) + UMA's final fee (400) is "burnt" and sent to UMA
+
+  // On settle, either the protocolAgent (dispute success) or sherlockCore (dispute failure)
+  // will receive 9600 + 4800 + 400 = 14800. In addition, the protocolAgent will be entitled to
+  // the claimAmount if the dispute is successful/
 
   // lastClaimID <-- starts with 0, so initial id = 1
   // have claim counter, easy to identify certain claims by their number
