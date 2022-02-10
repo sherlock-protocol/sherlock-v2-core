@@ -299,7 +299,7 @@ contract SherlockClaimManager is ISherlockClaimManager, ReentrancyGuard, Manager
   /// @dev Even if the protocol agent role is tranferred during the lifecycle
   /// @dev This is done because a protocols coverage can end after an exploit, either wilfully or forcefully.
   /// @dev The protocol agent is still active for 7 days after coverage ends, so a claim can still be submitted.
-  /// @dev But in case the claim is approved after the 7 day period, `payoutClaim()` can not be called as the protocol agent is 0
+  /// @dev Approved claims after the 7 day period will still be paid, where the amount will be sent to the recevier.
   function startClaim(
     bytes32 _protocol,
     uint256 _amount,
