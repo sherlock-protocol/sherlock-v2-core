@@ -437,7 +437,7 @@ contract SherlockClaimManager is ISherlockClaimManager, ReentrancyGuard, Manager
       0, // Reward is 0, Sherlock handles rewards on its own
       BOND, // Cost of making a request to the UMA OO (as decided by Sherlock)
       LIVENESS, // Proposal liveness
-      address(sherlockCore), // Sherlock core address
+      address(sherlockCore), // If escalated claim fails, bond amount gets sent to sherlockCore
       0 // price
     );
 
