@@ -50,7 +50,7 @@ interface ISherlockClaimManager is IManager, OptimisticRequester {
     UmaPending, // Claim is escalated, in case Spcc denied or didn't act within 7 days.
     UmaApproved, // Final state, claim is valid, claim can be enacted after 1 day, umaHaltOperator has 1 day to change to denied
     UmaDenied, // Final state, claim is invalid
-    Halted, // UMHA can halt claim if state is UmaApproved
+    Halted, // UMAHO can halt claim if state is UmaApproved
     Cleaned // Claim is removed by protocol agent
   }
 
@@ -80,7 +80,7 @@ interface ISherlockClaimManager is IManager, OptimisticRequester {
   // have claim counter, easy to identify certain clams by their number
   // but use hash(callback.request.propose + callback.timestamp) as the internal UUID to handle the callbacks
 
-  // So SPCC and UHO are hardcoded (UHO can be renounced)
+  // So SPCC and UMAHO are hardcoded (UMAHO can be renounced)
   // In case these need to be updated, deploy different contract and upgrade it on the sherlock gov side.
 
   // On price proposed callback --> call disputePriceFor with callbackdata + sherlock.strategyManager() and address(this)
