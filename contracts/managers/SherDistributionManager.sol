@@ -53,7 +53,7 @@ contract SherDistributionManager is ISherDistributionManager, Manager {
     emit Initialized(_maxRewardsEndTVL, _zeroRewardsStartTVL, _maxRewardsRate);
   }
 
-  // This function is called (by core Sherlock contracrt) as soon as a staker stakes
+  // This function is called (by core Sherlock contract) as soon as a staker stakes
   // Calculates the SHER tokens owed to the stake, then transfers the SHER to the Sherlock core contract
   // Staker won't actually receive these SHER tokens until the lockup has expired though
   /// @notice Caller will receive `_sher` SHER tokens based on `_amount` and `_period`

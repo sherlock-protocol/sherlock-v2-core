@@ -55,8 +55,8 @@ interface ISherlockGov {
   /// @return Address of current SHER distribution manager
   function sherDistributionManager() external view returns (ISherDistributionManager);
 
-  /// @notice Update address eligble for non staker rewards from protocol premiums
-  /// @param _nonStakers Address eligble for non staker rewards
+  /// @notice Update address eligible for non staker rewards from protocol premiums
+  /// @param _nonStakers Address eligible for non staker rewards
   function updateNonStakersAddress(address _nonStakers) external;
 
   /// @notice View current non stakers address

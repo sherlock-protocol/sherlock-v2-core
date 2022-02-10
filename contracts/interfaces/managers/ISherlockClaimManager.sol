@@ -77,7 +77,7 @@ interface ISherlockClaimManager is IManager, OptimisticRequester {
   // on settle eiter strategy gets 7.5k. or the proposer get their bond back.           // + 1x final fee
 
   // lastClaimID <-- starts with 0, so initial id = 1
-  // have claim counter, easy to identify certain clams by their number
+  // have claim counter, easy to identify certain claims by their number
   // but use hash(callback.request.propose + callback.timestamp) as the internal UUID to handle the callbacks
 
   // So SPCC and UMAHO are hardcoded (UMAHO can be renounced)

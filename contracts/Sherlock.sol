@@ -220,8 +220,8 @@ contract Sherlock is ISherlock, ERC721, Ownable, Pausable {
   }
 
   // Sets a new address for nonstakers payments
-  /// @notice Update address eligble for non staker rewards from protocol premiums
-  /// @param _nonStakers Address eligble for non staker rewards
+  /// @notice Update address eligible for non staker rewards from protocol premiums
+  /// @param _nonStakers Address eligible for non staker rewards
   function updateNonStakersAddress(address _nonStakers) external override onlyOwner {
     if (address(_nonStakers) == address(0)) revert ZeroArgument();
     if (nonStakersAddress == _nonStakers) revert InvalidArgument();
