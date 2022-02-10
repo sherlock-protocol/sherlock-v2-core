@@ -207,8 +207,7 @@ contract Sherlock is ISherlock, ERC721, Ownable, Pausable {
     sherDistributionManager = _sherDistributionManager;
   }
 
-  // Deletes the SHER distribution manager altogether (if Sherlock decides to no longer pay out SHER rewards)
-  /// @notice Remove SHER token rewards
+  /// @notice Deletes the SHER distribution manager altogether (if Sherlock decides to no longer pay out SHER rewards)
   function removeSherDistributionManager() external override onlyOwner {
     if (address(sherDistributionManager) == address(0)) revert InvalidConditions();
 

@@ -48,7 +48,7 @@ interface ISherlockGov {
   function updateSherDistributionManager(ISherDistributionManager _sherDistributionManager)
     external;
 
-  /// @notice Remove SHER token rewards
+  /// @notice Deletes the SHER distribution manager altogether (if Sherlock decides to no longer pay out SHER rewards)
   function removeSherDistributionManager() external;
 
   /// @notice Read SHER distribution manager
