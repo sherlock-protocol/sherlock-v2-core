@@ -16,7 +16,7 @@ import './interfaces/ISherlock.sol';
 /// @author Evert Kors
 /// @dev The goal is to get TVL in Sherlock.sol and raise funds with `receiver`
 /// @dev Bought SHER tokens are moved to a timelock contract (SherClaim)
-/// @dev Admin should SHER tokens to the contract rounded by 0.01 SHER, otherwise logic will break.
+/// @dev Admin should send factor of 0.01 SHER tokens to the contract, otherwise logic will break.
 contract SherBuy is ReentrancyGuard {
   using SafeERC20 for IERC20;
 
