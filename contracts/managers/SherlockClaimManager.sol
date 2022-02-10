@@ -539,7 +539,7 @@ contract SherlockClaimManager is ISherlockClaimManager, ReentrancyGuard, Manager
 
   // Once requestAndProposePriceFor() is executed in UMA's contracts, this function gets called
   // We change the claim's state from UmaPriceProposed to ReadyToProposeUmaDispute
-  // Then we call the next function in the process, disputePriceFor()
+  // Then, the next callback in the process, disputePriceFor(), gets called by the UMA's contract.
   // @note reentrancy is allowed for this call
   function priceProposed(
     bytes32 identifier,
@@ -562,7 +562,7 @@ contract SherlockClaimManager is ISherlockClaimManager, ReentrancyGuard, Manager
 
   // Once disputePriceFor() is executed in UMA's contracts, this function gets called
   // We change the claim's state from UmaDisputeProposed to UmaPending
-  // Then we call the next function in the process, priceSettled()
+  // Then, the next callback in the process, priceSettled(), gets called by the UMA's contract.
   // @note reentrancy is allowed for this call
   function priceDisputed(
     bytes32 identifier,
