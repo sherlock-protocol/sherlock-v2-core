@@ -326,7 +326,7 @@ contract Sherlock is ISherlock, ERC721, Ownable, Pausable {
   }
 
   /// @notice Pause external functions in all contracts
-  /// @dev A manager can be replaced with the new contract in a `paused` state
+  /// @dev A manager can still be replaced with a new contract in a `paused` state
   /// @dev To ensure we are still able to pause all contracts, we check if the manager is unpaused
   function pause() external onlyOwner {
     _pause();
@@ -343,7 +343,7 @@ contract Sherlock is ISherlock, ERC721, Ownable, Pausable {
   }
 
   /// @notice Unpause external functions in all contracts
-  /// @dev A manager can be replaced with the new contract in an `unpaused` state
+  /// @dev A manager can still be replaced with a new contract in an `unpaused` state
   /// @dev To ensure we are still able to unpause all contracts, we check if the manager is paused
   function unpause() external onlyOwner {
     _unpause();
