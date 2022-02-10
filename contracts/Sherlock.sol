@@ -30,7 +30,7 @@ contract Sherlock is ISherlock, ERC721, Ownable, Pausable {
   // The period during which the reward for restaking an account (after the inital period) grows
   uint256 public constant ARB_RESTAKE_GROWTH_TIME = 1 weeks;
 
-  // Anyone who gets auto-restaked is restaked for this period (3 months)
+  // Anyone who gets auto-restaked is restaked for this period (12 weeks)
   uint256 public constant ARB_RESTAKE_PERIOD = 12 weeks;
 
   // The percentage of someone's stake that can be paid to an arb for restaking
@@ -645,9 +645,9 @@ contract Sherlock is ISherlock, ERC721, Ownable, Pausable {
     profit = _redeemSharesCalc(profit);
   }
 
-  /// @notice Allows someone who doesn't own the position (an arbitrager) to restake the position for 3 months (ARB_RESTAKE_PERIOD)
+  /// @notice Allows someone who doesn't own the position (an arbitrager) to restake the position for 12 weeks (ARB_RESTAKE_PERIOD)
   /// @param _id ID of the position
-  /// @return _sher Amount of SHER tokens to be released to position owner on expiry of the 3 month lockup
+  /// @return _sher Amount of SHER tokens to be released to position owner on expiry of the 12 weeks lockup
   /// @return _arbReward Amount of tokens (USDC) sent to caller (the arbitrager) in return for calling the function
   /// @dev Can only be called after lockup `_period` is more than 2 weeks in the past (assuming ARB_RESTAKE_WAIT_TIME is 2 weeks)
   /// @dev Max 20% (ARB_RESTAKE_MAX_PERCENTAGE) of tokens associated with a position are used to incentivize arbs (x)
@@ -670,7 +670,7 @@ contract Sherlock is ISherlock, ERC721, Ownable, Pausable {
     // Returns the amount of USDC paid to the arbitrager
     _arbReward = _redeemShares(_id, arbRewardShares, msg.sender);
 
-    // Restakes the tokens (USDC) associated with this position for the ARB_RESTAKE PERIOD (3 months)
+    // Restakes the tokens (USDC) associated with this position for the ARB_RESTAKE_PERIOD (12 weeks)
     // Sends previously earned SHER rewards to the NFT owner address
     _sher = _restake(_id, ARB_RESTAKE_PERIOD, nftOwner);
 
