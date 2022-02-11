@@ -106,7 +106,7 @@ contract SherBuy is ReentrancyGuard {
   /// @return True if the liquidity event is active
   function active() public view returns (bool) {
     // The claim contract will become active once the liquidity event is inactive
-    return block.timestamp < sherClaim.claimableAt();
+    return block.timestamp < sherClaim.newEntryDeadline();
   }
 
   /// @notice View the capital requirements needed to buy up until `_sherAmountWant`
