@@ -334,6 +334,8 @@ contract SherlockClaimManager is ISherlockClaimManager, ReentrancyGuard, Manager
     // The max amount a protocol can claim is the higher of the current and previous coverage amounts
     uint256 maxClaim = current > previous ? current : previous;
     // True if a protocol is claiming based on its previous coverage amount (only used in event emission)
+    // Current coverage takes precedence over the previous one, which means the only case this is true
+    // is when claimed amount is greater than current coverage.
     bool prevCoverage = _amount > current;
     // Requires the amount claimed is less than or equal to the higher of the current and previous coverage amounts
     if (_amount > maxClaim) revert InvalidArgument();
