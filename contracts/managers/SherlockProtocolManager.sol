@@ -416,6 +416,7 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
   /// @notice Sets the minimum active balance before an arb can remove a protocol
   /// @param _minActiveBalance Minimum balance needed (in USDC)
   /// @dev Only gov
+  /// @dev This call should be subject to a timelock
   function setMinActiveBalance(uint256 _minActiveBalance) external override onlyOwner {
     // New value cannot be the same as current value
     if (minActiveBalance == _minActiveBalance) revert InvalidArgument();
@@ -612,6 +613,7 @@ contract SherlockProtocolManager is ISherlockProtocolManager, Manager {
   /// @notice Remove a protocol with insufficient active balance
   /// @param _protocol Protocol identifier
   // msg.sender receives whatever is left of the insufficient active balance, this should incentivize arbs to call this function
+  /// @dev This call should be subject to a timelock
   function forceRemoveByActiveBalance(bytes32 _protocol) external override whenNotPaused {
     address agent = _verifyProtocolExists(_protocol);
 
