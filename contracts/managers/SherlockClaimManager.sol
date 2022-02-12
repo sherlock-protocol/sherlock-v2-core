@@ -127,7 +127,7 @@ contract SherlockClaimManager is ISherlockClaimManager, ReentrancyGuard, Manager
   // Checks to see if a claim can be escalated to the UMA OO
   // Claim must be either
   // 1) Denied by SPCC and within 4 weeks after denial
-  // 2) Beyond the designated time window for SPCC to respond
+  // 2) Pending by SPCC but beyond the designated time window for SPCC to respond
   function _isEscalateState(State _oldState, uint256 updated) internal view returns (bool) {
     if (_oldState == State.SpccDenied && block.timestamp <= updated + ESCALATE_TIME) return true;
 
