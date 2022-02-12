@@ -195,6 +195,7 @@ contract Sherlock is ISherlock, ERC721, Ownable, Pausable {
   // Sets a new contract to be the active SHER distribution manager
   /// @notice Update SHER distribution manager contract
   /// @param _sherDistributionManager New adddress of the manager
+  /// @dev After updating the contract, call setSherlockCoreAddress() on the new contract
   function updateSherDistributionManager(ISherDistributionManager _sherDistributionManager)
     external
     override
@@ -232,6 +233,7 @@ contract Sherlock is ISherlock, ERC721, Ownable, Pausable {
   // Sets a new protocol manager contract
   /// @notice Transfer protocol manager implementation address
   /// @param _protocolManager new implementation address
+  /// @dev After updating the contract, call setSherlockCoreAddress() on the new contract
   function updateSherlockProtocolManager(ISherlockProtocolManager _protocolManager)
     external
     override
@@ -247,6 +249,7 @@ contract Sherlock is ISherlock, ERC721, Ownable, Pausable {
   // Sets a new claim manager contract
   /// @notice Transfer claim manager role to different address
   /// @param _claimManager New address of claim manager
+  /// @dev After updating the contract, call setSherlockCoreAddress() on the new contract
   function updateSherlockClaimManager(ISherlockClaimManager _claimManager)
     external
     override
@@ -263,6 +266,7 @@ contract Sherlock is ISherlock, ERC721, Ownable, Pausable {
   /// @notice Update yield strategy
   /// @param _yieldStrategy New address of the strategy
   /// @dev Call will fail if underlying withdrawAll call fails
+  /// @dev After updating the contract, call setSherlockCoreAddress() on the new contract
   function updateYieldStrategy(IStrategyManager _yieldStrategy) external override onlyOwner {
     if (address(_yieldStrategy) == address(0)) revert ZeroArgument();
     if (yieldStrategy == _yieldStrategy) revert InvalidArgument();
