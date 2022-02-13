@@ -97,7 +97,7 @@ contract SherBuy {
     sherClaim = _sherClaim;
 
     // Do max approve in constructor as this contract will not hold any USDC
-    usdc.approve(address(sherlockPosition), type(uint256).max);
+    usdc.safeIncreaseAllowance(address(sherlockPosition), type(uint256).max);
   }
 
   /// @notice Check if the liquidity event is active
@@ -167,7 +167,7 @@ contract SherBuy {
     // Stake usdc and send NFT to user
     sherlockPosition.initialStake(stake, PERIOD, msg.sender);
     // Approve in function as this contract will hold SHER tokens
-    sher.approve(address(sherClaim), sherAmount);
+    sher.safeIncreaseAllowance(address(sherClaim), sherAmount);
     // Add bought SHER tokens to timelock for user
     sherClaim.add(msg.sender, sherAmount);
 

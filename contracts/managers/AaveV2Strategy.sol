@@ -68,7 +68,7 @@ contract AaveV2Strategy is IStrategyManager, Manager {
 
     // If allowance for this contract is too low, approve the max allowance
     if (want.allowance(address(this), address(lp)) < amount) {
-      want.safeApprove(address(lp), type(uint256).max);
+      want.safeIncreaseAllowance(address(lp), type(uint256).max);
     }
 
     // Deposits the full balance of USDC held in this contract into Aave's lending pool
