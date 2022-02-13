@@ -617,6 +617,7 @@ contract Sherlock is ISherlock, ERC721, Ownable, Pausable {
   /// @return profit How much profit an arb would make in USDC
   /// @return able If the transaction can be executed (the current timestamp is during an arb period, etc.)
   function viewRewardForArbRestake(uint256 _id) external view returns (uint256 profit, bool able) {
+    if (!_exists(_id)) revert NonExistent();
     // Returns the stake shares that an arb would get, and whether the position can currently be arbed
     // `profit` variable is used to store the amount of shares
     (profit, able) = _calcSharesForArbRestake(_id);

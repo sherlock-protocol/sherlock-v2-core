@@ -1295,6 +1295,11 @@ describe('Sherlock ─ Functional', function () {
       expect(res[0]).to.eq(this.amount.div(100).mul(20));
       expect(res[1]).to.eq(true);
     });
+    it('Non existent', async function () {
+      await expect(this.sherlock.connect(this.bob).viewRewardForArbRestake(2)).to.be.revertedWith(
+        'NonExistent()',
+      );
+    });
     it('Do', async function () {
       await this.sherdist.setReward(this.reward.mul(2));
       this.arbAmount = this.amount.div(10).mul(2);
