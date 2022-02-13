@@ -775,4 +775,29 @@ describe('Pausable', function () {
       expect(await this.claimManagerMock.paused()).to.eq(false);
     });
   });
+  describe('position transfer', function () {
+    before(async function () {
+      await timeTraveler.revertSnapshot();
+
+      await this.token.approve(this.sherlock.address, maxTokens);
+      await this.sherlock.initialStake(100, 10, this.alice.address);
+    });
+    it('Initial state', async function () {
+      await this.sherlock.transferFrom(this.alice.address, this.bob.address, 1);
+    });
+    it('Do pause', async function () {
+      await this.sherlock.pause();
+    });
+    it('Verify state', async function () {
+      await expect(
+        this.sherlock.connect(this.bob).transferFrom(this.bob.address, this.alice.address, 1),
+      ).to.be.revertedWith('Pausable: paused');
+    });
+    it('Do unpause', async function () {
+      await this.sherlock.unpause();
+    });
+    it('Verify state', async function () {
+      await this.sherlock.connect(this.bob).transferFrom(this.bob.address, this.alice.address, 1);
+    });
+  });
 });

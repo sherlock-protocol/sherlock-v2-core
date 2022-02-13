@@ -346,6 +346,11 @@ contract Sherlock is ISherlock, ERC721, Ownable, Pausable {
   //
   // Access control functions
   //
+  function _beforeTokenTransfer(
+    address _from,
+    address _to,
+    uint256 _tokenID
+  ) internal override whenNotPaused {}
 
   // Transfers specified amount of tokens to the address specified by the claim creator (protocol agent)
   // This function is called by the Sherlock claim manager contract if a claim is approved
