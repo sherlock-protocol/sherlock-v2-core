@@ -21,6 +21,9 @@ import './interfaces/ISherlock.sol';
 contract Sherlock is ISherlock, ERC721, Ownable, Pausable {
   using SafeERC20 for IERC20;
 
+  // The minimal amount needed to mint a position
+  uint256 public constant MIN_STAKE = 10**6; // 1 USDC
+
   // The initial period for a staker to restake/withdraw without being auto-restaked
   uint256 public constant ARB_RESTAKE_WAIT_TIME = 2 weeks;
 
@@ -508,6 +511,7 @@ contract Sherlock is ISherlock, ERC721, Ownable, Pausable {
     address _receiver
   ) external override whenNotPaused returns (uint256 _id, uint256 _sher) {
     if (_amount == 0) revert ZeroArgument();
+    if (_amount < MIN_STAKE) revert InvalidArgument();
     // Makes sure the period is a whitelisted period
     if (!stakingPeriods[_period]) revert InvalidArgument();
     if (address(_receiver) == address(0)) revert ZeroArgument();

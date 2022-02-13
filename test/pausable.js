@@ -780,7 +780,7 @@ describe('Pausable', function () {
       await timeTraveler.revertSnapshot();
 
       await this.token.approve(this.sherlock.address, maxTokens);
-      await this.sherlock.initialStake(100, 10, this.alice.address);
+      await this.sherlock.initialStake(parseUnits('100', 6), 10, this.alice.address);
     });
     it('Initial state', async function () {
       await this.sherlock.transferFrom(this.alice.address, this.bob.address, 1);

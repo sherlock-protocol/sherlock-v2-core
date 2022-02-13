@@ -369,15 +369,20 @@ describe('Sherlock ─ Stateless', function () {
         'ZeroArgument()',
       );
     });
+    it('Invalid amount (too less)', async function () {
+      await expect(
+        this.sherlock.initialStake(parseUnits('0.99', 6), 10, this.alice.address),
+      ).to.be.revertedWith('InvalidArgument()');
+    });
     it('Invalid period', async function () {
       await expect(this.sherlock.initialStake(1, 9, this.alice.address)).to.be.revertedWith(
         'InvalidArgument()',
       );
     });
     it('Invalid receiver', async function () {
-      await expect(this.sherlock.initialStake(1, 10, constants.AddressZero)).to.be.revertedWith(
-        'ZeroArgument()',
-      );
+      await expect(
+        this.sherlock.initialStake(parseUnits('100', 6), 10, constants.AddressZero),
+      ).to.be.revertedWith('ZeroArgument()');
     });
   });
   describe('redeemNFT()', async function () {
