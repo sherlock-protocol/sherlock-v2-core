@@ -421,10 +421,11 @@ contract Sherlock is ISherlock, ERC721, Ownable, Pausable {
     uint256 sherReward = sherRewards_[_id];
     if (sherReward == 0) return;
 
-    // Transfers the SHER tokens associated with this NFT ID to the address of the NFT owner
-    sher.safeTransfer(_nftOwner, sherReward);
     // Deletes the SHER reward mapping for this NFT ID
     delete sherRewards_[_id];
+
+    // Transfers the SHER tokens associated with this NFT ID to the address of the NFT owner
+    sher.safeTransfer(_nftOwner, sherReward);
   }
 
   // Transfers an amount of tokens to the receiver address
