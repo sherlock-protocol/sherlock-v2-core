@@ -326,6 +326,18 @@ contract Sherlock is ISherlock, ERC721, Ownable, Pausable {
     yieldStrategy.withdrawAll();
   }
 
+  // Withdraws all tokens from an inactive yield strategy back into this contract
+  /// @notice Withdraw all funds from inactive strategy
+  /// @dev gov only
+  function yieldStrategyWithdrawAllInactive(IStrategyManager _yieldStrategy)
+    external
+    override
+    onlyOwner
+  {
+    if (address(_yieldStrategy) == address(yieldStrategy)) revert InvalidArgument();
+    _yieldStrategy.withdrawAll();
+  }
+
   /// @notice Pause external functions in all contracts
   /// @dev A manager can be replaced with the new contract in a `paused` state
   /// @dev To ensure we are still able to pause all contracts, we check if the manager is unpaused
