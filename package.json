@@ -23,7 +23,7 @@
     "semi": true
   },
   "dependencies": {
-    "@openzeppelin/contracts": "^4.3.2",
+    "@openzeppelin/contracts": "^4.4.2",
     "dotenv": "^8.2.0",
     "hardhat-gas-reporter": "^1.0.4",
     "prettier-plugin-solidity": "^1.0.0-beta.18",
