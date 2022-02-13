@@ -533,7 +533,7 @@ contract Sherlock is ISherlock, ERC721, Ownable, Pausable {
     _sher = _stake(_amount, _period, _id, _receiver);
 
     // This is an ERC-721 function that creates an NFT and sends it to the receiver
-    _safeMint(_receiver, _id);
+    _mint(_receiver, _id);
   }
 
   // This is how a staker unstakes and cashes out on their position
