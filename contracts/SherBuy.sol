@@ -167,7 +167,7 @@ contract SherBuy is ReentrancyGuard {
 
     // Stake usdc and send NFT to user
     sherlockPosition.initialStake(stake, PERIOD, msg.sender);
-    // Approve in function as this contract will hold SHER tokens
+    // Increase allowance for SherClaim by the amount of SHER tokens bought
     sher.safeIncreaseAllowance(address(sherClaim), sherAmount);
     // Add bought SHER tokens to timelock for user
     sherClaim.add(msg.sender, sherAmount);
