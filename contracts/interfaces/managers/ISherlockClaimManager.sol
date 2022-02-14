@@ -80,6 +80,8 @@ interface ISherlockClaimManager is IManager, OptimisticRequester {
   // 2. On disputePriceFor(), the fee will be the same 10k.
   // note that half of the BOND (4800) + UMA's final fee (400) is "burnt" and sent to UMA
 
+  // UMA's final fee can be changed in the future, which may result in lower or higher required staked amounts for escalating a claim.
+
   // On settle, either the protocolAgent (dispute success) or sherlockCore (dispute failure)
   // will receive 9600 + 4800 + 400 = 14800. In addition, the protocolAgent will be entitled to
   // the claimAmount if the dispute is successful/

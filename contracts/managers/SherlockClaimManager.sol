@@ -24,6 +24,7 @@ contract SherlockClaimManager is ISherlockClaimManager, ReentrancyGuard, Manager
 
   /// @dev at time of writing, the escalation cost will be approximately 22k
   /// assuming BOND = 9600 and UMA's final fee = 1400
+  /// UMA's final fee can be changed in the future, which may result in lower or higher required staked amounts for escalating a claim.
   /// The actual amount is 2 * (BOND + UMA's final fee), because:
   /// 1. The first half is charged when calling UMA.requestAndProposePriceFor()
   /// 2. The second half is charged when calling UMA.disputePriceFor()
