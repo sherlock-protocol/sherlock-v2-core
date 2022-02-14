@@ -70,20 +70,20 @@ interface ISherlockClaimManager is IManager, OptimisticRequester {
   // disputePriceFor() --> disputer = protocolAgent
   // priceSettled will be the the callback that contains the main data
 
-  // Assume BOND = 9600, UMA's final fee = 400.
-  // Claim initiator (Sherlock) has to pay 20k to dispute a claim,
-  // so we will execute a safeTransferFrom(claimInitiator, address(this), 20k).
-  // We need to approve the contract 20k as it will be transferred from address(this).
+  // Assume BOND = 9600, UMA's final fee = 1500.
+  // Claim initiator (Sherlock) has to pay 22k to dispute a claim,
+  // so we will execute a safeTransferFrom(claimInitiator, address(this), 22k).
+  // We need to approve the contract 22k as it will be transferred from address(this).
 
-  // The 20k consists of 2 * (BOND + final fee charged by UMA), as follows:
-  // 1. On requestAndProposePriceFor(), the fee will be 10k: 9600 BOND + 400 UMA's final fee;
+  // The 22k consists of 2 * (BOND + final fee charged by UMA), as follows:
+  // 1. On requestAndProposePriceFor(), the fee will be 10k: 9600 BOND + 1500 UMA's final fee;
   // 2. On disputePriceFor(), the fee will be the same 10k.
-  // note that half of the BOND (4800) + UMA's final fee (400) is "burnt" and sent to UMA
+  // note that half of the BOND (4800) + UMA's final fee (1500) is "burnt" and sent to UMA
 
   // UMA's final fee can be changed in the future, which may result in lower or higher required staked amounts for escalating a claim.
 
   // On settle, either the protocolAgent (dispute success) or sherlockCore (dispute failure)
-  // will receive 9600 + 4800 + 400 = 14800. In addition, the protocolAgent will be entitled to
+  // will receive 9600 + 4800 + 1500 = 15900. In addition, the protocolAgent will be entitled to
   // the claimAmount if the dispute is successful/
 
   // lastClaimID <-- starts with 0, so initial id = 1
