@@ -3,6 +3,9 @@ require('solidity-coverage');
 require('hardhat-gas-reporter');
 require('hardhat-contract-sizer');
 require('dotenv').config();
+require('./tasks/advance_time_with_days');
+require('./tasks/automine');
+
 /**
  * @type import('hardhat/config').HardhatUserConfig
  */
