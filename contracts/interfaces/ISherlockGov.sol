@@ -81,9 +81,14 @@ interface ISherlockGov {
   function updateSherlockClaimManager(ISherlockClaimManager _claimManager) external;
 
   /// @notice Update yield strategy
-  /// @param _yieldStrategy News address of the strategy
+  /// @param _yieldStrategy New address of the strategy
   /// @dev try a yieldStrategyWithdrawAll() on old, ignore failure
   function updateYieldStrategy(IStrategyManager _yieldStrategy) external;
+
+  /// @notice Update yield strategy ignoring state of current strategy
+  /// @param _yieldStrategy New address of the strategy
+  /// @dev tries a yieldStrategyWithdrawAll() on old strategy, ignore failure
+  function updateYieldStrategyForce(IStrategyManager _yieldStrategy) external;
 
   /// @notice Read current strategy
   /// @return Address of current strategy

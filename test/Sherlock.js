@@ -329,6 +329,23 @@ describe('Sherlock ─ Stateless', function () {
       );
     });
   });
+  describe('updateYieldStrategyForce()', function () {
+    it('Invalid sender', async function () {
+      await expect(
+        this.sherlock.connect(this.bob).updateYieldStrategyForce(this.strategy2.address),
+      ).to.be.revertedWith('Ownable: caller is not the owner');
+    });
+    it('Zero argument', async function () {
+      await expect(
+        this.sherlock.updateYieldStrategyForce(constants.AddressZero),
+      ).to.be.revertedWith('ZeroArgument()');
+    });
+    it('Same argument', async function () {
+      await expect(
+        this.sherlock.updateYieldStrategyForce(this.strategy.address),
+      ).to.be.revertedWith('InvalidArgument()');
+    });
+  });
   describe('yieldStrategyDeposit()', function () {
     it('Invalid sender', async function () {
       await expect(this.sherlock.connect(this.bob).yieldStrategyDeposit(1)).to.be.revertedWith(
@@ -664,6 +681,25 @@ describe('Sherlock ─ Functional', function () {
       expect(await this.sherlock.yieldStrategy()).to.eq(this.strategy2.address);
     });
   });
+  describe('updateYieldStrategyForce()', function () {
+    before(async function () {
+      await timeTraveler.revertSnapshot();
+    });
+    it('Initial state', async function () {
+      expect(await this.sherlock.yieldStrategy()).to.eq(this.strategy.address);
+    });
+    it('Do', async function () {
+      this.t0 = await meta(this.sherlock.updateYieldStrategyForce(this.strategy2.address));
+
+      expect(this.t0.events.length).to.eq(1);
+      expect(this.t0.events[0].event).to.eq('YieldStrategyUpdated');
+      expect(this.t0.events[0].args.previous).to.eq(this.strategy.address);
+      expect(this.t0.events[0].args.current).to.eq(this.strategy2.address);
+    });
+    it('Verify state', async function () {
+      expect(await this.sherlock.yieldStrategy()).to.eq(this.strategy2.address);
+    });
+  });
   describe('updateYieldStrategy(), failing', function () {
     before(async function () {
       await timeTraveler.revertSnapshot();
@@ -674,7 +710,25 @@ describe('Sherlock ─ Functional', function () {
       expect(await this.sherlock.yieldStrategy()).to.eq(this.strategy.address);
     });
     it('Do', async function () {
-      this.t0 = await meta(this.sherlock.updateYieldStrategy(this.strategy2.address));
+      await expect(this.sherlock.updateYieldStrategy(this.strategy2.address)).to.be.revertedWith(
+        'FAIL',
+      );
+    });
+    it('Verify state', async function () {
+      expect(await this.sherlock.yieldStrategy()).to.eq(this.strategy.address);
+    });
+  });
+  describe('updateYieldStrategyForce(), failing', function () {
+    before(async function () {
+      await timeTraveler.revertSnapshot();
+    });
+    it('Initial state', async function () {
+      await this.strategy.setFail();
+
+      expect(await this.sherlock.yieldStrategy()).to.eq(this.strategy.address);
+    });
+    it('Do', async function () {
+      this.t0 = await meta(this.sherlock.updateYieldStrategyForce(this.strategy2.address));
 
       expect(this.t0.events.length).to.eq(2);
       expect(this.t0.events[0].event).to.eq('YieldStrategyUpdateWithdrawAllError');
