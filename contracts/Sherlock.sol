@@ -21,6 +21,9 @@ import './interfaces/ISherlock.sol';
 contract Sherlock is ISherlock, ERC721, Ownable, Pausable {
   using SafeERC20 for IERC20;
 
+  // The minimal amount needed to mint a position
+  uint256 public constant MIN_STAKE = 10**6; // 1 USDC
+
   // The initial period for a staker to restake/withdraw without being auto-restaked
   uint256 public constant ARB_RESTAKE_WAIT_TIME = 2 weeks;
 
@@ -50,9 +53,6 @@ contract Sherlock is ISherlock, ERC721, Ownable, Pausable {
 
   // Key is NFT ID, value is the amount of shares representing the USDC owed to this position (includes principal, interest, etc.)
   mapping(uint256 => uint256) internal stakeShares;
-
-  // Key is account, value is the sum of underlying shares of all the NFTs the account owns.
-  mapping(address => uint256) internal addressShares;
 
   // Total amount of shares that have been issued to all NFT positions
   uint256 internal totalStakeShares;
@@ -146,17 +146,6 @@ contract Sherlock is ISherlock, ERC721, Ownable, Pausable {
     if (!_exists(_tokenID)) revert NonExistent();
     // Finds the fraction of total shares owed to this position and multiplies by the total amount of tokens (USDC) owed to stakers
     return (stakeShares[_tokenID] * totalTokenBalanceStakers()) / totalStakeShares;
-  }
-
-  // Returns the tokens (USDC) owed to an address
-  /// @notice View the current token balance claimable upon reaching all underlying positions at end of the lockup
-  /// @return Amount of tokens assigned to owner when unstaking all positions
-  function tokenBalanceOfAddress(address _staker) external view override returns (uint256) {
-    if (_staker == address(0)) revert ZeroArgument();
-    uint256 _totalStakeShares = totalStakeShares;
-    if (_totalStakeShares == 0) return 0;
-    // Finds the fraction of total shares owed to this address and multiplies by the total amount of tokens (USDC) owed to stakers
-    return (addressShares[_staker] * totalTokenBalanceStakers()) / _totalStakeShares;
   }
 
   // Gets the total amount of tokens (USDC) owed to stakers
@@ -360,19 +349,11 @@ contract Sherlock is ISherlock, ERC721, Ownable, Pausable {
   //
   // Access control functions
   //
-
-  /// @notice Account sum of all underlying posiiton shares for `_from` and `_to`
-  /// @dev this enables the `tokenBalanceOfAddress` to exist
   function _beforeTokenTransfer(
     address _from,
     address _to,
     uint256 _tokenID
-  ) internal override {
-    uint256 _stakeShares = stakeShares[_tokenID];
-
-    if (_from != address(0)) addressShares[_from] -= _stakeShares;
-    if (_to != address(0)) addressShares[_to] += _stakeShares;
-  }
+  ) internal override whenNotPaused {}
 
   // Transfers specified amount of tokens to the address specified by the claim creator (protocol agent)
   // This function is called by the Sherlock claim manager contract if a claim is approved
@@ -443,10 +424,11 @@ contract Sherlock is ISherlock, ERC721, Ownable, Pausable {
     uint256 sherReward = sherRewards_[_id];
     if (sherReward == 0) return;
 
-    // Transfers the SHER tokens associated with this NFT ID to the address of the NFT owner
-    sher.safeTransfer(_nftOwner, sherReward);
     // Deletes the SHER reward mapping for this NFT ID
     delete sherRewards_[_id];
+
+    // Transfers the SHER tokens associated with this NFT ID to the address of the NFT owner
+    sher.safeTransfer(_nftOwner, sherReward);
   }
 
   // Transfers an amount of tokens to the receiver address
@@ -529,6 +511,7 @@ contract Sherlock is ISherlock, ERC721, Ownable, Pausable {
     address _receiver
   ) external override whenNotPaused returns (uint256 _id, uint256 _sher) {
     if (_amount == 0) revert ZeroArgument();
+    if (_amount < MIN_STAKE) revert InvalidArgument();
     // Makes sure the period is a whitelisted period
     if (!stakingPeriods[_period]) revert InvalidArgument();
     if (address(_receiver) == address(0)) revert ZeroArgument();
@@ -639,6 +622,7 @@ contract Sherlock is ISherlock, ERC721, Ownable, Pausable {
   /// @return profit How much profit an arb would make in USDC
   /// @return able If the transaction can be executed (the current timestamp is during an arb period, etc.)
   function viewRewardForArbRestake(uint256 _id) external view returns (uint256 profit, bool able) {
+    if (!_exists(_id)) revert NonExistent();
     // Returns the stake shares that an arb would get, and whether the position can currently be arbed
     // `profit` variable is used to store the amount of shares
     (profit, able) = _calcSharesForArbRestake(_id);

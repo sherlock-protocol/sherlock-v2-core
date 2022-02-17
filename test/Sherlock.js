@@ -369,15 +369,20 @@ describe('Sherlock ─ Stateless', function () {
         'ZeroArgument()',
       );
     });
+    it('Invalid amount (too less)', async function () {
+      await expect(
+        this.sherlock.initialStake(parseUnits('0.99', 6), 10, this.alice.address),
+      ).to.be.revertedWith('InvalidArgument()');
+    });
     it('Invalid period', async function () {
       await expect(this.sherlock.initialStake(1, 9, this.alice.address)).to.be.revertedWith(
         'InvalidArgument()',
       );
     });
     it('Invalid receiver', async function () {
-      await expect(this.sherlock.initialStake(1, 10, constants.AddressZero)).to.be.revertedWith(
-        'ZeroArgument()',
-      );
+      await expect(
+        this.sherlock.initialStake(parseUnits('100', 6), 10, constants.AddressZero),
+      ).to.be.revertedWith('ZeroArgument()');
     });
   });
   describe('redeemNFT()', async function () {
@@ -1295,6 +1300,11 @@ describe('Sherlock ─ Functional', function () {
       expect(res[0]).to.eq(this.amount.div(100).mul(20));
       expect(res[1]).to.eq(true);
     });
+    it('Non existent', async function () {
+      await expect(this.sherlock.connect(this.bob).viewRewardForArbRestake(2)).to.be.revertedWith(
+        'NonExistent()',
+      );
+    });
     it('Do', async function () {
       await this.sherdist.setReward(this.reward.mul(2));
       this.arbAmount = this.amount.div(10).mul(2);
@@ -1407,89 +1417,4 @@ describe('Sherlock ─ Functional', function () {
       expect(res[1]).to.eq(false);
     });
   });
-  describe('tokenBalanceOfAddress()', function () {
-    before(async function () {
-      await timeTraveler.revertSnapshot();
-
-      this.amount = parseUnits('100', 6);
-
-      await this.token.approve(this.sherlock.address, maxTokens);
-    });
-    it('Initial state', async function () {
-      expect(await this.sherlock.tokenBalanceOfAddress(this.alice.address)).to.eq(0);
-      expect(await this.sherlock.tokenBalanceOfAddress(this.bob.address)).to.eq(0);
-      expect(await this.sherlock.tokenBalanceOfAddress(this.carol.address)).to.eq(0);
-    });
-    it('t=0, stake', async function () {
-      await this.sherlock.initialStake(this.amount, 10, this.carol.address);
-
-      expect(await this.sherlock.tokenBalanceOfAddress(this.alice.address)).to.eq(0);
-      expect(await this.sherlock.tokenBalanceOfAddress(this.bob.address)).to.eq(0);
-      expect(await this.sherlock.tokenBalanceOfAddress(this.carol.address)).to.eq(this.amount);
-    });
-    it('t=1, stake', async function () {
-      await this.sherlock.initialStake(this.amount, 10, this.carol.address);
-
-      expect(await this.sherlock.tokenBalanceOfAddress(this.alice.address)).to.eq(0);
-      expect(await this.sherlock.tokenBalanceOfAddress(this.bob.address)).to.eq(0);
-      expect(await this.sherlock.tokenBalanceOfAddress(this.carol.address)).to.eq(
-        this.amount.mul(2),
-      );
-    });
-    it('t=2, stake', async function () {
-      await this.sherlock.initialStake(this.amount.mul(3), 10, this.bob.address);
-
-      expect(await this.sherlock.tokenBalanceOfAddress(this.alice.address)).to.eq(0);
-      expect(await this.sherlock.tokenBalanceOfAddress(this.bob.address)).to.eq(this.amount.mul(3));
-      expect(await this.sherlock.tokenBalanceOfAddress(this.carol.address)).to.eq(
-        this.amount.mul(2),
-      );
-    });
-    it('t=3, transfer', async function () {
-      await this.sherlock
-        .connect(this.carol)
-        .transferFrom(this.carol.address, this.alice.address, 2);
-
-      expect(await this.sherlock.tokenBalanceOfAddress(this.alice.address)).to.eq(this.amount);
-      expect(await this.sherlock.tokenBalanceOfAddress(this.bob.address)).to.eq(this.amount.mul(3));
-      expect(await this.sherlock.tokenBalanceOfAddress(this.carol.address)).to.eq(this.amount);
-    });
-    it('t=4, transfer', async function () {
-      await this.sherlock.connect(this.bob).transferFrom(this.bob.address, this.alice.address, 3);
-
-      expect(await this.sherlock.tokenBalanceOfAddress(this.alice.address)).to.eq(
-        this.amount.mul(4),
-      );
-      expect(await this.sherlock.tokenBalanceOfAddress(this.bob.address)).to.eq(0);
-      expect(await this.sherlock.tokenBalanceOfAddress(this.carol.address)).to.eq(this.amount);
-    });
-    it('redeem 1', async function () {
-      await timeTraveler.mine(10);
-
-      await this.sherlock.connect(this.carol).redeemNFT(1);
-
-      expect(await this.sherlock.tokenBalanceOfAddress(this.alice.address)).to.eq(
-        this.amount.mul(4),
-      );
-      expect(await this.sherlock.tokenBalanceOfAddress(this.bob.address)).to.eq(0);
-      expect(await this.sherlock.tokenBalanceOfAddress(this.carol.address)).to.eq(0);
-    });
-    it('redeem 2', async function () {
-      await this.sherlock.connect(this.alice).redeemNFT(2);
-
-      expect(await this.sherlock.tokenBalanceOfAddress(this.alice.address)).to.eq(
-        this.amount.mul(3),
-      );
-      expect(await this.sherlock.tokenBalanceOfAddress(this.bob.address)).to.eq(0);
-      expect(await this.sherlock.tokenBalanceOfAddress(this.carol.address)).to.eq(0);
-    });
-    it('redeem 3', async function () {
-      await this.sherlock.connect(this.alice).redeemNFT(3);
-
-      expect(await this.sherlock.tokenBalanceOfAddress(this.alice.address)).to.eq(0);
-      expect(await this.sherlock.tokenBalanceOfAddress(this.bob.address)).to.eq(0);
-      expect(await this.sherlock.tokenBalanceOfAddress(this.carol.address)).to.eq(0);
-    });
-  });
-  7;
 });

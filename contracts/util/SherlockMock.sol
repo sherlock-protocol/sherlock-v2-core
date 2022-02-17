@@ -119,8 +119,6 @@ contract SherlockMock is ISherlock, ERC721, Ownable {
     uint256 _id
   ) internal returns (uint256 _sher) {}
 
-  function tokenBalanceOfAddress(address _staker) external view override returns (uint256) {}
-
   function _verifyUnlockableByOwner(uint256 _id) internal view returns (address _nftOwner) {}
 
   function _sendSherRewardsToOwner(uint256 _id, address _nftOwner) internal {}
