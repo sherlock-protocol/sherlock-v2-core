@@ -137,6 +137,9 @@ describe('Pausable', function () {
       await expect(this.sherlock.updateYieldStrategy(this.bob.address)).to.be.revertedWith(
         'Ownable: caller is not the owner',
       );
+      await expect(this.sherlock.updateYieldStrategyForce(this.bob.address)).to.be.revertedWith(
+        'Ownable: caller is not the owner',
+      );
       await expect(this.sherlock.yieldStrategyDeposit(1)).to.be.revertedWith(
         'Ownable: caller is not the owner',
       );
@@ -194,6 +197,9 @@ describe('Pausable', function () {
       await expect(this.sherlock.updateYieldStrategy(this.bob.address)).to.be.revertedWith(
         'Ownable: caller is not the owner',
       );
+      await expect(this.sherlock.updateYieldStrategyForce(this.bob.address)).to.be.revertedWith(
+        'Ownable: caller is not the owner',
+      );
       await expect(this.sherlock.yieldStrategyDeposit(1)).to.be.revertedWith(
         'Ownable: caller is not the owner',
       );
@@ -243,6 +249,9 @@ describe('Pausable', function () {
         'Ownable: caller is not the owner',
       );
       await expect(this.sherlock.updateYieldStrategy(this.bob.address)).to.be.revertedWith(
+        'Ownable: caller is not the owner',
+      );
+      await expect(this.sherlock.updateYieldStrategyForce(this.bob.address)).to.be.revertedWith(
         'Ownable: caller is not the owner',
       );
       await expect(this.sherlock.yieldStrategyDeposit(1)).to.be.revertedWith(

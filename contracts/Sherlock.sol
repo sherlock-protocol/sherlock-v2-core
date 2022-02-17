@@ -262,9 +262,23 @@ contract Sherlock is ISherlock, ERC721, Ownable, Pausable {
 
   // Sets a new yield strategy manager contract
   /// @notice Update yield strategy
-  /// @param _yieldStrategy News address of the strategy
-  /// @dev try a yieldStrategyWithdrawAll() on old, ignore failure
+  /// @param _yieldStrategy New address of the strategy
+  /// @dev Call will fail if underlying withdrawAll call fails
   function updateYieldStrategy(IStrategyManager _yieldStrategy) external override onlyOwner {
+    if (address(_yieldStrategy) == address(0)) revert ZeroArgument();
+    if (yieldStrategy == _yieldStrategy) revert InvalidArgument();
+
+    yieldStrategy.withdrawAll();
+
+    emit YieldStrategyUpdated(yieldStrategy, _yieldStrategy);
+    yieldStrategy = _yieldStrategy;
+  }
+
+  // Sets a new yield strategy manager contract
+  /// @notice Update yield strategy ignoring state of current strategy
+  /// @param _yieldStrategy New address of the strategy
+  /// @dev tries a yieldStrategyWithdrawAll() on old strategy, ignore failure
+  function updateYieldStrategyForce(IStrategyManager _yieldStrategy) external override onlyOwner {
     if (address(_yieldStrategy) == address(0)) revert ZeroArgument();
     if (yieldStrategy == _yieldStrategy) revert InvalidArgument();
 
