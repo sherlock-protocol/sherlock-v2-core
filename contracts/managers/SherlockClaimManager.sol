@@ -22,14 +22,14 @@ import '@openzeppelin/contracts/security/ReentrancyGuard.sol';
 contract SherlockClaimManager is ISherlockClaimManager, ReentrancyGuard, Manager {
   using SafeERC20 for IERC20;
 
-  /// @dev at time of writing, the escalation cost will be approximately 22k
-  /// assuming BOND = 9600 and UMA's final fee = 1400
+  /// @dev at time of writing, the escalation cost will be 22.2k
+  /// assuming BOND = 9600 and UMA's final fee = 1500
   /// UMA's final fee can be changed in the future, which may result in lower or higher required staked amounts for escalating a claim.
   /// The actual amount is 2 * (BOND + UMA's final fee), because:
   /// 1. The first half is charged when calling UMA.requestAndProposePriceFor()
   /// 2. The second half is charged when calling UMA.disputePriceFor()
   /// UMA's fee can be found here: https://github.com/UMAprotocol/protocol/blob/master/packages/core/contracts/oracle/implementation/Store.sol#L131)
-  uint256 internal constant BOND = 9_600 * 10**6; // 20k bond
+  uint256 internal constant BOND = 9_600 * 10**6;
 
   // The amount of time the protocol agent has to escalate a claim
   uint256 public constant ESCALATE_TIME = 4 weeks;

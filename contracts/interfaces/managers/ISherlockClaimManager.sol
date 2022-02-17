@@ -71,11 +71,11 @@ interface ISherlockClaimManager is IManager, OptimisticRequester {
   // priceSettled will be the the callback that contains the main data
 
   // Assume BOND = 9600, UMA's final fee = 1500.
-  // Claim initiator (Sherlock) has to pay 22k to dispute a claim,
-  // so we will execute a safeTransferFrom(claimInitiator, address(this), 22k).
-  // We need to approve the contract 22k as it will be transferred from address(this).
+  // Claim initiator (Sherlock) has to pay 22.2k to dispute a claim,
+  // so we will execute a safeTransferFrom(claimInitiator, address(this), 22.2k).
+  // We need to approve the contract 22.2k as it will be transferred from address(this).
 
-  // The 22k consists of 2 * (BOND + final fee charged by UMA), as follows:
+  // The 22.2k consists of 2 * (BOND + final fee charged by UMA), as follows:
   // 1. On requestAndProposePriceFor(), the fee will be 10k: 9600 BOND + 1500 UMA's final fee;
   // 2. On disputePriceFor(), the fee will be the same 10k.
   // note that half of the BOND (4800) + UMA's final fee (1500) is "burnt" and sent to UMA
