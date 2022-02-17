@@ -106,7 +106,7 @@ contract SherBuy is ReentrancyGuard {
   /// @return True if the liquidity event is active
   function active() public view returns (bool) {
     // The claim contract will become active once the liquidity event is inactive
-    return block.timestamp < sherClaim.claimableAt();
+    return block.timestamp < sherClaim.newEntryDeadline();
   }
 
   /// @notice View the capital requirements needed to buy up until `_sherAmountWant`
@@ -167,7 +167,7 @@ contract SherBuy is ReentrancyGuard {
 
     // Stake usdc and send NFT to user
     sherlockPosition.initialStake(stake, PERIOD, msg.sender);
-    // Approve in function as this contract will hold SHER tokens
+    // Increase allowance for SherClaim by the amount of SHER tokens bought
     sher.safeIncreaseAllowance(address(sherClaim), sherAmount);
     // Add bought SHER tokens to timelock for user
     sherClaim.add(msg.sender, sherAmount);

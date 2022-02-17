@@ -14,7 +14,7 @@ import './interfaces/ISherClaim.sol';
 /// @title Claim SHER tokens send to the contract
 /// @author Evert Kors
 /// @dev This contract allows users to claim their bought SHER
-/// @dev The contract has two states seperated by the `claimableAt` timestamp
+/// @dev The contract has two states seperated by the `_newEntryDeadline` timestamp (+ CLAIM_FREEZE_TIME_AFTER_DEADLINE)
 /// @dev Up until the timestamp, to be claimed SHER can be added using `add()`
 /// @dev After and including the timestamp, SHER can be claimed using `claim())`
 contract SherClaim is ISherClaim {
@@ -23,9 +23,11 @@ contract SherClaim is ISherClaim {
   // The state switch needs to be executed between BOTTOM and CEILING after deployment
   uint256 internal constant CLAIM_PERIOD_SANITY_BOTTOM = 7 days;
   uint256 internal constant CLAIM_PERIOD_SANITY_CEILING = 14 days;
+  uint256 internal constant CLAIM_FREEZE_TIME_AFTER_DEADLINE = 26 weeks;
 
-  // Timestamp when SHER can be claimed
-  uint256 public immutable override claimableAt;
+  // Timestamp up until new SHER entries can be added
+  uint256 public immutable override newEntryDeadline;
+
   // SHER token address (18 decimals)
   IERC20 public immutable sher;
 
@@ -34,22 +36,16 @@ contract SherClaim is ISherClaim {
 
   /// @notice Construct claim contract
   /// @param _sher ERC20 contract for SHER token
-  /// @param _claimableAt Timestamp when SHER tokens will be claimable
-  /// @dev _claimableAt is between BOTTOM and CEILING after deployment
-  constructor(IERC20 _sher, uint256 _claimableAt) {
+  /// @param _newEntryDeadline Timestamp up until SHER entries can be added
+  /// @dev _newEntryDeadline is between BOTTOM and CEILING after deployment
+  constructor(IERC20 _sher, uint256 _newEntryDeadline) {
     if (address(_sher) == address(0)) revert ZeroArgument();
-    // Verify if _claimableAt has a valid value
-    if (_claimableAt < block.timestamp + CLAIM_PERIOD_SANITY_BOTTOM) revert InvalidState();
-    if (_claimableAt > block.timestamp + CLAIM_PERIOD_SANITY_CEILING) revert InvalidState();
+    // Verify if _newEntryDeadline has a valid value
+    if (_newEntryDeadline < block.timestamp + CLAIM_PERIOD_SANITY_BOTTOM) revert InvalidState();
+    if (_newEntryDeadline > block.timestamp + CLAIM_PERIOD_SANITY_CEILING) revert InvalidState();
 
     sher = _sher;
-    claimableAt = _claimableAt;
-  }
-
-  /// @notice Check if SHER tokens can be claimed
-  /// @return True if the claim period is active
-  function active() public view returns (bool) {
-    return block.timestamp >= claimableAt;
+    newEntryDeadline = _newEntryDeadline;
   }
 
   /// @notice Add `_amount` SHER to the timelock for `_user`
@@ -58,8 +54,8 @@ contract SherClaim is ISherClaim {
   function add(address _user, uint256 _amount) external override {
     if (_user == address(0)) revert ZeroArgument();
     if (_amount == 0) revert ZeroArgument();
-    // Only allow new SHER to be added pre claim period
-    if (active()) revert InvalidState();
+    // Only allow new SHER to be added pre newEntryDeadline
+    if (block.timestamp >= newEntryDeadline) revert InvalidState();
 
     // Transfer SHER from caller to this contract
     sher.safeTransferFrom(msg.sender, address(this), _amount);
@@ -76,7 +72,9 @@ contract SherClaim is ISherClaim {
   /// @dev SHER tokens will be sent to caller
   function claim() external {
     // Only allow claim calls if claim period is active
-    if (active() == false) revert InvalidState();
+    if (block.timestamp < newEntryDeadline + CLAIM_FREEZE_TIME_AFTER_DEADLINE) {
+      revert InvalidState();
+    }
 
     // How much SHER the user will receive
     uint256 amount = userClaims[msg.sender];
