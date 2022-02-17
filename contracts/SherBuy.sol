@@ -16,7 +16,7 @@ import './interfaces/ISherlock.sol';
 /// @author Evert Kors
 /// @dev The goal is to get TVL in Sherlock.sol and raise funds with `receiver`
 /// @dev Bought SHER tokens are moved to a timelock contract (SherClaim)
-/// @dev Admin should SHER tokens to the contract rounded by 0.01 SHER, otherwise logic will break.
+/// @dev Admin should send factor of 0.01 SHER tokens to the contract, otherwise logic will break.
 contract SherBuy is ReentrancyGuard {
   using SafeERC20 for IERC20;
 
@@ -85,7 +85,7 @@ contract SherBuy is ReentrancyGuard {
     if (_receiver == address(0)) revert ZeroArgument();
     if (address(_sherClaim) == address(0)) revert ZeroArgument();
 
-    // Verify is PERIOD is active
+    // Verify if PERIOD is active
     // Theoretically this period can be disabled during the lifetime of this contract, which will cause issues
     if (_sherlockPosition.stakingPeriods(PERIOD) == false) revert InvalidState();
 

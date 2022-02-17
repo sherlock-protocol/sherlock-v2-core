@@ -30,7 +30,7 @@ contract Sherlock is ISherlock, ERC721, Ownable, Pausable {
   // The period during which the reward for restaking an account (after the inital period) grows
   uint256 public constant ARB_RESTAKE_GROWTH_TIME = 1 weeks;
 
-  // Anyone who gets auto-restaked is restaked for this period (3 months)
+  // Anyone who gets auto-restaked is restaked for this period (12 weeks)
   uint256 public constant ARB_RESTAKE_PERIOD = 12 weeks;
 
   // The percentage of someone's stake that can be paid to an arb for restaking
@@ -195,6 +195,7 @@ contract Sherlock is ISherlock, ERC721, Ownable, Pausable {
   // Sets a new contract to be the active SHER distribution manager
   /// @notice Update SHER distribution manager contract
   /// @param _sherDistributionManager New adddress of the manager
+  /// @dev After updating the contract, call setSherlockCoreAddress() on the new contract
   function updateSherDistributionManager(ISherDistributionManager _sherDistributionManager)
     external
     override
@@ -207,8 +208,7 @@ contract Sherlock is ISherlock, ERC721, Ownable, Pausable {
     sherDistributionManager = _sherDistributionManager;
   }
 
-  // Deletes the SHER distribution manager altogether (if Sherlock decides to no longer pay out SHER rewards)
-  /// @notice Remove SHER token rewards
+  /// @notice Deletes the SHER distribution manager altogether (if Sherlock decides to no longer pay out SHER rewards)
   function removeSherDistributionManager() external override onlyOwner {
     if (address(sherDistributionManager) == address(0)) revert InvalidConditions();
 
@@ -220,8 +220,8 @@ contract Sherlock is ISherlock, ERC721, Ownable, Pausable {
   }
 
   // Sets a new address for nonstakers payments
-  /// @notice Update address eligble for non staker rewards from protocol premiums
-  /// @param _nonStakers Address eligble for non staker rewards
+  /// @notice Update address eligible for non staker rewards from protocol premiums
+  /// @param _nonStakers Address eligible for non staker rewards
   function updateNonStakersAddress(address _nonStakers) external override onlyOwner {
     if (address(_nonStakers) == address(0)) revert ZeroArgument();
     if (nonStakersAddress == _nonStakers) revert InvalidArgument();
@@ -233,6 +233,7 @@ contract Sherlock is ISherlock, ERC721, Ownable, Pausable {
   // Sets a new protocol manager contract
   /// @notice Transfer protocol manager implementation address
   /// @param _protocolManager new implementation address
+  /// @dev After updating the contract, call setSherlockCoreAddress() on the new contract
   function updateSherlockProtocolManager(ISherlockProtocolManager _protocolManager)
     external
     override
@@ -248,6 +249,7 @@ contract Sherlock is ISherlock, ERC721, Ownable, Pausable {
   // Sets a new claim manager contract
   /// @notice Transfer claim manager role to different address
   /// @param _claimManager New address of claim manager
+  /// @dev After updating the contract, call setSherlockCoreAddress() on the new contract
   function updateSherlockClaimManager(ISherlockClaimManager _claimManager)
     external
     override
@@ -264,6 +266,7 @@ contract Sherlock is ISherlock, ERC721, Ownable, Pausable {
   /// @notice Update yield strategy
   /// @param _yieldStrategy New address of the strategy
   /// @dev Call will fail if underlying withdrawAll call fails
+  /// @dev After updating the contract, call setSherlockCoreAddress() on the new contract
   function updateYieldStrategy(IStrategyManager _yieldStrategy) external override onlyOwner {
     if (address(_yieldStrategy) == address(0)) revert ZeroArgument();
     if (yieldStrategy == _yieldStrategy) revert InvalidArgument();
@@ -327,7 +330,7 @@ contract Sherlock is ISherlock, ERC721, Ownable, Pausable {
   }
 
   /// @notice Pause external functions in all contracts
-  /// @dev A manager can be replaced with the new contract in a `paused` state
+  /// @dev A manager can still be replaced with a new contract in a `paused` state
   /// @dev To ensure we are still able to pause all contracts, we check if the manager is unpaused
   function pause() external onlyOwner {
     _pause();
@@ -344,7 +347,7 @@ contract Sherlock is ISherlock, ERC721, Ownable, Pausable {
   }
 
   /// @notice Unpause external functions in all contracts
-  /// @dev A manager can be replaced with the new contract in an `unpaused` state
+  /// @dev A manager can still be replaced with a new contract in an `unpaused` state
   /// @dev To ensure we are still able to unpause all contracts, we check if the manager is paused
   function unpause() external onlyOwner {
     _unpause();
@@ -645,9 +648,9 @@ contract Sherlock is ISherlock, ERC721, Ownable, Pausable {
     profit = _redeemSharesCalc(profit);
   }
 
-  /// @notice Allows someone who doesn't own the position (an arbitrager) to restake the position for 3 months (ARB_RESTAKE_PERIOD)
+  /// @notice Allows someone who doesn't own the position (an arbitrager) to restake the position for 12 weeks (ARB_RESTAKE_PERIOD)
   /// @param _id ID of the position
-  /// @return _sher Amount of SHER tokens to be released to position owner on expiry of the 3 month lockup
+  /// @return _sher Amount of SHER tokens to be released to position owner on expiry of the 12 weeks lockup
   /// @return _arbReward Amount of tokens (USDC) sent to caller (the arbitrager) in return for calling the function
   /// @dev Can only be called after lockup `_period` is more than 2 weeks in the past (assuming ARB_RESTAKE_WAIT_TIME is 2 weeks)
   /// @dev Max 20% (ARB_RESTAKE_MAX_PERCENTAGE) of tokens associated with a position are used to incentivize arbs (x)
@@ -670,7 +673,7 @@ contract Sherlock is ISherlock, ERC721, Ownable, Pausable {
     // Returns the amount of USDC paid to the arbitrager
     _arbReward = _redeemShares(_id, arbRewardShares, msg.sender);
 
-    // Restakes the tokens (USDC) associated with this position for the ARB_RESTAKE PERIOD (3 months)
+    // Restakes the tokens (USDC) associated with this position for the ARB_RESTAKE_PERIOD (12 weeks)
     // Sends previously earned SHER rewards to the NFT owner address
     _sher = _restake(_id, ARB_RESTAKE_PERIOD, nftOwner);
 
