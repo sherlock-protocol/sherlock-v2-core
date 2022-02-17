@@ -105,12 +105,6 @@ contract SherlockMock is ISherlock, ERC721, Ownable {
 
   function yieldStrategyWithdrawAll() external override onlyOwner {}
 
-  function yieldStrategyWithdrawAllInactive(IStrategyManager _yieldStrategy)
-    external
-    override
-    onlyOwner
-  {}
-
   //
   // Access control functions
   //

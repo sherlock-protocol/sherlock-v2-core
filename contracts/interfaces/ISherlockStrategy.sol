@@ -24,8 +24,4 @@ interface ISherlockStrategy {
   /// @notice Withdraw all funds from active strategy
   /// @dev gov only
   function yieldStrategyWithdrawAll() external;
-
-  /// @notice Withdraw all funds from inactive strategy
-  /// @dev gov only
-  function yieldStrategyWithdrawAllInactive(IStrategyManager _yieldStrategy) external;
 }
