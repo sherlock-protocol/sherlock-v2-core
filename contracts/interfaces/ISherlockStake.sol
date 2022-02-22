@@ -57,9 +57,9 @@ interface ISherlockStake {
   /// @dev Can only be called after lockup `_period` has ended
   function ownerRestake(uint256 _id, uint256 _period) external returns (uint256 _sher);
 
-  /// @notice Allows someone who doesn't own the position (an arbitrager) to restake the position for 12 weeks (ARB_RESTAKE_PERIOD)
+  /// @notice Allows someone who doesn't own the position (an arbitrager) to restake the position for 26 weeks (ARB_RESTAKE_PERIOD)
   /// @param _id ID of the position
-  /// @return _sher Amount of SHER tokens to be released to position owner on expiry of the 12 weeks lockup
+  /// @return _sher Amount of SHER tokens to be released to position owner on expiry of the 26 weeks lockup
   /// @return _arbReward Amount of tokens (USDC) sent to caller (the arbitrager) in return for calling the function
   /// @dev Can only be called after lockup `_period` is more than 2 weeks in the past (assuming ARB_RESTAKE_WAIT_TIME is 2 weeks)
   /// @dev Max 20% (ARB_RESTAKE_MAX_PERCENTAGE) of tokens associated with a position are used to incentivize arbs (x)

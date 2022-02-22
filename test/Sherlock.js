@@ -12,6 +12,7 @@ const maxTokens2 = parseEther('100000000000', 18);
 const weeks1 = 60 * 60 * 24 * 7 * 1;
 const weeks2 = 60 * 60 * 24 * 7 * 2;
 const weeks12 = 60 * 60 * 24 * 7 * 12;
+const weeks26 = 60 * 60 * 24 * 7 * 26;
 
 describe('Sherlock ─ Stateless', function () {
   before(async function () {
@@ -1381,7 +1382,7 @@ describe('Sherlock ─ Functional', function () {
       expect(await this.sherlock.viewStakeShares(1)).to.eq(this.amount.div(10).mul(8));
       expect(await this.sherlock.viewTotalStakeShares()).to.eq(this.amount.div(10).mul(8));
       expect(await this.sherlock.ownerOf(1)).to.eq(this.carol.address);
-      expect(await this.sherlock.lockupEnd(1)).to.eq(this.t2.time.add(weeks12));
+      expect(await this.sherlock.lockupEnd(1)).to.eq(this.t2.time.add(weeks26));
       expect(await this.sherlock.sherRewards(1)).to.eq(this.reward.mul(2));
       expect(await this.sherlock.tokenBalanceOf(1)).to.eq(this.amount.div(10).mul(8));
     });
@@ -1461,7 +1462,7 @@ describe('Sherlock ─ Functional', function () {
       expect(await this.sherlock.viewStakeShares(1)).to.eq(this.amount.div(10).mul(9));
       expect(await this.sherlock.viewTotalStakeShares()).to.eq(this.amount.div(10).mul(9));
       expect(await this.sherlock.ownerOf(1)).to.eq(this.carol.address);
-      expect(await this.sherlock.lockupEnd(1)).to.eq(this.t2.time.add(weeks12));
+      expect(await this.sherlock.lockupEnd(1)).to.eq(this.t2.time.add(weeks26));
       expect(await this.sherlock.sherRewards(1)).to.eq(this.reward);
       expect(await this.sherlock.tokenBalanceOf(1)).to.eq(this.amount.div(10).mul(9));
     });
