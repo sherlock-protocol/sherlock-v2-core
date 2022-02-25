@@ -1,6 +1,6 @@
 const { parseUnits, id } = require('ethers/lib/utils');
 
-const MONTH = parseInt((60 * 60 * 24 * 365.25) / 12);
+const WEEK = parseInt(60 * 60 * 24 * 7);
 
 async function main() {
   //
@@ -8,31 +8,41 @@ async function main() {
   //
 
   const MULTISIG = '0x666B8EbFbF4D5f0CE56962a25635CfF563F13161';
-  const USDC = '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48';
-  const aUSDC = '0xbcca60bb61934080951369a648fb03df4f96263c';
+
+  let USDC = '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48';
+  let aUSDC = '0xbcca60bb61934080951369a648fb03df4f96263c';
+  let SHER = '0x666B8EbFbF4D5f0CE56962a25635CfF563F13161'; // TBD
+
+  if (network.name == 'goerli') {
+    SHER = '0x37924D802b923B081eA28BdF12D16B03B5Bf6815';
+
+    this.Usdc = await ethers.getContractFactory('ERC20Mock6d');
+    USDC = await this.ERC20Mock6d.deploy('USD Coin', 'USDC', parseUnits('100000000000', 6));
+    await USDC.deployed();
+    console.log('S - Deployed usdc @', USDC.address);
+  } else if (network.name != 'mainnet') {
+    throw Error('Invalid network');
+  }
 
   const UMAHO = '0x666B8EbFbF4D5f0CE56962a25635CfF563F13161'; // TBD
   const SPCC = '0x666B8EbFbF4D5f0CE56962a25635CfF563F13161'; // TBD
-  const SHER = '0x666B8EbFbF4D5f0CE56962a25635CfF563F13161'; // TBD
-  const NON_STAKER = '0x666B8EbFbF4D5f0CE56962a25635CfF563F13161'; // TBD
-  const NFT_NAME = 'Sherlock Position'; // TBD
-  const NFT_SYMBOL = 'SP'; // TBD
+  const NON_STAKER = '0x666B8EbFbF4D5f0CE56962a25635CfF563F13161';
+  const NFT_NAME = 'Sherlock Staking Position NFT-V1';
+  const NFT_SYMBOL = 'SHER-POS';
 
-  const STAKING_PERIODS = [MONTH * 3, MONTH * 6, MONTH * 12]; // TBD
-
-  const MILLION_USDC = parseUnits('1000000', 6);
-  // If you stake 1 USDC for a year, you'll get 0.1 SHER token
-  const SHER_PER_USDC_PER_YEAR = parseUnits('0.1', 18); // TBD
-  const SHER_RATE_CODE = SHER_PER_USDC_PER_YEAR.div(MONTH * 12);
+  const STAKING_PERIODS = [WEEK * 26, WEEK * 52];
 
   //
   // END CONFIG
   //
-  if (network.name != 'mainnet' && network.name != 'local') throw Error('Invalid network');
 
   this.Sherlock = await ethers.getContractFactory('Sherlock');
   this.AaveV2Strategy = await ethers.getContractFactory('AaveV2Strategy');
-  this.SherDistributionManager = await ethers.getContractFactory('SherDistributionManager');
+  if (network.name == 'goerli') {
+    this.AaveV2Strategy = await ethers.getContractFactory('StrategyMockGoerli');
+  }
+
+  this.SherDistributionManager = await ethers.getContractFactory('SherDistributionManagerEmpty');
   this.SherlockProtocolManager = await ethers.getContractFactory('SherlockProtocolManager');
   this.SherlockClaimManager = await ethers.getContractFactory('SherlockClaimManager');
 
@@ -42,12 +52,7 @@ async function main() {
   await aaveV2Strategy.deployed();
   console.log('1 - Deployed aaveV2Strategy @', aaveV2Strategy.address);
 
-  const sherDistributionManager = await this.SherDistributionManager.deploy(
-    MILLION_USDC.mul(100),
-    MILLION_USDC.mul(600),
-    SHER_RATE_CODE,
-    SHER,
-  );
+  const sherDistributionManager = await this.SherDistributionManager.deploy();
   await sherDistributionManager.deployed();
   console.log('2 - Deployed sherDistributionManager @', sherDistributionManager.address);
 
