@@ -30,6 +30,8 @@ async function main() {
   const SherDistributionManager = '';
   const SherlockProtocolManager = '';
   const SherlockClaimManager = '';
+  const SherClaim = '';
+  const SherBuy = '';
 
   //
   // END CONFIG
@@ -48,6 +50,8 @@ async function main() {
     'SherlockClaimManager',
     SherlockClaimManager,
   );
+  const sherBuy = await ethers.getContractAt('SherBuy', SherBuy);
+  const sherClaim = await ethers.getContractAt('SherClaim', SherClaim);
   const timelockController = await ethers.getContractAt('TimelockController', TimelockController);
 
   console.log('OWNER');
@@ -142,7 +146,6 @@ async function main() {
   console.log('-------------------------------------------------');
 
   console.log('SherlockClaimManager');
-
   console.log('ESCALATE_TIME', (await sherlockClaimManager.ESCALATE_TIME()).toString());
   console.log('UMAHO_TIME', (await sherlockClaimManager.UMAHO_TIME()).toString());
   console.log('SPCC_TIME', (await sherlockClaimManager.SPCC_TIME()).toString());
@@ -157,6 +160,23 @@ async function main() {
   );
   console.log('paused', await sherlockClaimManager.paused());
   // CHECK FOR `SherlockCoreSet` event
+
+  console.log('-------------------------------------------------');
+  console.log('SherBuy');
+  console.log('PERIOD', (await sherBuy.PERIOD()).toString());
+  console.log('sher', await sherBuy.sher());
+  console.log('usdc', await sherBuy.usdc());
+  console.log('stakeRate', (await sherBuy.stakeRate()).toString());
+  console.log('buyRate', (await sherBuy.buyRate()).toString());
+  console.log('sherlockPosition', await sherBuy.sherlockPosition());
+  console.log('receiver', await sherBuy.receiver());
+  console.log('sherClaim', await sherBuy.sherClaim());
+  console.log('active', await sherBuy.active());
+
+  console.log('-------------------------------------------------');
+  console.log('SherClaim');
+  console.log('newEntryDeadline', (await sherClaim.newEntryDeadline()).toString());
+  console.log('sher', await sherClaim.sher());
 }
 
 main()
