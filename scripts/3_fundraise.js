@@ -12,7 +12,7 @@ async function main() {
 
   if (network.name == 'goerli') {
     SHER = '0x37924D802b923B081eA28BdF12D16B03B5Bf6815';
-    USDC = ''; // TBD
+    USDC = '0xfe193C63e15A54ac500f3038fce00193Ff141139';
     SHERLOCK = ''; // TBD
   }
 

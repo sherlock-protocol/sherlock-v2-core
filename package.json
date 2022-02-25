@@ -23,6 +23,7 @@
     "semi": true
   },
   "dependencies": {
+    "@nomiclabs/hardhat-etherscan": "^3.0.1",
     "@openzeppelin/contracts": "^4.4.2",
     "dotenv": "^8.2.0",
     "hardhat-gas-reporter": "^1.0.4",
