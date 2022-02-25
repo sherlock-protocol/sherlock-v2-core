@@ -1,4 +1,4 @@
-const { parseUnits, id } = require('ethers/lib/utils');
+const { parseUnits, id, parseEther } = require('ethers/lib/utils');
 
 const WEEK = parseInt(60 * 60 * 24 * 7);
 
@@ -8,6 +8,7 @@ async function main() {
   //
 
   const MULTISIG = '0x666B8EbFbF4D5f0CE56962a25635CfF563F13161';
+  const MIN_ACTIVE_BALANCE = parseUnits('500', 6);
 
   let USDC = '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48';
   let aUSDC = '0xbcca60bb61934080951369a648fb03df4f96263c';
@@ -15,11 +16,7 @@ async function main() {
 
   if (network.name == 'goerli') {
     SHER = '0x37924D802b923B081eA28BdF12D16B03B5Bf6815';
-
-    this.Usdc = await ethers.getContractFactory('ERC20Mock6d');
-    USDC = await this.ERC20Mock6d.deploy('USD Coin', 'USDC', parseUnits('100000000000', 6));
-    await USDC.deployed();
-    console.log('S - Deployed usdc @', USDC.address);
+    USDC = ''; // TBD
   } else if (network.name != 'mainnet') {
     throw Error('Invalid network');
   }
@@ -59,6 +56,9 @@ async function main() {
   const sherlockProtocolManager = await this.SherlockProtocolManager.deploy(USDC);
   await sherlockProtocolManager.deployed();
   console.log('3 - Deployed sherlockProtocolManager @', sherlockProtocolManager.address);
+
+  await sherlockProtocolManager.setMinActiveBalance(MIN_ACTIVE_BALANCE);
+  console.log('3.1 setMinActiveBalance');
 
   const sherlockClaimManager = await this.SherlockClaimManager.deploy(UMAHO, SPCC);
   await sherlockClaimManager.deployed();
