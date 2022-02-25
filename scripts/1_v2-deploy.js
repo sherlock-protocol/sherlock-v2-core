@@ -6,6 +6,10 @@ async function main() {
   //
   // CONFIG
   //
+  [signer] = await ethers.getSigners();
+  if (signer.address != '0xAdBb28C2FEe078440B7088bbcd68DCfA63e55625') {
+    throw Error('DEPLOYER ' + signer.address);
+  }
 
   const MULTISIG = '0x666B8EbFbF4D5f0CE56962a25635CfF563F13161';
   const MIN_ACTIVE_BALANCE = parseUnits('500', 6);
