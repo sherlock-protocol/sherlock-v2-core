@@ -24,14 +24,14 @@ async function main() {
     EOA_TWO = '0x4cf5F3EcD6303F6a04480F75ac394D4bB3816F83';
   }
 
-  const TimelockController = ''; // TBD
-  const Sherlock = '';
-  const AaveV2Strategy = '';
-  const SherDistributionManager = '';
-  const SherlockProtocolManager = '';
-  const SherlockClaimManager = '';
-  const SherClaim = '';
-  const SherBuy = '';
+  const TimelockController = '0x92AEffFfaD9fff820f7FCaf1563d8467aFe358c4';
+  const Sherlock = '0x0865a889183039689034dA55c1Fd12aF5083eabF';
+  const AaveV2Strategy = '0xF02d3A6288D998B412ce749cfF244c8ef799f582';
+  const SherDistributionManager = '0x5775F32787656E77dd99f20F4E478DdC85fdB31b';
+  const SherlockProtocolManager = '0x3d0b8A0A10835Ab9b0f0BeB54C5400B8aAcaa1D3';
+  const SherlockClaimManager = '0xFeEDD254ae4B7c44A0472Bb836b813Ce4625Eb84';
+  const SherClaim = '0x7289C61C75dCdB8Fe4DF0b937c08c9c40902BDd3';
+  const SherBuy = '0xf8583f22C2f6f8cd27f62879A0fB4319bce262a6';
 
   //
   // END CONFIG

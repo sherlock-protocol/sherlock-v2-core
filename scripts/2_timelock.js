@@ -23,11 +23,11 @@ async function main() {
     EOA_TWO = '0x4cf5F3EcD6303F6a04480F75ac394D4bB3816F83';
   }
 
-  const Sherlock = ''; // TBD
-  const AaveV2Strategy = ''; // TBD
-  const SherDistributionManager = ''; // TBD
-  const SherlockProtocolManager = ''; // TBD
-  const SherlockClaimManager = ''; // TBD
+  const Sherlock = '0x0865a889183039689034dA55c1Fd12aF5083eabF';
+  const AaveV2Strategy = '0xF02d3A6288D998B412ce749cfF244c8ef799f582';
+  const SherDistributionManager = '0x5775F32787656E77dd99f20F4E478DdC85fdB31b';
+  const SherlockProtocolManager = '0x3d0b8A0A10835Ab9b0f0BeB54C5400B8aAcaa1D3';
+  const SherlockClaimManager = '0xFeEDD254ae4B7c44A0472Bb836b813Ce4625Eb84';
 
   //
   // END CONFIG
