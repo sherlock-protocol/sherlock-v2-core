@@ -19,7 +19,7 @@ async function main() {
 
   if (network.name == 'goerli') {
     MULTISIG = '0x34EDB6fD102578De64CaEbe82f540fB3E47a05EA';
-    EOA_ONE = '0x34EDB6fD102578De64CaEbe82f540fB3E47a05EA';
+    EOA_ONE = '0xE400820f3D60d77a3EC8018d44366ed0d334f93C';
     EOA_TWO = '0x4cf5F3EcD6303F6a04480F75ac394D4bB3816F83';
   }
 
