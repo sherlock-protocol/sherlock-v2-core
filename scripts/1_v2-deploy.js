@@ -16,10 +16,10 @@ async function main() {
 
   let USDC = '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48';
   let aUSDC = '0xbcca60bb61934080951369a648fb03df4f96263c';
-  let SHER = '0x42692c64a2B106b27E92B0887560bC11d6BcB859';
+  let SHER = '0x63E9aD95D09ae88614e0b0F462A3A96994c9b6CF';
 
   if (network.name == 'goerli') {
-    SHER = '0x42692c64a2B106b27E92B0887560bC11d6BcB859';
+    SHER = '0x63E9aD95D09ae88614e0b0F462A3A96994c9b6CF';
     USDC = '0xfe193C63e15A54ac500f3038fce00193Ff141139';
   } else if (network.name != 'mainnet') {
     throw Error('Invalid network');
