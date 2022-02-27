@@ -15,7 +15,7 @@ import '../interfaces/managers/IManager.sol';
 abstract contract Manager is IManager, Ownable, Pausable {
   using SafeERC20 for IERC20;
 
-  address private constant DEPLOYER = 0xAdBb28C2FEe078440B7088bbcd68DCfA63e55625;
+  address private constant DEPLOYER = 0x1C11bE636415973520DdDf1b03822b4e2930D94A;
   ISherlock internal sherlockCore;
 
   modifier onlySherlockCore() {

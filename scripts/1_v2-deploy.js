@@ -7,7 +7,7 @@ async function main() {
   // CONFIG
   //
   [signer] = await ethers.getSigners();
-  if (signer.address != '0xAdBb28C2FEe078440B7088bbcd68DCfA63e55625') {
+  if (signer.address != '0x1C11bE636415973520DdDf1b03822b4e2930D94A') {
     throw Error('DEPLOYER ' + signer.address);
   }
 
