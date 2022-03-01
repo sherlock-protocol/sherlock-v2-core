@@ -73,6 +73,8 @@ contract Sherlock is ISherlock, ERC721, Ownable, Pausable {
   // This variable is incremented by 1 to create a new NFT ID
   uint256 internal nftCounter;
 
+  string private constant baseURI = 'https://nft.sherlock.xyz/api/mainnet/';
+
   // Even though `_sherDistributionManager` can be removed once deployed, every initial deployment will have an active instance.
   constructor(
     IERC20 _token, // USDC address
@@ -371,6 +373,10 @@ contract Sherlock is ISherlock, ERC721, Ownable, Pausable {
     address _to,
     uint256 _tokenID
   ) internal override whenNotPaused {}
+
+  function _baseURI() internal view virtual override returns (string memory) {
+    return baseURI;
+  }
 
   // Transfers specified amount of tokens to the address specified by the claim creator (protocol agent)
   // This function is called by the Sherlock claim manager contract if a claim is approved

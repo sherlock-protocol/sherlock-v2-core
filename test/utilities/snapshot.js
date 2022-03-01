@@ -39,7 +39,7 @@ class TimeTraveler {
     await this.ethereum.send('hardhat_reset', [
       {
         forking: {
-          jsonRpcUrl: `https://eth-mainnet.alchemyapi.io/v2/${process.env.ALCHEMY_KEY}`,
+          jsonRpcUrl: `https://eth-mainnet.alchemyapi.io/v2/${process.env.ALCHEMY_API_KEY_MAINNET}`,
           blockNumber: block,
         },
       },
