@@ -25,8 +25,8 @@ async function main() {
     throw Error('Invalid network');
   }
 
-  const UMAHO = '0x666B8EbFbF4D5f0CE56962a25635CfF563F13161'; // TBD
-  const SPCC = '0x666B8EbFbF4D5f0CE56962a25635CfF563F13161'; // TBD
+  const UMAHO = '0x8fCC879036Fc8e45395AdE7D4eF739200037695c';
+  const SPCC = '0x4Fcf6AA323a92EB92a58025E821f393da6C41bD6';
   const NON_STAKER = '0x666B8EbFbF4D5f0CE56962a25635CfF563F13161';
   const NFT_NAME = 'Sherlock Staking Position NFT-V1';
   const NFT_SYMBOL = 'SHER-POS';
