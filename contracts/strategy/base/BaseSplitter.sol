@@ -24,8 +24,6 @@ abstract contract BaseSplitter is BaseNode, ISplitter {
     // Children will withdraw to core()
     amount = childOne.withdrawAll();
     amount += childTwo.withdrawAll();
-
-    // emit event amount old balance, new balance, removed
   }
 
   function balanceOf() external view virtual override returns (uint256 amount) {
@@ -33,42 +31,61 @@ abstract contract BaseSplitter is BaseNode, ISplitter {
     amount += childTwo.balanceOf();
   }
 
-  function updateChild(INode _node) external virtual override {
-    if (msg.sender == address(childOne)) {
-      childOne = _node;
-      // emit first child updated
-    } else if (msg.sender == address(childTwo)) {
-      childTwo = _node;
-      // emit second child updated
+  function updateChild(INode _newChild) external virtual override {
+    INode _currentChildOne = childOne;
+    INode _currentChildTwo = childTwo;
+
+    if (_newChild == _currentChildOne) revert('SAME');
+    if (_newChild == _currentChildTwo) revert('SAME');
+    if (address(_newChild) == address(this)) revert('INVALID');
+    if (_newChild.core() != core) revert('INVALID');
+    if (_newChild.want() != want) revert('INVALID');
+    if (address(_newChild.parent()) != address(this)) revert('INVALID');
+
+    if (msg.sender == address(_currentChildOne)) {
+      childOne = _newChild;
+      emit ChildOneUpdate(_currentChildOne, _newChild);
+    } else if (msg.sender == address(_currentChildTwo)) {
+      childTwo = _newChild;
+      emit ChildTwoUpdate(_currentChildTwo, _newChild);
     } else {
       revert('SENDER');
     }
   }
 
   function childRemoved() external virtual override {
-    if (msg.sender == address(childOne)) {
-      parent.updateChild(childTwo);
-      childTwo.updateParent(parent);
-      // childOne implementation is now obsolete
-    } else if (msg.sender == address(childTwo)) {
-      parent.updateChild(childOne);
-      childOne.updateParent(parent);
-      // childTwo implementation is now obsolete
+    INode _childOne = childOne;
+    INode _childTwo = childTwo;
+
+    if (msg.sender == address(_childOne)) {
+      parent.updateChild(_childTwo);
+      _childTwo.updateParent(parent);
+
+      emit Obsolete(_childOne);
+    } else if (msg.sender == address(_childTwo)) {
+      parent.updateChild(_childOne);
+      _childOne.updateParent(parent);
+
+      emit Obsolete(_childTwo);
     } else {
       revert('SENDER');
     }
 
-    // this contract is now obsolete
+    emit Obsolete(INode(address(this)));
   }
 
-  function replace(INode _node) public virtual override onlyOwner {
-    if (ISplitter(address(_node)).childOne() != childOne) revert('CHILD');
-    if (ISplitter(address(_node)).childTwo() != childTwo) revert('CHILD');
-    if (_node.parent() != parent) revert('PARENT');
+  function replace(INode _newNode) public virtual override onlyOwner {
+    if (address(_newNode) == address(this)) revert('SAME');
+    if (ISplitter(address(_newNode)).childOne() != childOne) revert('CHILD_ONE');
+    if (ISplitter(address(_newNode)).childTwo() != childTwo) revert('CHILD_TWO');
+    if (_newNode.parent() != parent) revert('PARENT');
+    if (_newNode.core() != core) revert('INVALID');
+    if (_newNode.want() != want) revert('INVALID');
 
-    parent.updateChild(_node);
+    parent.updateChild(_newNode);
 
-    // this contract is now obsolete
+    emit Replace(_newNode);
+    emit Obsolete(INode(address(this)));
   }
 
   function replaceForce(INode _node) external virtual override {

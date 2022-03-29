@@ -31,12 +31,25 @@ abstract contract BaseStrategy is IStrategy, BaseNode, Pausable {
     parent.childRemoved();
   }
 
-  function replace(INode _node) external virtual override onlyOwner {
-    _withdrawAll();
-    parent.updateChild(_node);
+  function _replace(INode _newNode) internal {
+    // TODO, make internal replace code in ANode? For splitter and strategy
+    if (address(_newNode) == address(this)) revert('SAME');
+    if (_newNode.parent() != parent) revert('PARENT');
+    if (_newNode.core() != core) revert('INVALID');
+    if (_newNode.want() != want) revert('INVALID');
+
+    parent.updateChild(_newNode);
+
+    emit Replace(_newNode);
+    emit Obsolete(address(this));
   }
 
-  function replaceForce(INode _node) external virtual override onlyOwner {
-    parent.updateChild(_node);
+  function replace(INode _newNode) external virtual override onlyOwner {
+    _withdrawAll();
+    _replace(_newNode);
+  }
+
+  function replaceForce(INode _newNode) external virtual override onlyOwner {
+    _replace(_newNode);
   }
 }

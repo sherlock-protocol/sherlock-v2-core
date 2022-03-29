@@ -64,6 +64,8 @@ abstract contract BaseNode is INode, INodeReplaceable, Ownable {
     if (address(_newParent) == address(_currentParent)) revert('INVALID');
     // Revert if core is invalid
     if (_currentParent.core() != _newParent.core()) revert('INVALID');
+    // Revert if want is invalid
+    if (_currentParent.want() != _newParent.want()) revert('INVALID');
 
     // Get boolean if address(this) is the child
     bool firstChild = address(_newParent.childOne()) == address(this);

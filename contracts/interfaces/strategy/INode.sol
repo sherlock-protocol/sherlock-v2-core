@@ -12,6 +12,8 @@ interface INode {
   event AdminWithdraw(uint256 amount);
   event ReplaceAsChild();
   event ParentUpdate(ISplitter previousParent, ISplitter newParent);
+  event Obsolete(INode implementation);
+  event Replace(INode newAddress);
 
   /// @return Returns the token type being deposited into a node
   function want() external view returns (IERC20);
@@ -79,6 +81,9 @@ interface IMaster is INode {
 }
 
 interface ISplitter is IMaster {
+  event ChildOneUpdate(INode oldAddress, INode newAddress);
+  event ChildTwoUpdate(INode oldAddress, INode newAddress);
+
   function childOne() external view returns (INode);
 
   function childTwo() external view returns (INode);
