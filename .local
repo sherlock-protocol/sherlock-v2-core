@@ -1,0 +1,8 @@
+  const TimelockController = '0xbfB28d13810180d5700De4F05BAf02fFAC699F27'; // TBD
+  const Sherlock = '0xFeDCDB2fA4F2f65118BE2Ea57D9ad603dcC21C73';
+  const AaveV2Strategy = '0x23d492325579CD9868E71fbF32A12C9BcAaE547F';
+  const SherDistributionManager = '0x226b36d995F1F50e432D707aF082454D424bACD5';
+  const SherlockProtocolManager = '0xd2c31E475E3bF4352B73bCfcD5F55e2a92c55575';
+  const SherlockClaimManager = '0xf403D2DbE10DBf584AD3eB4B928CF0e08d37E657';
+  const SherClaim = '0xbaC4A71C4A735529fBe9a9Ed665d55aB5EEAC72f';
+  const SherBuy = '0x9b886C3e7265025f31cb23049Ec342ef61Bac264';

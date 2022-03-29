@@ -64,6 +64,7 @@ abstract contract BaseSplitter is BaseNode, ISplitter {
   function replace(INode _node) public virtual override onlyOwner {
     if (ISplitter(address(_node)).childOne() != childOne) revert('CHILD');
     if (ISplitter(address(_node)).childTwo() != childTwo) revert('CHILD');
+    if (_node.parent() != parent) revert('PARENT');
 
     parent.updateChild(_node);
 
