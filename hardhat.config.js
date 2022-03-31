@@ -43,7 +43,7 @@ module.exports = {
     mainnet: {
       timeout: 999999999,
       url: `https://eth-mainnet.alchemyapi.io/v2/${ALCHEMY_API_KEY_MAINNET}`,
-      gasPrice: 100000000000,
+      gasPrice: 32000000000,
       accounts: [PRIVATE_KEY_MAINNET].filter((item) => item !== ''),
     },
     goerli: {
