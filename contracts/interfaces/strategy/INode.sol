@@ -78,6 +78,8 @@ interface IMaster is INode {
 
   /// @notice Call by child if removed
   function childRemoved() external;
+
+  function isMaster() external view returns (bool);
 }
 
 interface ISplitter is IMaster {

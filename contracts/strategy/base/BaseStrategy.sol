@@ -41,7 +41,7 @@ abstract contract BaseStrategy is IStrategy, BaseNode, Pausable {
     parent.updateChild(_newNode);
 
     emit Replace(_newNode);
-    emit Obsolete(address(this));
+    emit Obsolete(INode(address(this)));
   }
 
   function replace(INode _newNode) external virtual override onlyOwner {

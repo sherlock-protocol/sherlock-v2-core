@@ -20,6 +20,10 @@ abstract contract BaseSplitter is BaseNode, ISplitter {
   INode public override childOne;
   INode public override childTwo;
 
+  function isMaster() external view override returns (bool) {
+    return false;
+  }
+
   function _withdrawAll() internal virtual override returns (uint256 amount) {
     // Children will withdraw to core()
     amount = childOne.withdrawAll();

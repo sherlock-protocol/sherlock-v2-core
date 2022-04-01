@@ -58,6 +58,8 @@ abstract contract BaseNode is INode, INodeReplaceable, Ownable {
   }
 
   function _verifyParentUpdate(ISplitter _currentParent, ISplitter _newParent) internal view {
+    // Revert is parent is master
+    if (_newParent.isMaster()) revert('MASTER');
     // Revert if it's the same address
     if (address(_newParent) == address(this)) revert('INVALID');
     // Revert if the address is parent

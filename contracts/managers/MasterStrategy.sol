@@ -24,11 +24,15 @@ contract MasterStrategy is IStrategyManager, IMaster, Manager {
     want = _want;
   }
 
+  function isMaster() external view override returns (bool) {
+    return true;
+  }
+
   function balanceOf() public view override(IStrategyManager, INode) returns (uint256) {
     return root.balanceOf();
   }
 
-  function deposit() external override(IStrategyManager, INode) whenNotPaused {
+  function deposit() external override(IStrategyManager, INode) whenNotPaused onlySherlockCore {
     want.safeTransfer(address(root), want.balanceOf(address(this)));
 
     root.deposit();
@@ -59,14 +63,6 @@ contract MasterStrategy is IStrategyManager, IMaster, Manager {
     root.withdraw(_amount);
 
     want.safeTransfer(msg.sender, _amount);
-  }
-
-  function pause() external override(Manager, IManager) onlySherlockCore {
-    _pause();
-  }
-
-  function unpause() external override(Manager, IManager) onlySherlockCore {
-    _unpause();
   }
 
   function childRemoved() external override {
