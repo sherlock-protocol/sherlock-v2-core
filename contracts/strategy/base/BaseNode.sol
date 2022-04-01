@@ -16,23 +16,17 @@ abstract contract BaseNode is INode, INodeReplaceable, Ownable {
   using SafeERC20 for IERC20;
 
   ISplitter public override parent;
-  IERC20 public immutable override want;
-  address public immutable override core;
-
-  constructor(ISplitter _parent) {
-    parent = _parent;
-    want = parent.want();
-    core = parent.core();
-  }
 
   modifier onlyParent() {
     if (msg.sender != address(parent)) revert('NOT_PARENT');
     _;
   }
 
-  modifier onlyCore() {
-    if (msg.sender != address(core)) revert('NOT_CORE');
-    _;
+  function setInitialParent(ISplitter _newParent) external override onlyOwner {
+    if (address(parent) != address(0)) revert('NOT_ZERO');
+
+    parent = _newParent;
+    emit ParentUpdate(ISplitter(address(0)), _newParent);
   }
 
   function withdrawAll() external override onlyParent returns (uint256 amount) {

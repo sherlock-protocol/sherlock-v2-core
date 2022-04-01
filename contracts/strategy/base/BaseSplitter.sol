@@ -20,6 +20,17 @@ abstract contract BaseSplitter is BaseNode, ISplitter {
   INode public override childOne;
   INode public override childTwo;
 
+  IERC20 public immutable override want;
+  address public immutable override core;
+
+  constructor(INode _childOne, INode _childTwo) {
+    childOne = _childOne;
+    childTwo = _childTwo;
+    // TODO assert equal
+    want = childOne.want();
+    core = childOne.core();
+  }
+
   function isMaster() external view override returns (bool) {
     return false;
   }

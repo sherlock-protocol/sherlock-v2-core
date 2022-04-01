@@ -17,7 +17,11 @@ contract ERC4624AdaperStrategy is BaseStrategy {
 
   IERC4626 public immutable instance;
 
-  constructor(ISplitter _parent, IERC4626 _instance) BaseNode(_parent) {
+  constructor(
+    IERC20 _want,
+    address _core,
+    IERC4626 _instance
+  ) BaseStrategy(_want, _core) {
     instance = _instance;
     if (address(want) != _instance.asset()) revert('INVALUD');
   }

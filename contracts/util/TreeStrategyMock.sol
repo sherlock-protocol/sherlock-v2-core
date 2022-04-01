@@ -9,11 +9,11 @@ pragma solidity 0.8.10;
 import '../strategy/base/BaseStrategy.sol';
 
 contract TreeStrategyMock is BaseStrategy {
-  constructor(ISplitter _parent) BaseNode(_parent) {}
-
   event WithdrawAll();
   event Withdraw(uint256 amount);
   event Deposit();
+
+  constructor(address _core, IERC20 _want) BaseStrategy(_want, _core) {}
 
   function balanceOf() public view override returns (uint256) {
     return want.balanceOf(address(this));

@@ -9,7 +9,7 @@ pragma solidity 0.8.10;
 import '../strategy/base/BaseSplitter.sol';
 
 contract TreeSplitterMock is BaseSplitter {
-  constructor(ISplitter _parent) BaseNode(_parent) {}
+  constructor(INode _childOne, INode _childTwo) BaseSplitter(_childOne, _childTwo) {}
 
   function _withdraw(uint256 _amount) internal virtual override {
     if (_amount % (2 * 10**6) == 0) {

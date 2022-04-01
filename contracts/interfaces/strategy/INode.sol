@@ -53,6 +53,9 @@ interface INode {
   /// @notice Update parent of node
   /// @dev Can only be called by current parent
   function updateParent(ISplitter _node) external;
+
+  /// @notice admin is able to set initial parent
+  function setInitialParent(ISplitter _newParent) external;
 }
 
 interface INodeReplaceable {

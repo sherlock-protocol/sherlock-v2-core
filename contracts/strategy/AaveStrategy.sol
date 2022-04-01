@@ -34,10 +34,10 @@ contract AaveStrategy is BaseStrategy {
 
   // Constructor takes the aUSDC address and the rewards receiver address (a Sherlock address) as args
   constructor(
-    ISplitter _parent,
+    address _core,
     IAToken _aWant,
     address _aaveLmReceiver
-  ) BaseNode(_parent) {
+  ) BaseStrategy(IERC20(_aWant.UNDERLYING_ASSET_ADDRESS()), _core) {
     if (address(_aWant) == address(0)) revert('ZeroArgument');
     if (_aaveLmReceiver == address(0)) revert('ZeroArgument');
 

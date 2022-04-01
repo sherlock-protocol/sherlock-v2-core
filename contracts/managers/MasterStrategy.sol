@@ -19,9 +19,12 @@ contract MasterStrategy is IStrategyManager, IMaster, Manager {
   INode root;
   IERC20 public immutable override(IStrategyManager, INode) want;
 
-  constructor(INode _root, IERC20 _want) {
+  constructor(INode _root, ISherlock _sherlock) {
     root = _root;
-    want = _want;
+    want = _root.want();
+
+    sherlockCore = _sherlock;
+    emit SherlockCoreSet(_sherlock);
   }
 
   function isMaster() external view override returns (bool) {
@@ -85,5 +88,9 @@ contract MasterStrategy is IStrategyManager, IMaster, Manager {
 
   function updateParent(ISplitter _node) external override {
     revert('CANT_UPDATE_MASTER_PARENT');
+  }
+
+  function setInitialParent(ISplitter _newParent) external override {
+    revert('CANT_SET_PARENT');
   }
 }
