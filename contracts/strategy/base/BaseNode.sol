@@ -12,24 +12,24 @@ import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 
 import '../../interfaces/strategy/INode.sol';
 
-abstract contract BaseNode is INode, INodeReplaceable, Ownable {
+abstract contract BaseNode is INode, Ownable {
   using SafeERC20 for IERC20;
 
   IMaster public override parent;
+  IERC20 public immutable override want;
+  address public immutable override core;
+
+  constructor(IMaster _initialParent) {
+    want = _initialParent.want();
+    core = _initialParent.core();
+    parent = _initialParent;
+
+    emit ParentUpdate(IMaster(address(0)), _initialParent);
+  }
 
   modifier onlyParent() {
     if (msg.sender != address(parent)) revert('NOT_PARENT');
     _;
-  }
-
-  function setInitialParent(IMaster _newParent) external override onlyOwner {
-    if (address(parent) != address(0)) revert('NOT_ZERO');
-
-    _verifyNewParent(_newParent);
-
-    parent = _newParent;
-
-    emit ParentUpdate(IMaster(address(0)), _newParent);
   }
 
   function withdrawAll() external override onlyParent returns (uint256 amount) {

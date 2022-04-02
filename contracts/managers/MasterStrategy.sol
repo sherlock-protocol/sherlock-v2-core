@@ -10,28 +10,35 @@ import './Manager.sol';
 import '../interfaces/managers/IStrategyManager.sol';
 import '../interfaces/strategy/IStrategy.sol';
 import '../interfaces/strategy/INode.sol';
+import '../strategy/base/BaseMaster.sol';
 
 import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 
-contract MasterStrategy is IStrategyManager, IMaster, Manager {
+contract InfoStorage {
+  IERC20 public immutable want;
+  address public immutable core;
+
+  constructor(IERC20 _want, address _core) {
+    want = _want;
+    core = _core;
+  }
+}
+
+// This contract is not desgined to hold funds (except during runtime)
+// If it does (by someone sending funds directly) it will not be reflected in the balanceOf()
+// On `deposit()` the funds will be added to the balance
+// As an observer, if the TVL is 10m and this contract contains 10m, you can easily double your money if you
+// enter the pool before `deposit()` is called.
+contract MasterStrategy is
+  BaseMaster,
+  Manager /* IStrategyManager */
+{
   using SafeERC20 for IERC20;
 
-  INode public override childOne;
-  IERC20 public immutable override(IStrategyManager, INode) want;
+  constructor(IMaster _initialParent) BaseNode(_initialParent) {
+    sherlockCore = ISherlock(core);
 
-  constructor(INode _root) {
-    IERC20 _want = _root.want();
-    if (address(_want) == address(0)) revert InvalidWant();
-    want = _want;
-
-    ISherlock _core = ISherlock(_root.core());
-    if (address(_core) == address(0)) revert InvalidCore();
-    sherlockCore = _core;
-
-    childOne = _root;
-
-    emit ChildOneUpdate(INode(address(0)), _root);
-    emit SherlockCoreSet(_core);
+    emit SherlockCoreSet(ISherlock(core));
   }
 
   /*//////////////////////////////////////////////////////////////
@@ -42,40 +49,28 @@ contract MasterStrategy is IStrategyManager, IMaster, Manager {
     return true;
   }
 
-  function core() public view override returns (address) {
-    return address(sherlockCore);
-  }
-
-  function parent() external view override returns (IMaster) {
-    return IMaster(address(0));
-  }
-
   function childRemoved() external override {
     // not implemented as the system can not function without `childOne` in this contract
     revert NotImplemented(msg.sig);
   }
 
-  function updateChild(INode _node) external override {
-    INode _childOne = childOne;
-
-    if (msg.sender != address(_childOne)) revert InvalidSender();
-    if (address(_node) == address(0)) revert ZeroArgument();
-    if (_node == _childOne) revert InvalidArgument();
-    if (address(_node.parent()) != address(this)) revert InvalidParent();
-    if (core() != _node.core()) revert InvalidCore();
-    if (want != _node.want()) revert InvalidWant();
-
-    childOne = _node;
-
-    emit ChildUpdated(_childOne, _node);
-  }
-
-  function updateParent(IMaster _node) external override {
-    // not implemented as the parent can not be updated by the tree system
+  function replace(INode _node) external override {
     revert NotImplemented(msg.sig);
   }
 
-  function setInitialParent(IMaster _newParent) external override {
+  function replaceForce(INode _node) external override {
+    revert NotImplemented(msg.sig);
+  }
+
+  function updateChild(INode _newChild) external override {
+    address _childOne = address(childOne);
+    if (_childOne == address(0)) revert NotSetup();
+    if (_childOne != msg.sender) revert InvalidSender();
+
+    _setChildOne(INode(msg.sender), _newChild);
+  }
+
+  function updateParent(IMaster _node) external override {
     // not implemented as the parent can not be updated by the tree system
     revert NotImplemented(msg.sig);
   }
@@ -84,40 +79,65 @@ contract MasterStrategy is IStrategyManager, IMaster, Manager {
                         YIELD STRATEGY LOGIC
   //////////////////////////////////////////////////////////////*/
 
-  function balanceOf() public view override(IStrategyManager, INode) returns (uint256) {
+  function balanceOf()
+    public
+    view
+    override(
+      /*IStrategyManager, */
+      INode
+    )
+    returns (uint256)
+  {
     return childOne.balanceOf();
   }
 
-  function deposit() external override(IStrategyManager, INode) whenNotPaused onlySherlockCore {
-    want.safeTransfer(address(childOne), want.balanceOf(address(this)));
+  function deposit()
+    external
+    override(
+      /*IStrategyManager, */
+      INode
+    )
+    whenNotPaused
+    onlySherlockCore
+  {
+    uint256 balance = want.balanceOf(address(this));
+    if (balance == 0) revert InvalidConditions();
+
+    want.safeTransfer(address(childOne), balance);
 
     childOne.deposit();
   }
 
-  function withdrawAllByAdmin() external override onlyOwner returns (uint256) {
-    childOne.withdrawAll();
-    want.safeTransfer(address(sherlockCore), want.balanceOf(address(this)));
+  function withdrawAllByAdmin() external override onlyOwner returns (uint256 amount) {
+    amount = childOne.withdrawAll();
+    emit AdminWithdraw(_amount);
   }
 
   function withdrawAll()
     external
-    override(IStrategyManager, INode)
+    override(
+      /*IStrategyManager, */
+      INode
+    )
     onlySherlockCore
     returns (uint256)
   {
-    childOne.withdrawAll();
-
-    want.safeTransfer(msg.sender, want.balanceOf(address(this)));
+    return childOne.withdrawAll();
   }
 
   function withdrawByAdmin(uint256 _amount) external override onlyOwner {
     childOne.withdraw(_amount);
-    want.safeTransfer(address(sherlockCore), _amount);
+    emit AdminWithdraw(_amount);
   }
 
-  function withdraw(uint256 _amount) external override(IStrategyManager, INode) onlySherlockCore {
+  function withdraw(uint256 _amount)
+    external
+    override(
+      /*IStrategyManager, */
+      INode
+    )
+    onlySherlockCore
+  {
     childOne.withdraw(_amount);
-
-    want.safeTransfer(msg.sender, _amount);
   }
 }

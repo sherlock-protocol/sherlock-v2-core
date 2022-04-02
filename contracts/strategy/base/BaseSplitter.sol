@@ -12,24 +12,12 @@ import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 import '@openzeppelin/contracts/security/Pausable.sol';
 
 import '../../interfaces/strategy/INode.sol';
-import './BaseNode.sol';
+import './BaseMaster.sol';
 
-abstract contract BaseSplitter is BaseNode, ISplitter {
+abstract contract BaseSplitter is BaseMaster, ISplitter {
   using SafeERC20 for IERC20;
 
-  INode public override childOne;
   INode public override childTwo;
-
-  IERC20 public immutable override want;
-  address public immutable override core;
-
-  constructor(INode _childOne, INode _childTwo) {
-    childOne = _childOne;
-    childTwo = _childTwo;
-    // TODO assert equal
-    want = childOne.want();
-    core = childOne.core();
-  }
 
   function isMaster() external view override returns (bool) {
     return false;
@@ -105,5 +93,18 @@ abstract contract BaseSplitter is BaseNode, ISplitter {
 
   function replaceForce(INode _node) external virtual override {
     replace(_node);
+  }
+
+  function _setChildTwo(INode _currentChild, INode _newChild) internal {
+    _verifySetChild(_currentChild, _newChild);
+
+    childTwo = _newChild;
+    emit ChildTwoUpdate(_currentChild, _newChild);
+  }
+
+  function setInitialChildTwo(INode _newChild) external override onlyOwner {
+    if (address(childTwo) != address(0)) revert InvalidState();
+
+    _setChildTwo(INode(address(0)), _newChild);
   }
 }

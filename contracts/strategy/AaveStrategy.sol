@@ -33,11 +33,12 @@ contract AaveStrategy is BaseStrategy {
   address public immutable aaveLmReceiver;
 
   // Constructor takes the aUSDC address and the rewards receiver address (a Sherlock address) as args
+
   constructor(
-    address _core,
+    IMaster _initialParent,
     IAToken _aWant,
     address _aaveLmReceiver
-  ) BaseStrategy(IERC20(_aWant.UNDERLYING_ASSET_ADDRESS()), _core) {
+  ) BaseNode(_initialParent) {
     if (address(_aWant) == address(0)) revert('ZeroArgument');
     if (_aaveLmReceiver == address(0)) revert('ZeroArgument');
 

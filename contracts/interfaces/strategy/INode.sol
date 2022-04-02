@@ -19,6 +19,10 @@ interface INode {
   error InvalidParent();
   error InvalidCore();
   error InvalidWant();
+  error InvalidState();
+  error ZeroArg();
+  error InvalidArg();
+  error NotSetup();
 
   /// @return Returns the token type being deposited into a node
   function want() external view returns (IERC20);
@@ -33,9 +37,6 @@ interface INode {
   /// @notice Update parent of node
   /// @dev Can only be called by current parent
   function updateParent(IMaster _node) external;
-
-  /// @notice admin is able to set initial parent
-  function setInitialParent(IMaster _newParent) external;
 
   /// @return Returns the token balance managed by this contract
   /// @dev For Splitter this will be the sum of balances of the children
@@ -61,9 +62,7 @@ interface INode {
   /// @dev Splitter will deposit the tokens in their children
   /// @dev Strategy will deposit the tokens into a yield strategy
   function deposit() external;
-}
 
-interface INodeReplaceable {
   /// @notice Replace the node
   /// @notice If this is executed on a strategy, the funds will be withdrawn
   /// @notice If this is executed on a splitter, the children are expected to be the same
@@ -79,8 +78,7 @@ interface INodeReplaceable {
 }
 
 interface IMaster is INode {
-  event ChildOneUpdate(INode oldAddress, INode newAddress);
-  event ChildUpdated(INode _previous, INode _current);
+  event ChildOneUpdate(INode oldChild, INode newChild);
 
   /// @notice Call by child if it's needs to be updated
   function updateChild(INode _node) external;
@@ -91,10 +89,14 @@ interface IMaster is INode {
   function isMaster() external view returns (bool);
 
   function childOne() external view returns (INode);
+
+  function setInitialChildOne(INode _child) external;
 }
 
 interface ISplitter is IMaster {
-  event ChildTwoUpdate(INode oldAddress, INode newAddress);
+  event ChildTwoUpdate(INode oldChild, INode newChild);
 
   function childTwo() external view returns (INode);
+
+  function setInitialChildTwo(INode _child) external;
 }

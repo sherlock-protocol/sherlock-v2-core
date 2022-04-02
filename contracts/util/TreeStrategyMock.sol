@@ -8,12 +8,18 @@ pragma solidity 0.8.10;
 
 import '../strategy/base/BaseStrategy.sol';
 
-contract TreeStrategyMock is BaseStrategy {
+abstract contract StrategyMock {
+  function mockUpdateChild(IMaster _parent, INode _newNode) external {
+    _parent.updateChild(_newNode);
+  }
+}
+
+contract TreeStrategyMock is StrategyMock, BaseStrategy {
   event WithdrawAll();
   event Withdraw(uint256 amount);
   event Deposit();
 
-  constructor(address _core, IERC20 _want) BaseStrategy(_want, _core) {}
+  constructor(IMaster _initialParent) BaseNode(_initialParent) {}
 
   function balanceOf() public view override returns (uint256) {
     return want.balanceOf(address(this));
@@ -36,31 +42,62 @@ contract TreeStrategyMock is BaseStrategy {
     emit Deposit();
   }
 
-  function mockUpdateChild(IMaster _parent, INode _newNode) external {
-    _parent.updateChild(_newNode);
-  }
-
-  function mockSetInitialParent(IMaster _newParent) external {
+  function mockSetParent(IMaster _newParent) external {
     parent = _newParent;
   }
 }
 
-contract TreeStrategyMockZeroCore {
-  address public immutable core;
-  address public immutable want;
+contract TreeStrategyMockCustom is StrategyMock, IStrategy {
+  address public override core;
+  IERC20 public override want;
+  IMaster public override parent;
+  uint256 public depositCalled;
+  uint256 public withdrawCalled;
+  uint256 public withdrawByAdminCalled;
+  uint256 public withdrawAllCalled;
+  uint256 public withdrawAllByAdminCalled;
 
-  constructor() {
-    core = address(0);
-    want = address(1);
+  function balanceOf() external view override returns (uint256) {}
+
+  function setCore(address _core) external {
+    core = _core;
   }
-}
 
-contract TreeStrategyMockZeroWant {
-  address public immutable core;
-  address public immutable want;
+  function setWant(IERC20 _want) external {
+    want = _want;
+  }
 
-  constructor() {
-    core = address(1);
-    want = address(0);
+  function setParent(IMaster _parent) external {
+    parent = _parent;
+  }
+
+  function deposit() external override {
+    depositCalled++;
+  }
+
+  function remove() external override {}
+
+  function replace(INode _node) external override {}
+
+  function replaceAsChild(ISplitter _node) external override {}
+
+  function replaceForce(INode _node) external override {}
+
+  function updateParent(IMaster _node) external override {}
+
+  function withdraw(uint256 _amount) external override {
+    withdrawCalled++;
+  }
+
+  function withdrawAll() external override returns (uint256) {
+    withdrawAllCalled++;
+  }
+
+  function withdrawAllByAdmin() external override returns (uint256) {
+    withdrawAllByAdminCalled++;
+  }
+
+  function withdrawByAdmin(uint256 _amount) external override {
+    withdrawByAdminCalled++;
   }
 }

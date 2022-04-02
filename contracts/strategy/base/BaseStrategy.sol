@@ -18,15 +18,6 @@ import './BaseNode.sol';
 abstract contract BaseStrategy is IStrategy, BaseNode, Pausable {
   using SafeERC20 for IERC20;
 
-  IERC20 public immutable override want;
-  address public immutable override core;
-
-  constructor(IERC20 _want, address _core) {
-    // todo zero checks
-    want = _want;
-    core = _core;
-  }
-
   function pause() external virtual onlyOwner {
     _pause();
   }
