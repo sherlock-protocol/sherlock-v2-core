@@ -15,18 +15,21 @@ import '../../interfaces/strategy/INode.sol';
 abstract contract BaseNode is INode, INodeReplaceable, Ownable {
   using SafeERC20 for IERC20;
 
-  ISplitter public override parent;
+  IMaster public override parent;
 
   modifier onlyParent() {
     if (msg.sender != address(parent)) revert('NOT_PARENT');
     _;
   }
 
-  function setInitialParent(ISplitter _newParent) external override onlyOwner {
+  function setInitialParent(IMaster _newParent) external override onlyOwner {
     if (address(parent) != address(0)) revert('NOT_ZERO');
 
+    _verifyNewParent(_newParent);
+
     parent = _newParent;
-    emit ParentUpdate(ISplitter(address(0)), _newParent);
+
+    emit ParentUpdate(IMaster(address(0)), _newParent);
   }
 
   function withdrawAll() external override onlyParent returns (uint256 amount) {
@@ -51,7 +54,19 @@ abstract contract BaseNode is INode, INodeReplaceable, Ownable {
     _deposit();
   }
 
-  function _verifyParentUpdate(ISplitter _currentParent, ISplitter _newParent) internal view {
+  function _verifyNewParent(IMaster _newParent) internal view {
+    bool firstChild = address((_newParent).childOne()) == address(this);
+    bool secondChild = false;
+
+    if (!_newParent.isMaster()) {
+      secondChild = address(ISplitter(address(_newParent)).childTwo()) == address(this);
+    }
+    // Verify if address(this) is a child
+    if (firstChild && secondChild) revert('DUPLICATE_CHILD');
+    if (!firstChild && !secondChild) revert('NOT_CHILD');
+  }
+
+  function _verifyParentUpdate(IMaster _currentParent, IMaster _newParent) internal view {
     // Revert is parent is master
     if (_newParent.isMaster()) revert('MASTER');
     // Revert if it's the same address
@@ -63,16 +78,10 @@ abstract contract BaseNode is INode, INodeReplaceable, Ownable {
     // Revert if want is invalid
     if (_currentParent.want() != _newParent.want()) revert('INVALID');
 
-    // Get boolean if address(this) is the child
-    bool firstChild = address(_newParent.childOne()) == address(this);
-    bool secondChild = address(_newParent.childTwo()) == address(this);
-
-    // Verify if address(this) is a child
-    if (firstChild && secondChild) revert('DUPLICATE_CHILD');
-    if (!firstChild && !secondChild) revert('NOT_CHILD');
+    _verifyNewParent(_newParent);
   }
 
-  function _executeParentUpdate(ISplitter _currentParent, ISplitter _newParent) internal {
+  function _executeParentUpdate(IMaster _currentParent, IMaster _newParent) internal {
     // Make `_newParent` our new parent
     parent = _newParent;
     emit ParentUpdate(_currentParent, _newParent);
@@ -80,7 +89,7 @@ abstract contract BaseNode is INode, INodeReplaceable, Ownable {
 
   function replaceAsChild(ISplitter _newParent) external virtual override onlyOwner {
     // Gas savings
-    ISplitter _currentParent = parent;
+    IMaster _currentParent = parent;
 
     // Verify if the new parent has the right connections
     _verifyParentUpdate(_currentParent, _newParent);
@@ -99,12 +108,12 @@ abstract contract BaseNode is INode, INodeReplaceable, Ownable {
     emit ReplaceAsChild();
   }
 
-  function updateParent(ISplitter _newParent) external virtual override onlyParent {
+  function updateParent(IMaster _newParent) external virtual override onlyParent {
     // Verify if the parent can be updated
-    _verifyParentUpdate(ISplitter(msg.sender), _newParent);
+    _verifyParentUpdate(IMaster(msg.sender), _newParent);
 
     // Update parent
-    _executeParentUpdate(ISplitter(msg.sender), _newParent);
+    _executeParentUpdate(IMaster(msg.sender), _newParent);
   }
 
   function _withdrawAll() internal virtual returns (uint256 amount) {}

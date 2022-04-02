@@ -22,6 +22,7 @@ abstract contract BaseStrategy is IStrategy, BaseNode, Pausable {
   address public immutable override core;
 
   constructor(IERC20 _want, address _core) {
+    // todo zero checks
     want = _want;
     core = _core;
   }
@@ -41,6 +42,7 @@ abstract contract BaseStrategy is IStrategy, BaseNode, Pausable {
 
   function _replace(INode _newNode) internal {
     // TODO, make internal replace code in ANode? For splitter and strategy
+    if (address(_newNode) == address(0)) revert('ZERO');
     if (address(_newNode) == address(this)) revert('SAME');
     if (_newNode.parent() != parent) revert('PARENT');
     if (_newNode.core() != core) revert('INVALID');

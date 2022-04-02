@@ -35,4 +35,32 @@ contract TreeStrategyMock is BaseStrategy {
   function _deposit() internal override {
     emit Deposit();
   }
+
+  function mockUpdateChild(IMaster _parent, INode _newNode) external {
+    _parent.updateChild(_newNode);
+  }
+
+  function mockSetInitialParent(IMaster _newParent) external {
+    parent = _newParent;
+  }
+}
+
+contract TreeStrategyMockZeroCore {
+  address public immutable core;
+  address public immutable want;
+
+  constructor() {
+    core = address(0);
+    want = address(1);
+  }
+}
+
+contract TreeStrategyMockZeroWant {
+  address public immutable core;
+  address public immutable want;
+
+  constructor() {
+    core = address(1);
+    want = address(0);
+  }
 }

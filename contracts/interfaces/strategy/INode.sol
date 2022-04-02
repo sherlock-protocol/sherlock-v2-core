@@ -11,12 +11,35 @@ import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 interface INode {
   event AdminWithdraw(uint256 amount);
   event ReplaceAsChild();
-  event ParentUpdate(ISplitter previousParent, ISplitter newParent);
+  event ParentUpdate(IMaster previousParent, IMaster newParent);
   event Obsolete(INode implementation);
   event Replace(INode newAddress);
 
+  error NotImplemented(bytes4 func);
+  error InvalidParent();
+  error InvalidCore();
+  error InvalidWant();
+
   /// @return Returns the token type being deposited into a node
   function want() external view returns (IERC20);
+
+  /// @notice Parent will always inherit IMaster interface.
+  /// @notice Parent of root node will inherit IStrategyManager
+  function parent() external view returns (IMaster);
+
+  /// @notice View core controller of funds
+  function core() external view returns (address);
+
+  /// @notice Update parent of node
+  /// @dev Can only be called by current parent
+  function updateParent(IMaster _node) external;
+
+  /// @notice admin is able to set initial parent
+  function setInitialParent(IMaster _newParent) external;
+
+  /// @return Returns the token balance managed by this contract
+  /// @dev For Splitter this will be the sum of balances of the children
+  function balanceOf() external view returns (uint256);
 
   /// @notice Withdraws all tokens back into core.
   /// @return The final amount withdrawn
@@ -38,24 +61,6 @@ interface INode {
   /// @dev Splitter will deposit the tokens in their children
   /// @dev Strategy will deposit the tokens into a yield strategy
   function deposit() external;
-
-  /// @return Returns the token balance managed by this contract
-  /// @dev For Splitter this will be the sum of balances of the children
-  function balanceOf() external view returns (uint256);
-
-  /// @notice Parent will always inherit ISplitter interface.
-  /// @notice Parent of root node will inherit IStrategyManager
-  function parent() external view returns (ISplitter);
-
-  /// @notice View core controller of funds
-  function core() external view returns (address);
-
-  /// @notice Update parent of node
-  /// @dev Can only be called by current parent
-  function updateParent(ISplitter _node) external;
-
-  /// @notice admin is able to set initial parent
-  function setInitialParent(ISplitter _newParent) external;
 }
 
 interface INodeReplaceable {
@@ -74,6 +79,7 @@ interface INodeReplaceable {
 }
 
 interface IMaster is INode {
+  event ChildOneUpdate(INode oldAddress, INode newAddress);
   event ChildUpdated(INode _previous, INode _current);
 
   /// @notice Call by child if it's needs to be updated
@@ -83,13 +89,12 @@ interface IMaster is INode {
   function childRemoved() external;
 
   function isMaster() external view returns (bool);
+
+  function childOne() external view returns (INode);
 }
 
 interface ISplitter is IMaster {
-  event ChildOneUpdate(INode oldAddress, INode newAddress);
   event ChildTwoUpdate(INode oldAddress, INode newAddress);
-
-  function childOne() external view returns (INode);
 
   function childTwo() external view returns (INode);
 }

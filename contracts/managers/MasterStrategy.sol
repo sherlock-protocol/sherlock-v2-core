@@ -16,33 +16,86 @@ import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 contract MasterStrategy is IStrategyManager, IMaster, Manager {
   using SafeERC20 for IERC20;
 
-  INode root;
+  INode public override childOne;
   IERC20 public immutable override(IStrategyManager, INode) want;
 
-  constructor(INode _root, ISherlock _sherlock) {
-    root = _root;
-    want = _root.want();
+  constructor(INode _root) {
+    IERC20 _want = _root.want();
+    if (address(_want) == address(0)) revert InvalidWant();
+    want = _want;
 
-    sherlockCore = _sherlock;
-    emit SherlockCoreSet(_sherlock);
+    ISherlock _core = ISherlock(_root.core());
+    if (address(_core) == address(0)) revert InvalidCore();
+    sherlockCore = _core;
+
+    childOne = _root;
+
+    emit ChildOneUpdate(INode(address(0)), _root);
+    emit SherlockCoreSet(_core);
   }
+
+  /*//////////////////////////////////////////////////////////////
+                        TREE STRUCTURE LOGIC
+  //////////////////////////////////////////////////////////////*/
 
   function isMaster() external view override returns (bool) {
     return true;
   }
 
+  function core() public view override returns (address) {
+    return address(sherlockCore);
+  }
+
+  function parent() external view override returns (IMaster) {
+    return IMaster(address(0));
+  }
+
+  function childRemoved() external override {
+    // not implemented as the system can not function without `childOne` in this contract
+    revert NotImplemented(msg.sig);
+  }
+
+  function updateChild(INode _node) external override {
+    INode _childOne = childOne;
+
+    if (msg.sender != address(_childOne)) revert InvalidSender();
+    if (address(_node) == address(0)) revert ZeroArgument();
+    if (_node == _childOne) revert InvalidArgument();
+    if (address(_node.parent()) != address(this)) revert InvalidParent();
+    if (core() != _node.core()) revert InvalidCore();
+    if (want != _node.want()) revert InvalidWant();
+
+    childOne = _node;
+
+    emit ChildUpdated(_childOne, _node);
+  }
+
+  function updateParent(IMaster _node) external override {
+    // not implemented as the parent can not be updated by the tree system
+    revert NotImplemented(msg.sig);
+  }
+
+  function setInitialParent(IMaster _newParent) external override {
+    // not implemented as the parent can not be updated by the tree system
+    revert NotImplemented(msg.sig);
+  }
+
+  /*//////////////////////////////////////////////////////////////
+                        YIELD STRATEGY LOGIC
+  //////////////////////////////////////////////////////////////*/
+
   function balanceOf() public view override(IStrategyManager, INode) returns (uint256) {
-    return root.balanceOf();
+    return childOne.balanceOf();
   }
 
   function deposit() external override(IStrategyManager, INode) whenNotPaused onlySherlockCore {
-    want.safeTransfer(address(root), want.balanceOf(address(this)));
+    want.safeTransfer(address(childOne), want.balanceOf(address(this)));
 
-    root.deposit();
+    childOne.deposit();
   }
 
   function withdrawAllByAdmin() external override onlyOwner returns (uint256) {
-    root.withdrawAll();
+    childOne.withdrawAll();
     want.safeTransfer(address(sherlockCore), want.balanceOf(address(this)));
   }
 
@@ -52,45 +105,19 @@ contract MasterStrategy is IStrategyManager, IMaster, Manager {
     onlySherlockCore
     returns (uint256)
   {
-    root.withdrawAll();
+    childOne.withdrawAll();
 
     want.safeTransfer(msg.sender, want.balanceOf(address(this)));
   }
 
   function withdrawByAdmin(uint256 _amount) external override onlyOwner {
-    root.withdraw(_amount);
+    childOne.withdraw(_amount);
     want.safeTransfer(address(sherlockCore), _amount);
   }
 
   function withdraw(uint256 _amount) external override(IStrategyManager, INode) onlySherlockCore {
-    root.withdraw(_amount);
+    childOne.withdraw(_amount);
 
     want.safeTransfer(msg.sender, _amount);
-  }
-
-  function childRemoved() external override {
-    revert('CANT_REMOVE_ROOT');
-  }
-
-  function core() external view override returns (address) {
-    return address(sherlockCore);
-  }
-
-  function parent() external view override returns (ISplitter) {
-    return ISplitter(address(0));
-  }
-
-  function updateChild(INode _node) external override {
-    if (msg.sender != address(root)) revert InvalidSender();
-    emit ChildUpdated(root, _node);
-    root = _node;
-  }
-
-  function updateParent(ISplitter _node) external override {
-    revert('CANT_UPDATE_MASTER_PARENT');
-  }
-
-  function setInitialParent(ISplitter _newParent) external override {
-    revert('CANT_SET_PARENT');
   }
 }
