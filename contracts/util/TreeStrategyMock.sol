@@ -91,6 +91,7 @@ contract TreeStrategyMockCustom is StrategyMock, IStrategy {
 
   function withdrawAll() external override returns (uint256) {
     withdrawAllCalled++;
+    return type(uint256).max;
   }
 
   function withdrawAllByAdmin() external override returns (uint256) {

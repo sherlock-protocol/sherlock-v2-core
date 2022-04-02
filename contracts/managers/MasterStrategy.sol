@@ -110,7 +110,7 @@ contract MasterStrategy is
 
   function withdrawAllByAdmin() external override onlyOwner returns (uint256 amount) {
     amount = childOne.withdrawAll();
-    emit AdminWithdraw(_amount);
+    emit AdminWithdraw(amount);
   }
 
   function withdrawAll()

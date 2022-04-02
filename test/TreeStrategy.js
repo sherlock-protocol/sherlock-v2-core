@@ -229,8 +229,10 @@ describe.only('MasterStrategy', function () {
 
       expect(await this.strategyCustom.withdrawAllCalled()).to.eq(0);
 
-      await this.master.withdrawAllByAdmin();
-      // todo assert event
+      this.t0 = await meta(this.master.withdrawAllByAdmin());
+      expect(this.t0.events.length).to.eq(1);
+      expect(this.t0.events[0].event).to.eq('AdminWithdraw');
+      expect(this.t0.events[0].args.amount).to.eq(constants.MaxUint256);
 
       expect(await this.strategyCustom.withdrawAllCalled()).to.eq(1);
     });
@@ -274,8 +276,10 @@ describe.only('MasterStrategy', function () {
 
       expect(await this.strategyCustom.withdrawCalled()).to.eq(0);
 
-      await this.master.withdrawByAdmin(maxTokens);
-      // todo assert event
+      this.t0 = await meta(this.master.withdrawByAdmin(maxTokens));
+      expect(this.t0.events.length).to.eq(1);
+      expect(this.t0.events[0].event).to.eq('AdminWithdraw');
+      expect(this.t0.events[0].args.amount).to.eq(maxTokens);
 
       expect(await this.strategyCustom.withdrawCalled()).to.eq(1);
     });
