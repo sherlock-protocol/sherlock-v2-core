@@ -54,6 +54,10 @@ contract MasterStrategy is
     revert NotImplemented(msg.sig);
   }
 
+  function replaceAsChild(ISplitter _newParent) external override {
+    revert NotImplemented(msg.sig);
+  }
+
   function replace(INode _node) external override {
     revert NotImplemented(msg.sig);
   }
@@ -126,6 +130,8 @@ contract MasterStrategy is
   }
 
   function withdrawByAdmin(uint256 _amount) external override onlyOwner {
+    if (_amount == 0) revert ZeroArg();
+
     childOne.withdraw(_amount);
     emit AdminWithdraw(_amount);
   }
@@ -138,6 +144,8 @@ contract MasterStrategy is
     )
     onlySherlockCore
   {
+    if (_amount == 0) revert ZeroArg();
+
     childOne.withdraw(_amount);
   }
 }

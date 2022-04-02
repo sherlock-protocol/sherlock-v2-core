@@ -16,6 +16,7 @@ interface INode {
   event Replace(INode newAddress);
 
   error NotImplemented(bytes4 func);
+  error SenderNotParent();
   error InvalidParent();
   error InvalidCore();
   error InvalidWant();

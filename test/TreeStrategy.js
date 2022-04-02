@@ -32,7 +32,7 @@ const maxTokens = parseUnits('100000000000', 6);
 
 // first test master strategy
 
-describe.only('MasterStrategy', function () {
+describe('MasterStrategy', function () {
   before(async function () {
     timeTraveler = new TimeTraveler(network.provider);
     // deploy master strategy
@@ -74,6 +74,13 @@ describe.only('MasterStrategy', function () {
     it('childRemoved', async function () {
       await expect(this.master.childRemoved()).to.be.revertedWith(
         'NotImplemented("' + (await this.master.interface.getSighash('childRemoved()')) + '")',
+      );
+    });
+    it('replaceAsChild', async function () {
+      await expect(this.master.replaceAsChild(this.alice.address)).to.be.revertedWith(
+        'NotImplemented("' +
+          (await this.master.interface.getSighash('replaceAsChild(address)')) +
+          '")',
       );
     });
     it('replace', async function () {
@@ -268,6 +275,9 @@ describe.only('MasterStrategy', function () {
         'Ownable: caller is not the owner',
       );
     });
+    it('Zero amount', async function () {
+      await expect(this.master.withdrawByAdmin(0)).to.be.revertedWith('ZeroArg()');
+    });
     it('Do', async function () {
       await this.strategyCustom.setParent(this.master.address);
       await this.strategyCustom.setCore(this.core.address);
@@ -293,6 +303,9 @@ describe.only('MasterStrategy', function () {
         'InvalidSender()',
       );
     });
+    it('Zero amount', async function () {
+      await expect(this.master.connect(this.core).withdraw(0)).to.be.revertedWith('ZeroArg()');
+    });
     it('Do', async function () {
       await this.strategyCustom.setParent(this.master.address);
       await this.strategyCustom.setCore(this.core.address);
@@ -307,7 +320,137 @@ describe.only('MasterStrategy', function () {
     });
   });
 });
+describe.only('BaseNode', function () {
+  before(async function () {
+    timeTraveler = new TimeTraveler(network.provider);
+    // deploy master strategy
+    // set EOA as owner and sherlock core
 
+    await prepare(this, [
+      'InfoStorage',
+      'MasterStrategy',
+      'TreeSplitterMock',
+      'TreeStrategyMock',
+      'TreeStrategyMockCustom',
+      'ERC20Mock6d',
+    ]);
+
+    // mare this.core a proxy for this.bob
+    this.core = this.bob;
+
+    await deploy(this, [['erc20', this.ERC20Mock6d, ['USDC Token', 'USDC', maxTokens]]]);
+
+    await deploy(this, [['store', this.InfoStorage, [this.erc20.address, this.core.address]]]);
+    await deploy(this, [['master', this.MasterStrategy, [this.store.address]]]);
+    await deploy(this, [['strategy', this.TreeStrategyMock, [this.master.address]]]);
+    await deploy(this, [['strategy2', this.TreeStrategyMock, [this.master.address]]]);
+    await deploy(this, [['strategyCustom', this.TreeStrategyMockCustom, []]]);
+
+    await this.master.setInitialChildOne(this.strategy.address);
+
+    await timeTraveler.snapshot();
+  });
+  it('withdrawAll', async function () {
+    expect(await this.strategy.parent()).to.eq(this.master.address);
+    expect(await this.strategy.want()).to.eq(this.erc20.address);
+    expect(await this.strategy.core()).to.eq(this.bob.address);
+  });
+  describe('withdrawAll()', function () {
+    before(async function () {
+      await timeTraveler.revertSnapshot();
+    });
+    it('Invalid sender', async function () {
+      await expect(this.strategy.withdrawAll()).to.be.revertedWith('SenderNotParent()');
+    });
+    it('Do', async function () {
+      expect(await this.strategy.internalWithdrawAllCalled()).to.eq(0);
+      await this.master.withdrawAllByAdmin();
+      expect(await this.strategy.internalWithdrawAllCalled()).to.eq(1);
+    });
+  });
+  describe('withdrawAllByAdmin()', function () {
+    before(async function () {
+      await timeTraveler.revertSnapshot();
+    });
+    it('Invalid sender', async function () {
+      await expect(this.master.connect(this.bob).withdrawAllByAdmin()).to.be.revertedWith(
+        'Ownable: caller is not the owner',
+      );
+    });
+    it('Do', async function () {
+      expect(await this.strategy.internalWithdrawAllCalled()).to.eq(0);
+
+      this.t0 = await meta(this.master.withdrawAllByAdmin());
+      expect(this.t0.events.length).to.eq(3);
+      expect(this.t0.events[2].event).to.eq('AdminWithdraw');
+      expect(this.t0.events[2].args.amount).to.eq(0);
+      expect(await this.strategy.internalWithdrawAllCalled()).to.eq(1);
+    });
+  });
+  describe('withdraw()', function () {
+    before(async function () {
+      await timeTraveler.revertSnapshot();
+    });
+    it('Invalid sender', async function () {
+      await expect(this.strategy.withdraw(0)).to.be.revertedWith('SenderNotParent()');
+    });
+    it('Zero amount', async function () {
+      await timeTraveler.request({
+        method: 'hardhat_impersonateAccount',
+        params: [this.master.address],
+      });
+      await timeTraveler.request({
+        method: 'hardhat_setBalance',
+        params: [this.master.address, '0x100000000000000000000000000'],
+      });
+      this.m = await ethers.provider.getSigner(this.master.address);
+
+      await expect(this.strategy.connect(this.m).withdraw(0)).to.be.revertedWith('ZeroArg()');
+    });
+    it('Do', async function () {
+      await this.erc20.transfer(this.strategy.address, maxTokens);
+
+      expect(await this.strategy.internalWithdrawCalled()).to.eq(0);
+      await this.master.withdrawByAdmin(maxTokens);
+      expect(await this.strategy.internalWithdrawCalled()).to.eq(1);
+    });
+  });
+  describe('withdrawByAdmin()', function () {
+    before(async function () {
+      await timeTraveler.revertSnapshot();
+    });
+    it('Invalid sender', async function () {
+      await expect(this.strategy.connect(this.carol).withdrawByAdmin(0)).to.be.revertedWith(
+        'Ownable: caller is not the owner',
+      );
+    });
+    it('Zero amount', async function () {
+      await expect(this.strategy.withdrawByAdmin(0)).to.be.revertedWith('ZeroArg()');
+    });
+    it('Do', async function () {
+      await this.erc20.transfer(this.strategy.address, maxTokens);
+
+      expect(await this.strategy.internalWithdrawCalled()).to.eq(0);
+      await this.strategy.withdrawByAdmin(maxTokens);
+      expect(await this.strategy.internalWithdrawCalled()).to.eq(1);
+    });
+  });
+  describe('deposit()', function () {
+    before(async function () {
+      await timeTraveler.revertSnapshot();
+    });
+    it('Invalid sender', async function () {
+      await expect(this.strategy.deposit()).to.be.revertedWith('SenderNotParent()');
+    });
+    it('Do', async function () {
+      await this.erc20.transfer(this.master.address, maxTokens);
+
+      expect(await this.strategy.internalDepositCalled()).to.eq(0);
+      await this.master.connect(this.core).deposit();
+      expect(await this.strategy.internalDepositCalled()).to.eq(1);
+    });
+  });
+});
 // describe.only('Basenode', function () {
 //   before(async function () {
 //     // deploy master strategy

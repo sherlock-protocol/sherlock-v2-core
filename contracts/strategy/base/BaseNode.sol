@@ -28,30 +28,41 @@ abstract contract BaseNode is INode, Ownable {
   }
 
   modifier onlyParent() {
-    if (msg.sender != address(parent)) revert('NOT_PARENT');
+    if (msg.sender != address(parent)) revert SenderNotParent();
     _;
   }
 
-  function withdrawAll() external override onlyParent returns (uint256 amount) {
-    amount = _withdrawAll();
+  /*//////////////////////////////////////////////////////////////
+                        TREE STRUCTURE LOGIC
+  //////////////////////////////////////////////////////////////*/
+
+  function replaceAsChild(ISplitter _newParent) external virtual override onlyOwner {
+    // Gas savings
+    IMaster _currentParent = parent;
+
+    // Verify if the new parent has the right connections
+    _verifyParentUpdate(_currentParent, _newParent);
+
+    // Revert if parent connection isn't there
+    // This is specific to `replaceAsChild` as it creates a connection between the parent and address(this)
+    if (_currentParent != _newParent.parent()) revert('PARENT');
+
+    // Make sure the parent recognizes the new child
+    // This is specific to `replaceAsChild` as it creates a connection between the parent and address(this)
+    _currentParent.updateChild(_newParent);
+
+    // Update parent
+    _executeParentUpdate(_currentParent, _newParent);
+
+    emit ReplaceAsChild();
   }
 
-  function withdrawAllByAdmin() external override onlyOwner returns (uint256 amount) {
-    amount = _withdrawAll();
-    emit AdminWithdraw(amount);
-  }
+  function updateParent(IMaster _newParent) external virtual override onlyParent {
+    // Verify if the parent can be updated
+    _verifyParentUpdate(IMaster(msg.sender), _newParent);
 
-  function withdraw(uint256 _amount) external override onlyParent {
-    _withdraw(_amount);
-  }
-
-  function withdrawByAdmin(uint256 _amount) external override onlyOwner {
-    _withdraw(_amount);
-    emit AdminWithdraw(_amount);
-  }
-
-  function deposit() external override onlyParent {
-    _deposit();
+    // Update parent
+    _executeParentUpdate(IMaster(msg.sender), _newParent);
   }
 
   function _verifyNewParent(IMaster _newParent) internal view {
@@ -87,33 +98,34 @@ abstract contract BaseNode is INode, Ownable {
     emit ParentUpdate(_currentParent, _newParent);
   }
 
-  function replaceAsChild(ISplitter _newParent) external virtual override onlyOwner {
-    // Gas savings
-    IMaster _currentParent = parent;
+  /*//////////////////////////////////////////////////////////////
+                        YIELD STRATEGY LOGIC
+  //////////////////////////////////////////////////////////////*/
 
-    // Verify if the new parent has the right connections
-    _verifyParentUpdate(_currentParent, _newParent);
-
-    // Revert if parent connection isn't there
-    // This is specific to `replaceAsChild` as it creates a connection between the parent and address(this)
-    if (_currentParent != _newParent.parent()) revert('PARENT');
-
-    // Make sure the parent recognizes the new child
-    // This is specific to `replaceAsChild` as it creates a connection between the parent and address(this)
-    _currentParent.updateChild(_newParent);
-
-    // Update parent
-    _executeParentUpdate(_currentParent, _newParent);
-
-    emit ReplaceAsChild();
+  function withdrawAll() external override onlyParent returns (uint256 amount) {
+    amount = _withdrawAll();
   }
 
-  function updateParent(IMaster _newParent) external virtual override onlyParent {
-    // Verify if the parent can be updated
-    _verifyParentUpdate(IMaster(msg.sender), _newParent);
+  function withdrawAllByAdmin() external override onlyOwner returns (uint256 amount) {
+    amount = _withdrawAll();
+    emit AdminWithdraw(amount);
+  }
 
-    // Update parent
-    _executeParentUpdate(IMaster(msg.sender), _newParent);
+  function withdraw(uint256 _amount) external override onlyParent {
+    if (_amount == 0) revert ZeroArg();
+
+    _withdraw(_amount);
+  }
+
+  function withdrawByAdmin(uint256 _amount) external override onlyOwner {
+    if (_amount == 0) revert ZeroArg();
+
+    _withdraw(_amount);
+    emit AdminWithdraw(_amount);
+  }
+
+  function deposit() external override onlyParent {
+    _deposit();
   }
 
   function _withdrawAll() internal virtual returns (uint256 amount) {}

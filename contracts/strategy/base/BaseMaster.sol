@@ -21,6 +21,9 @@ abstract contract BaseMaster is IMaster, BaseNode {
     if (address(_newChild.parent()) != address(this)) revert InvalidParent();
     if (core != _newChild.core()) revert InvalidCore();
     if (want != _newChild.want()) revert InvalidWant();
+    // TODO could theoretically be a node where `setInitialChildOne()` has ChildTwo hasn't been called on
+    // Maybe expose an `setupCompleted() bool` function that checks if it can be added
+    // If the child has children for splitters || If the yield strategy can be used.
   }
 
   function _setChildOne(INode _currentChild, INode _newChild) internal {
