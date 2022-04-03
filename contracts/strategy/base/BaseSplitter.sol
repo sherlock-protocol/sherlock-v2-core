@@ -85,6 +85,9 @@ abstract contract BaseSplitter is BaseMaster, ISplitter {
     if (_newNode.core() != core) revert('INVALID');
     if (_newNode.want() != want) revert('INVALID');
 
+    // TODO childOne.updateParent(address(this))
+    // TODO childTwo.updateParent(address(this))
+
     parent.updateChild(_newNode);
 
     emit Replace(_newNode);

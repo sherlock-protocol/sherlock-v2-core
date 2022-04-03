@@ -41,3 +41,82 @@ contract TreeSplitterMock is BaseSplitter {
     }
   }
 }
+
+contract TreeSplitterMockCustom is ISplitter {
+  address public override core;
+  IERC20 public override want;
+  IMaster public override parent;
+  uint256 public depositCalled;
+  uint256 public withdrawCalled;
+  uint256 public withdrawByAdminCalled;
+  uint256 public withdrawAllCalled;
+  uint256 public withdrawAllByAdminCalled;
+  INode public updateChildCalled;
+  INode public override childOne;
+  INode public override childTwo;
+
+  function balanceOf() external view override returns (uint256) {}
+
+  function setChildOne(INode _child) external {
+    childOne = _child;
+  }
+
+  function setChildTwo(INode _child) external {
+    childTwo = _child;
+  }
+
+  function setCore(address _core) external {
+    core = _core;
+  }
+
+  function setWant(IERC20 _want) external {
+    want = _want;
+  }
+
+  function setParent(IMaster _parent) external {
+    parent = _parent;
+  }
+
+  function deposit() external override {
+    depositCalled++;
+  }
+
+  function replace(INode _node) external override {}
+
+  function replaceAsChild(ISplitter _node) external override {}
+
+  function replaceForce(INode _node) external override {}
+
+  function updateParent(IMaster _node) external override {}
+
+  function withdraw(uint256 _amount) external override {
+    withdrawCalled++;
+  }
+
+  function withdrawAll() external override returns (uint256) {
+    withdrawAllCalled++;
+    return type(uint256).max;
+  }
+
+  function withdrawAllByAdmin() external override returns (uint256) {
+    withdrawAllByAdminCalled++;
+  }
+
+  function withdrawByAdmin(uint256 _amount) external override {
+    withdrawByAdminCalled++;
+  }
+
+  /// @notice Call by child if it's needs to be updated
+  function updateChild(INode _node) external override {
+    updateChildCalled = _node;
+  }
+
+  /// @notice Call by child if removed
+  function childRemoved() external override {}
+
+  function isMaster() external view override returns (bool) {}
+
+  function setInitialChildOne(INode _child) external override {}
+
+  function setInitialChildTwo(INode _child) external override {}
+}

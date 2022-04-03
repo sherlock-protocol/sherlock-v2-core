@@ -11,7 +11,7 @@ import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 interface INode {
   event AdminWithdraw(uint256 amount);
   event ReplaceAsChild();
-  event ParentUpdate(IMaster previousParent, IMaster newParent);
+  event ParentUpdate(IMaster previous, IMaster current);
   event Obsolete(INode implementation);
   event Replace(INode newAddress);
 
@@ -24,6 +24,9 @@ interface INode {
   error ZeroArg();
   error InvalidArg();
   error NotSetup();
+  error IsMaster();
+  error BothChild();
+  error NotChild();
 
   /// @return Returns the token type being deposited into a node
   function want() external view returns (IERC20);
@@ -79,7 +82,7 @@ interface INode {
 }
 
 interface IMaster is INode {
-  event ChildOneUpdate(INode oldChild, INode newChild);
+  event ChildOneUpdate(INode previous, INode current);
 
   /// @notice Call by child if it's needs to be updated
   function updateChild(INode _node) external;
@@ -95,7 +98,7 @@ interface IMaster is INode {
 }
 
 interface ISplitter is IMaster {
-  event ChildTwoUpdate(INode oldChild, INode newChild);
+  event ChildTwoUpdate(INode previous, INode current);
 
   function childTwo() external view returns (INode);
 

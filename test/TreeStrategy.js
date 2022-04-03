@@ -32,7 +32,7 @@ const maxTokens = parseUnits('100000000000', 6);
 
 // first test master strategy
 
-describe('MasterStrategy', function () {
+describe.only('MasterStrategy', function () {
   before(async function () {
     timeTraveler = new TimeTraveler(network.provider);
     // deploy master strategy
@@ -183,8 +183,8 @@ describe('MasterStrategy', function () {
       this.t0.events[0] = this.master.interface.parseLog(this.t0.events[0]);
       expect(this.t0.events.length).to.eq(1);
       expect(this.t0.events[0].name).to.eq('ChildOneUpdate');
-      expect(this.t0.events[0].args.oldChild).to.eq(this.strategy.address);
-      expect(this.t0.events[0].args.newChild).to.eq(this.strategy2.address);
+      expect(this.t0.events[0].args.previous).to.eq(this.strategy.address);
+      expect(this.t0.events[0].args.current).to.eq(this.strategy2.address);
 
       expect(await this.master.childOne()).to.eq(this.strategy2.address);
     });
@@ -330,6 +330,7 @@ describe.only('BaseNode', function () {
       'InfoStorage',
       'MasterStrategy',
       'TreeSplitterMock',
+      'TreeSplitterMockCustom',
       'TreeStrategyMock',
       'TreeStrategyMockCustom',
       'ERC20Mock6d',
@@ -345,12 +346,101 @@ describe.only('BaseNode', function () {
     await deploy(this, [['strategy', this.TreeStrategyMock, [this.master.address]]]);
     await deploy(this, [['strategy2', this.TreeStrategyMock, [this.master.address]]]);
     await deploy(this, [['strategyCustom', this.TreeStrategyMockCustom, []]]);
+    await deploy(this, [['splitter', this.TreeSplitterMock, [this.master.address]]]);
+    await deploy(this, [['splitterCustom', this.TreeSplitterMockCustom, []]]);
 
     await this.master.setInitialChildOne(this.strategy.address);
 
     await timeTraveler.snapshot();
   });
-  it('withdrawAll', async function () {
+  describe('replaceAsChild()', function () {
+    before(async function () {
+      await timeTraveler.revertSnapshot();
+    });
+    it('Invalid sender', async function () {
+      await expect(
+        this.strategy.connect(this.carol).replaceAsChild(this.splitter.address),
+      ).to.be.revertedWith('Ownable: caller is not the owner');
+    });
+    it('Is master', async function () {
+      await expect(this.strategy.replaceAsChild(this.master.address)).to.be.revertedWith(
+        'IsMaster()',
+      );
+    });
+    it('Is node itself', async function () {
+      await expect(this.splitter.replaceAsChild(this.splitter.address)).to.be.revertedWith(
+        'InvalidArg()',
+      );
+    });
+    it('Is same parent', async function () {
+      // TODO test with splitter as parent (instead of master)
+    });
+    it('Invalid core', async function () {
+      await this.splitterCustom.setCore(this.alice.address);
+      await expect(this.strategy.replaceAsChild(this.splitterCustom.address)).to.be.revertedWith(
+        'InvalidCore()',
+      );
+    });
+    it('Invalid want', async function () {
+      await this.splitterCustom.setCore(this.core.address);
+      await this.splitterCustom.setWant(this.alice.address);
+      await expect(this.strategy.replaceAsChild(this.splitterCustom.address)).to.be.revertedWith(
+        'InvalidWant()',
+      );
+    });
+    it('Not child', async function () {
+      await expect(this.strategy.replaceAsChild(this.splitter.address)).to.be.revertedWith(
+        'NotChild()',
+      );
+    });
+    it('Both child', async function () {
+      await this.splitterCustom.setCore(this.core.address);
+      await this.splitterCustom.setWant(this.erc20.address);
+      await this.splitterCustom.setChildOne(this.strategy.address);
+      await this.splitterCustom.setChildTwo(this.strategy.address);
+      await expect(this.strategy.replaceAsChild(this.splitterCustom.address)).to.be.revertedWith(
+        'BothChild()',
+      );
+    });
+    it('Invalid parent', async function () {
+      await this.splitterCustom.setCore(this.core.address);
+      await this.splitterCustom.setWant(this.erc20.address);
+      await this.splitterCustom.setChildOne(this.strategy.address);
+      await this.splitterCustom.setChildTwo(this.carol.address);
+      await this.splitterCustom.setParent(this.carol.address);
+
+      await expect(this.strategy.replaceAsChild(this.splitterCustom.address)).to.be.revertedWith(
+        'InvalidParent()',
+      );
+    });
+    it('Success', async function () {
+      await this.splitterCustom.setCore(this.core.address);
+      await this.splitterCustom.setWant(this.erc20.address);
+      await this.splitterCustom.setChildOne(this.strategy.address);
+      await this.splitterCustom.setChildTwo(this.carol.address);
+      await this.splitterCustom.setParent(this.master.address);
+
+      expect(await this.strategy.parent()).to.eq(this.master.address);
+      expect(await this.master.childOne()).to.eq(this.strategy.address);
+
+      this.t0 = await meta(this.strategy.replaceAsChild(this.splitterCustom.address));
+
+      this.t0.events[0] = this.master.interface.parseLog(this.t0.events[0]);
+
+      expect(this.t0.events.length).to.eq(3);
+      expect(this.t0.events[0].name).to.eq('ChildOneUpdate');
+      expect(this.t0.events[0].args.previous).to.eq(this.strategy.address);
+      expect(this.t0.events[0].args.current).to.eq(this.splitterCustom.address);
+      expect(this.t0.events[1].event).to.eq('ParentUpdate');
+      expect(this.t0.events[1].args.previous).to.eq(this.master.address);
+      expect(this.t0.events[1].args.current).to.eq(this.splitterCustom.address);
+      expect(this.t0.events[2].event).to.eq('ReplaceAsChild');
+
+      expect(await this.strategy.parent()).to.eq(this.splitterCustom.address);
+      expect(await this.master.childOne()).to.eq(this.splitterCustom.address);
+    });
+  });
+  it('default', async function () {
     expect(await this.strategy.parent()).to.eq(this.master.address);
     expect(await this.strategy.want()).to.eq(this.erc20.address);
     expect(await this.strategy.core()).to.eq(this.bob.address);

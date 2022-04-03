@@ -40,12 +40,15 @@ abstract contract BaseNode is INode, Ownable {
     // Gas savings
     IMaster _currentParent = parent;
 
+    // Revert is parent is master
+    if (_newParent.isMaster()) revert IsMaster();
+
     // Verify if the new parent has the right connections
     _verifyParentUpdate(_currentParent, _newParent);
 
     // Revert if parent connection isn't there
     // This is specific to `replaceAsChild` as it creates a connection between the parent and address(this)
-    if (_currentParent != _newParent.parent()) revert('PARENT');
+    if (_currentParent != _newParent.parent()) revert InvalidParent();
 
     // Make sure the parent recognizes the new child
     // This is specific to `replaceAsChild` as it creates a connection between the parent and address(this)
@@ -73,21 +76,19 @@ abstract contract BaseNode is INode, Ownable {
       secondChild = address(ISplitter(address(_newParent)).childTwo()) == address(this);
     }
     // Verify if address(this) is a child
-    if (firstChild && secondChild) revert('DUPLICATE_CHILD');
-    if (!firstChild && !secondChild) revert('NOT_CHILD');
+    if (firstChild && secondChild) revert BothChild();
+    if (!firstChild && !secondChild) revert NotChild();
   }
 
   function _verifyParentUpdate(IMaster _currentParent, IMaster _newParent) internal view {
-    // Revert is parent is master
-    if (_newParent.isMaster()) revert('MASTER');
     // Revert if it's the same address
-    if (address(_newParent) == address(this)) revert('INVALID');
+    if (address(_newParent) == address(this)) revert InvalidArg();
     // Revert if the address is parent
-    if (address(_newParent) == address(_currentParent)) revert('INVALID');
+    if (address(_newParent) == address(_currentParent)) revert InvalidArg();
     // Revert if core is invalid
-    if (_currentParent.core() != _newParent.core()) revert('INVALID');
+    if (_currentParent.core() != _newParent.core()) revert InvalidCore();
     // Revert if want is invalid
-    if (_currentParent.want() != _newParent.want()) revert('INVALID');
+    if (_currentParent.want() != _newParent.want()) revert InvalidWant();
 
     _verifyNewParent(_newParent);
   }
