@@ -70,6 +70,15 @@ abstract contract BaseNode is INode, Ownable {
     _executeParentUpdate(IMaster(msg.sender), _newParent);
   }
 
+  function siblingRemoved() external override onlyParent {
+    IMaster _newParent = parent.parent();
+
+    _verifyParentUpdate(IMaster(msg.sender), _newParent);
+    // NOTE: _verifyNewParent() is skipped on this call
+    // as address(this) should be added as a child after the callback
+    _executeParentUpdate(IMaster(msg.sender), _newParent);
+  }
+
   function _verifyNewParent(IMaster _newParent) internal view {
     bool firstChild = address((_newParent).childOne()) == address(this);
     bool secondChild = false;
@@ -84,9 +93,9 @@ abstract contract BaseNode is INode, Ownable {
 
   function _verifyParentUpdate(IMaster _currentParent, IMaster _newParent) internal view {
     // Revert if it's the same address
-    if (address(_newParent) == address(this)) revert InvalidArg();
+    if (address(_newParent) == address(this)) revert InvalidParentAddress();
     // Revert if the address is parent
-    if (address(_newParent) == address(_currentParent)) revert InvalidArg();
+    if (address(_newParent) == address(_currentParent)) revert InvalidParentAddress();
     // Revert if core is invalid
     if (_currentParent.core() != _newParent.core()) revert InvalidCore();
     // Revert if want is invalid
@@ -97,15 +106,6 @@ abstract contract BaseNode is INode, Ownable {
     // Make `_newParent` our new parent
     parent = _newParent;
     emit ParentUpdate(_currentParent, _newParent);
-  }
-
-  function siblingRemoved() external override onlyParent {
-    IMaster _newParent = parent.parent();
-
-    _verifyParentUpdate(IMaster(msg.sender), _newParent);
-    // _verifyNewParent() is skipped on this call
-    // as address(this) should be added as a child after the callback
-    _executeParentUpdate(IMaster(msg.sender), _newParent);
   }
 
   /*//////////////////////////////////////////////////////////////

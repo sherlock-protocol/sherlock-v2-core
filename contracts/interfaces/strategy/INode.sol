@@ -27,6 +27,7 @@ interface INode {
   error IsMaster();
   error BothChild();
   error NotChild();
+  error InvalidParentAddress();
 
   /// @return Returns the token type being deposited into a node
   function want() external view returns (IERC20);

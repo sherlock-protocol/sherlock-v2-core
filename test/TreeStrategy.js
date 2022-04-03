@@ -349,6 +349,10 @@ describe.only('BaseNode', function () {
     await deploy(this, [['splitter', this.TreeSplitterMock, [this.master.address]]]);
     await deploy(this, [['splitterCustom', this.TreeSplitterMockCustom, []]]);
 
+    await deploy(this, [
+      ['strategyOfSplitter', this.TreeStrategyMock, [this.splitterCustom.address]],
+    ]);
+
     await this.master.setInitialChildOne(this.strategy.address);
 
     await timeTraveler.snapshot();
@@ -369,7 +373,7 @@ describe.only('BaseNode', function () {
     });
     it('Is node itself', async function () {
       await expect(this.splitter.replaceAsChild(this.splitter.address)).to.be.revertedWith(
-        'InvalidArg()',
+        'InvalidParentAddress()',
       );
     });
     it('Is same parent', async function () {
@@ -443,11 +447,153 @@ describe.only('BaseNode', function () {
   describe('updateParent()', function () {
     before(async function () {
       await timeTraveler.revertSnapshot();
+
+      await timeTraveler.request({
+        method: 'hardhat_impersonateAccount',
+        params: [this.master.address],
+      });
+      await timeTraveler.request({
+        method: 'hardhat_setBalance',
+        params: [this.master.address, '0x100000000000000000000000000'],
+      });
+      this.m = await ethers.provider.getSigner(this.master.address);
     });
     it('Invalid sender', async function () {
+      await expect(this.strategy.updateParent(this.splitter.address)).to.be.revertedWith(
+        'SenderNotParent()',
+      );
+    });
+    it('Is node itself', async function () {
       await expect(
-        this.strategy.connect(this.carol).replaceAsChild(this.splitter.address),
-      ).to.be.revertedWith('Ownable: caller is not the owner');
+        this.strategy.connect(this.m).updateParent(this.strategy.address),
+      ).to.be.revertedWith('InvalidParentAddress()');
+    });
+    it('Is same parent', async function () {
+      await expect(
+        this.strategy.connect(this.m).updateParent(this.master.address),
+      ).to.be.revertedWith('InvalidParentAddress()');
+    });
+    it('Invalid core', async function () {
+      await this.splitterCustom.setCore(this.alice.address);
+
+      await expect(
+        this.strategy.connect(this.m).updateParent(this.splitterCustom.address),
+      ).to.be.revertedWith('InvalidCore()');
+    });
+    it('Invalid want', async function () {
+      await this.splitterCustom.setCore(this.core.address);
+      await this.splitterCustom.setWant(this.alice.address);
+
+      await expect(
+        this.strategy.connect(this.m).updateParent(this.splitterCustom.address),
+      ).to.be.revertedWith('InvalidWant()');
+    });
+    it('Not child', async function () {
+      await expect(
+        this.strategy.connect(this.m).updateParent(this.splitter.address),
+      ).to.be.revertedWith('NotChild()');
+    });
+    it('Both child', async function () {
+      await this.splitterCustom.setCore(this.core.address);
+      await this.splitterCustom.setWant(this.erc20.address);
+      await this.splitterCustom.setChildOne(this.strategy.address);
+      await this.splitterCustom.setChildTwo(this.strategy.address);
+
+      await expect(
+        this.strategy.connect(this.m).updateParent(this.splitterCustom.address),
+      ).to.be.revertedWith('BothChild()');
+    });
+    it('Both child', async function () {
+      await this.splitterCustom.setCore(this.core.address);
+      await this.splitterCustom.setWant(this.erc20.address);
+      await this.splitterCustom.setChildOne(this.strategy.address);
+      await this.splitterCustom.setChildTwo(this.strategy.address);
+
+      await expect(
+        this.strategy.connect(this.m).updateParent(this.splitterCustom.address),
+      ).to.be.revertedWith('BothChild()');
+    });
+    it('Success', async function () {
+      await this.splitterCustom.setCore(this.core.address);
+      await this.splitterCustom.setWant(this.erc20.address);
+      await this.splitterCustom.setChildOne(this.strategy.address);
+      await this.splitterCustom.setChildTwo(this.carol.address);
+
+      expect(await this.strategy.parent()).to.eq(this.master.address);
+
+      this.t0 = await meta(this.strategy.connect(this.m).updateParent(this.splitterCustom.address));
+
+      expect(this.t0.events.length).to.eq(1);
+      expect(this.t0.events[0].event).to.eq('ParentUpdate');
+      expect(this.t0.events[0].args.previous).to.eq(this.master.address);
+      expect(this.t0.events[0].args.current).to.eq(this.splitterCustom.address);
+
+      expect(await this.strategy.parent()).to.eq(this.splitterCustom.address);
+    });
+  });
+  describe('siblingRemoved()', function () {
+    before(async function () {
+      await timeTraveler.revertSnapshot();
+
+      await timeTraveler.request({
+        method: 'hardhat_impersonateAccount',
+        params: [this.splitterCustom.address],
+      });
+      await timeTraveler.request({
+        method: 'hardhat_setBalance',
+        params: [this.splitterCustom.address, '0x100000000000000000000000000'],
+      });
+      this.s = await ethers.provider.getSigner(this.splitterCustom.address);
+    });
+    it('Invalid sender', async function () {
+      await expect(this.strategy.siblingRemoved()).to.be.revertedWith('SenderNotParent()');
+    });
+    it('Is node itself', async function () {
+      await this.splitterCustom.setParent(this.strategyOfSplitter.address);
+
+      await expect(this.strategyOfSplitter.connect(this.s).siblingRemoved()).to.be.revertedWith(
+        'InvalidParentAddress()',
+      );
+    });
+    it('Is same parent', async function () {
+      await this.splitterCustom.setParent(this.splitterCustom.address);
+
+      await expect(this.strategyOfSplitter.connect(this.s).siblingRemoved()).to.be.revertedWith(
+        'InvalidParentAddress()',
+      );
+    });
+    it('Invalid core', async function () {
+      await this.splitterCustom.setParent(this.master.address);
+      await this.splitterCustom.setCore(this.alice.address);
+
+      await expect(this.strategyOfSplitter.connect(this.s).siblingRemoved()).to.be.revertedWith(
+        'InvalidCore()',
+      );
+    });
+    it('Invalid want', async function () {
+      await this.splitterCustom.setParent(this.master.address);
+      await this.splitterCustom.setCore(this.core.address);
+      await this.splitterCustom.setWant(this.alice.address);
+
+      await expect(this.strategyOfSplitter.connect(this.s).siblingRemoved()).to.be.revertedWith(
+        'InvalidWant()',
+      );
+    });
+    it('Success', async function () {
+      await this.splitterCustom.setParent(this.master.address);
+      await this.splitterCustom.setCore(this.core.address);
+      await this.splitterCustom.setWant(this.erc20.address);
+
+      expect(await this.strategyOfSplitter.parent()).to.eq(this.splitterCustom.address);
+
+      this.t0 = await meta(this.strategyOfSplitter.connect(this.s).siblingRemoved());
+
+      expect(this.t0.events.length).to.eq(1);
+      expect(this.t0.events[0].event).to.eq('ParentUpdate');
+      expect(this.t0.events[0].args.previous).to.eq(this.splitterCustom.address);
+      expect(this.t0.events[0].args.current).to.eq(this.master.address);
+
+      expect(await this.strategy.parent()).to.eq(this.master.address);
     });
   });
   it('default', async function () {
