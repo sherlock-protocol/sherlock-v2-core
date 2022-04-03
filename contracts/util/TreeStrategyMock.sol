@@ -110,4 +110,6 @@ contract TreeStrategyMockCustom is StrategyMock, IStrategy {
   function withdrawByAdmin(uint256 _amount) external override {
     withdrawByAdminCalled++;
   }
+
+  function siblingRemoved() external override {}
 }

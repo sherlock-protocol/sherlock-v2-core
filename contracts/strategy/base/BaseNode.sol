@@ -45,6 +45,7 @@ abstract contract BaseNode is INode, Ownable {
 
     // Verify if the new parent has the right connections
     _verifyParentUpdate(_currentParent, _newParent);
+    _verifyNewParent(_newParent);
 
     // Revert if parent connection isn't there
     // This is specific to `replaceAsChild` as it creates a connection between the parent and address(this)
@@ -63,6 +64,7 @@ abstract contract BaseNode is INode, Ownable {
   function updateParent(IMaster _newParent) external virtual override onlyParent {
     // Verify if the parent can be updated
     _verifyParentUpdate(IMaster(msg.sender), _newParent);
+    _verifyNewParent(_newParent);
 
     // Update parent
     _executeParentUpdate(IMaster(msg.sender), _newParent);
@@ -89,14 +91,21 @@ abstract contract BaseNode is INode, Ownable {
     if (_currentParent.core() != _newParent.core()) revert InvalidCore();
     // Revert if want is invalid
     if (_currentParent.want() != _newParent.want()) revert InvalidWant();
-
-    _verifyNewParent(_newParent);
   }
 
   function _executeParentUpdate(IMaster _currentParent, IMaster _newParent) internal {
     // Make `_newParent` our new parent
     parent = _newParent;
     emit ParentUpdate(_currentParent, _newParent);
+  }
+
+  function siblingRemoved() external override onlyParent {
+    IMaster _newParent = parent.parent();
+
+    _verifyParentUpdate(IMaster(msg.sender), _newParent);
+    // _verifyNewParent() is skipped on this call
+    // as address(this) should be added as a child after the callback
+    _executeParentUpdate(IMaster(msg.sender), _newParent);
   }
 
   /*//////////////////////////////////////////////////////////////

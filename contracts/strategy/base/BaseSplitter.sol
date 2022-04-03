@@ -61,13 +61,13 @@ abstract contract BaseSplitter is BaseMaster, ISplitter {
     INode _childTwo = childTwo;
 
     if (msg.sender == address(_childOne)) {
+      _childTwo.siblingRemoved();
       parent.updateChild(_childTwo);
-      _childTwo.updateParent(parent);
 
       emit Obsolete(_childOne);
     } else if (msg.sender == address(_childTwo)) {
+      _childOne.siblingRemoved();
       parent.updateChild(_childOne);
-      _childOne.updateParent(parent);
 
       emit Obsolete(_childTwo);
     } else {
@@ -85,8 +85,8 @@ abstract contract BaseSplitter is BaseMaster, ISplitter {
     if (_newNode.core() != core) revert('INVALID');
     if (_newNode.want() != want) revert('INVALID');
 
-    // TODO childOne.updateParent(address(this))
-    // TODO childTwo.updateParent(address(this))
+    //childOne.updateParent(_newNode)
+    //childTwo.updateParent(_newNode)
 
     parent.updateChild(_newNode);
 

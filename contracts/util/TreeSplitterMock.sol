@@ -119,4 +119,6 @@ contract TreeSplitterMockCustom is ISplitter {
   function setInitialChildOne(INode _child) external override {}
 
   function setInitialChildTwo(INode _child) external override {}
+
+  function siblingRemoved() external override {}
 }

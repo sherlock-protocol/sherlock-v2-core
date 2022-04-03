@@ -440,6 +440,16 @@ describe.only('BaseNode', function () {
       expect(await this.master.childOne()).to.eq(this.splitterCustom.address);
     });
   });
+  describe('updateParent()', function () {
+    before(async function () {
+      await timeTraveler.revertSnapshot();
+    });
+    it('Invalid sender', async function () {
+      await expect(
+        this.strategy.connect(this.carol).replaceAsChild(this.splitter.address),
+      ).to.be.revertedWith('Ownable: caller is not the owner');
+    });
+  });
   it('default', async function () {
     expect(await this.strategy.parent()).to.eq(this.master.address);
     expect(await this.strategy.want()).to.eq(this.erc20.address);

@@ -79,6 +79,8 @@ interface INode {
 
   /// @notice Move the current node as the child of `_node`
   function replaceAsChild(ISplitter _node) external;
+
+  function siblingRemoved() external;
 }
 
 interface IMaster is INode {
