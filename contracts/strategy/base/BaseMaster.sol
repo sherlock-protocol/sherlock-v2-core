@@ -35,7 +35,8 @@ abstract contract BaseMaster is IMaster, BaseNode {
 
   function setInitialChildOne(INode _newChild) external override onlyOwner {
     if (address(childOne) != address(0)) revert InvalidState();
-    // TODO not address(this)
+    if (address(_newChild) == address(0)) revert ZeroArg();
+    if (_newChild.setupCompleted() == false) revert SetupNotCompleted(_newChild);
 
     _setChildOne(INode(address(0)), _newChild);
   }

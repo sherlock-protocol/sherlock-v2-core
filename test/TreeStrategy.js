@@ -32,7 +32,7 @@ const maxTokens = parseUnits('100000000000', 6);
 
 // first test master strategy
 
-describe.only('MasterStrategy', function () {
+describe('MasterStrategy', function () {
   before(async function () {
     timeTraveler = new TimeTraveler(network.provider);
     // deploy master strategy
@@ -118,6 +118,11 @@ describe.only('MasterStrategy', function () {
       );
     });
     // TODO test all other edge cases? Uses same underlying function  as updateChild (_verifySetChild)
+    it('Not setup', async function () {
+      await expect(this.master.setInitialChildOne(this.strategyCustom.address)).to.be.revertedWith(
+        'SetupNotCompleted("' + this.strategyCustom.address + '")',
+      );
+    });
     it('Set', async function () {
       await this.master.setInitialChildOne(this.strategy.address);
 
@@ -205,6 +210,7 @@ describe.only('MasterStrategy', function () {
       await this.strategyCustom.setParent(this.master.address);
       await this.strategyCustom.setCore(this.core.address);
       await this.strategyCustom.setWant(this.erc20.address);
+      await this.strategyCustom.setSetupCompleted(true);
       await this.master.setInitialChildOne(this.strategyCustom.address);
 
       await this.erc20.transfer(this.master.address, maxTokens);
@@ -232,6 +238,7 @@ describe.only('MasterStrategy', function () {
       await this.strategyCustom.setParent(this.master.address);
       await this.strategyCustom.setCore(this.core.address);
       await this.strategyCustom.setWant(this.erc20.address);
+      await this.strategyCustom.setSetupCompleted(true);
       await this.master.setInitialChildOne(this.strategyCustom.address);
 
       expect(await this.strategyCustom.withdrawAllCalled()).to.eq(0);
@@ -257,6 +264,7 @@ describe.only('MasterStrategy', function () {
       await this.strategyCustom.setParent(this.master.address);
       await this.strategyCustom.setCore(this.core.address);
       await this.strategyCustom.setWant(this.erc20.address);
+      await this.strategyCustom.setSetupCompleted(true);
       await this.master.setInitialChildOne(this.strategyCustom.address);
 
       expect(await this.strategyCustom.withdrawAllCalled()).to.eq(0);
@@ -282,6 +290,7 @@ describe.only('MasterStrategy', function () {
       await this.strategyCustom.setParent(this.master.address);
       await this.strategyCustom.setCore(this.core.address);
       await this.strategyCustom.setWant(this.erc20.address);
+      await this.strategyCustom.setSetupCompleted(true);
       await this.master.setInitialChildOne(this.strategyCustom.address);
 
       expect(await this.strategyCustom.withdrawCalled()).to.eq(0);
@@ -310,6 +319,7 @@ describe.only('MasterStrategy', function () {
       await this.strategyCustom.setParent(this.master.address);
       await this.strategyCustom.setCore(this.core.address);
       await this.strategyCustom.setWant(this.erc20.address);
+      await this.strategyCustom.setSetupCompleted(true);
       await this.master.setInitialChildOne(this.strategyCustom.address);
 
       expect(await this.strategyCustom.withdrawCalled()).to.eq(0);
@@ -320,7 +330,7 @@ describe.only('MasterStrategy', function () {
     });
   });
 });
-describe.only('BaseNode', function () {
+describe('BaseNode', function () {
   before(async function () {
     timeTraveler = new TimeTraveler(network.provider);
     // deploy master strategy
@@ -697,7 +707,7 @@ describe.only('BaseNode', function () {
     });
   });
 });
-describe.only('BaseSplitter', function () {
+describe('BaseSplitter', function () {
   before(async function () {
     timeTraveler = new TimeTraveler(network.provider);
     // deploy master strategy
@@ -728,8 +738,6 @@ describe.only('BaseSplitter', function () {
 
     await deploy(this, [['strategyC', this.TreeStrategyMockCustom, []]]);
     await deploy(this, [['strategyC2', this.TreeStrategyMockCustom, []]]);
-
-    await this.master.setInitialChildOne(this.splitter.address);
 
     await timeTraveler.snapshot();
   });
@@ -820,6 +828,8 @@ describe.only('BaseSplitter', function () {
       );
     });
     it('Success', async function () {
+      await this.master.setInitialChildOne(this.splitter.address);
+
       await this.splitterCustom.setChildOne(this.strategy.address);
       await this.splitterCustom.setChildTwo(this.strategy2.address);
       await this.splitterCustom.setParent(this.master.address);
@@ -993,10 +1003,12 @@ describe.only('BaseSplitter', function () {
       await this.strategyC.setParent(this.splitter.address);
       await this.strategyC.setCore(this.core.address);
       await this.strategyC.setWant(this.erc20.address);
+      await this.strategyC.setSetupCompleted(true);
 
       await this.strategyC2.setParent(this.splitter.address);
       await this.strategyC2.setCore(this.core.address);
       await this.strategyC2.setWant(this.erc20.address);
+      await this.strategyC2.setSetupCompleted(true);
     });
     it('Self not completed', async function () {
       await expect(this.splitter.childRemoved()).to.be.revertedWith(
@@ -1010,6 +1022,8 @@ describe.only('BaseSplitter', function () {
       await expect(this.splitter.childRemoved()).to.be.revertedWith('SenderNotChild()');
     });
     it('ChildOne removed', async function () {
+      await this.master.setInitialChildOne(this.splitter.address);
+
       expect(await this.strategyC2.siblingRemovedCalled()).to.eq(0);
 
       await this.strategyC2.setParent(this.master.address);
@@ -1044,13 +1058,16 @@ describe.only('BaseSplitter', function () {
       await this.strategyC.setParent(this.splitter.address);
       await this.strategyC.setCore(this.core.address);
       await this.strategyC.setWant(this.erc20.address);
+      await this.strategyC.setSetupCompleted(true);
 
       await this.strategyC2.setParent(this.splitter.address);
       await this.strategyC2.setCore(this.core.address);
       await this.strategyC2.setWant(this.erc20.address);
+      await this.strategyC2.setSetupCompleted(true);
 
       await this.splitter.setInitialChildOne(this.strategyC.address);
       await this.splitter.setInitialChildTwo(this.strategyC2.address);
+      await this.master.setInitialChildOne(this.splitter.address);
     });
 
     it('ChildTwo removed', async function () {
@@ -1070,6 +1087,34 @@ describe.only('BaseSplitter', function () {
       expect(this.t0.events[2].args.implementation).to.eq(this.splitter.address);
 
       expect(await this.strategyC.siblingRemovedCalled()).to.eq(1);
+    });
+  });
+  describe('setInitialChildTwo()', function () {
+    before(async function () {
+      await timeTraveler.revertSnapshot();
+    });
+    it('Invalid sender', async function () {
+      await expect(
+        this.splitter.connect(this.carol).setInitialChildTwo(this.alice.address),
+      ).to.be.revertedWith('Ownable: caller is not the owner');
+    });
+    it('Zero argument', async function () {
+      await expect(this.splitter.setInitialChildTwo(constants.AddressZero)).to.be.revertedWith(
+        'ZeroArg()',
+      );
+    });
+    // TODO test all other edge cases? Uses same underlying function  as updateChild (_verifySetChild)
+    it('Not setup', async function () {
+      await expect(
+        this.splitter.setInitialChildTwo(this.splitterCustom.address),
+      ).to.be.revertedWith('SetupNotCompleted("' + this.splitterCustom.address + '")');
+    });
+    it('Set', async function () {
+      await this.splitter.setInitialChildTwo(this.strategy.address);
+
+      await expect(this.splitter.setInitialChildTwo(this.strategy.address)).to.be.revertedWith(
+        'InvalidState()',
+      );
     });
   });
 });
