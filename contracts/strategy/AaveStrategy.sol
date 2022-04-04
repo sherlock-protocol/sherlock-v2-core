@@ -49,6 +49,10 @@ contract AaveStrategy is BaseStrategy {
     aaveLmReceiver = _aaveLmReceiver;
   }
 
+  function setupCompleted() external view override returns (bool) {
+    return true;
+  }
+
   // Returns the current Aave lending pool address that should be used
   function getLp() internal view returns (ILendingPool) {
     return ILendingPool(LP_ADDRESS_PROVIDER.getLendingPool());

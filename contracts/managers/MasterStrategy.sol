@@ -49,6 +49,10 @@ contract MasterStrategy is
     return true;
   }
 
+  function setupCompleted() external view override returns (bool) {
+    return address(childOne) != address(0);
+  }
+
   function childRemoved() external override {
     // not implemented as the system can not function without `childOne` in this contract
     revert NotImplemented(msg.sig);

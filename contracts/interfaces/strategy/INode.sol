@@ -29,7 +29,7 @@ interface INode {
   error BothChild();
   error NotChild();
   error InvalidParentAddress();
-  error SetupNotCompleted();
+  error SetupNotCompleted(INode instance);
 
   /// @return Returns the token type being deposited into a node
   function want() external view returns (IERC20);
@@ -84,6 +84,8 @@ interface INode {
   function replaceAsChild(ISplitter _node) external;
 
   function siblingRemoved() external;
+
+  function setupCompleted() external view returns(bool);
 }
 
 interface IMaster is INode {

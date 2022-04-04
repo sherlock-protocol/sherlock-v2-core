@@ -23,6 +23,10 @@ contract TreeStrategyMock is StrategyMock, BaseStrategy {
   uint256 public internalWithdrawCalled;
   uint256 public internalDepositCalled;
 
+  function setupCompleted() external view override returns (bool) {
+    return true;
+  }
+
   constructor(IMaster _initialParent) BaseNode(_initialParent) {}
 
   function balanceOf() public view override returns (uint256) {
@@ -65,8 +69,14 @@ contract TreeStrategyMockCustom is StrategyMock, IStrategy {
   uint256 public withdrawByAdminCalled;
   uint256 public withdrawAllCalled;
   uint256 public withdrawAllByAdminCalled;
+  uint256 public siblingRemovedCalled;
+  bool public override setupCompleted;
 
   function balanceOf() external view override returns (uint256) {}
+
+  function setSetupCompleted(bool _completed) external {
+    setupCompleted = _completed;
+  }
 
   function setCore(address _core) external {
     core = _core;
@@ -111,5 +121,7 @@ contract TreeStrategyMockCustom is StrategyMock, IStrategy {
     withdrawByAdminCalled++;
   }
 
-  function siblingRemoved() external override {}
+  function siblingRemoved() external override {
+    siblingRemovedCalled++;
+  }
 }

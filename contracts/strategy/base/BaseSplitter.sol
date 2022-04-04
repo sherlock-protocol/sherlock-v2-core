@@ -27,7 +27,7 @@ abstract contract BaseSplitter is BaseMaster, ISplitter {
     return false;
   }
 
-  function setupCompleted() external view returns (bool completed) {
+  function setupCompleted() external view override returns (bool completed) {
     (completed, , ) = _setupCompleted();
   }
 
@@ -52,10 +52,11 @@ abstract contract BaseSplitter is BaseMaster, ISplitter {
 
   function replace(INode __newNode) public virtual override onlyOwner {
     (bool completed, INode _childOne, INode _childTwo) = _setupCompleted();
-    if (completed == false) revert SetupNotCompleted();
+    if (completed == false) revert SetupNotCompleted(INode(address(this)));
 
     ISplitter _newNode = ISplitter(address(__newNode));
 
+    if (_newNode.setupCompleted() == false) revert SetupNotCompleted(_newNode);
     if (address(_newNode) == address(this)) revert InvalidArg();
     if (_newNode.childOne() != _childOne) revert InvalidChildOne();
     if (_newNode.childTwo() != _childTwo) revert InvalidChildTwo();
@@ -74,11 +75,12 @@ abstract contract BaseSplitter is BaseMaster, ISplitter {
 
   function updateChild(INode _newChild) external virtual override {
     (bool completed, INode _childOne, INode _childTwo) = _setupCompleted();
-    if (completed == false) revert SetupNotCompleted();
+    if (completed == false) revert SetupNotCompleted(INode(address(this)));
 
+    if (_newChild.setupCompleted() == false) revert SetupNotCompleted(_newChild);
+    if (address(_newChild) == address(this)) revert InvalidArg();
     if (_newChild == _childOne) revert InvalidArg();
     if (_newChild == _childTwo) revert InvalidArg();
-    if (address(_newChild) == address(this)) revert InvalidArg();
     if (_newChild.core() != core) revert InvalidCore();
     if (_newChild.want() != want) revert InvalidWant();
     if (address(_newChild.parent()) != address(this)) revert InvalidParent();
@@ -96,7 +98,7 @@ abstract contract BaseSplitter is BaseMaster, ISplitter {
 
   function childRemoved() external virtual override {
     (bool completed, INode _childOne, INode _childTwo) = _setupCompleted();
-    if (completed == false) revert SetupNotCompleted();
+    if (completed == false) revert SetupNotCompleted(INode(address(this)));
 
     if (msg.sender == address(_childOne)) {
       _childTwo.siblingRemoved();
@@ -109,7 +111,7 @@ abstract contract BaseSplitter is BaseMaster, ISplitter {
 
       emit Obsolete(_childTwo);
     } else {
-      revert('SENDER');
+      revert SenderNotChild();
     }
 
     emit Obsolete(INode(address(this)));
@@ -125,6 +127,7 @@ abstract contract BaseSplitter is BaseMaster, ISplitter {
   function setInitialChildTwo(INode _newChild) external override onlyOwner {
     if (address(childTwo) != address(0)) revert InvalidState();
     // TODO not address(this)
+    // TODO _newchild.setupCompleted
 
     _setChildTwo(INode(address(0)), _newChild);
   }

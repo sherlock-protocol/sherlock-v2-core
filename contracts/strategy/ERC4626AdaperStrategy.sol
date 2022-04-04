@@ -22,6 +22,10 @@ contract ERC4624AdaperStrategy is BaseStrategy {
     if (address(want) != _instance.asset()) revert('INVALUD');
   }
 
+  function setupCompleted() external view override returns (bool) {
+    return true;
+  }
+
   function balanceOf() public view override returns (uint256) {
     return instance.maxWithdraw(address(this));
   }
