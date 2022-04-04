@@ -32,7 +32,7 @@ const maxTokens = parseUnits('100000000000', 6);
 
 // first test master strategy
 
-describe.only('MasterStrategy', function () {
+describe('MasterStrategy', function () {
   before(async function () {
     timeTraveler = new TimeTraveler(network.provider);
     // deploy master strategy
@@ -320,7 +320,7 @@ describe.only('MasterStrategy', function () {
     });
   });
 });
-describe.only('BaseNode', function () {
+describe('BaseNode', function () {
   before(async function () {
     timeTraveler = new TimeTraveler(network.provider);
     // deploy master strategy
@@ -356,6 +356,11 @@ describe.only('BaseNode', function () {
     await this.master.setInitialChildOne(this.strategy.address);
 
     await timeTraveler.snapshot();
+  });
+  it('default', async function () {
+    expect(await this.strategy.parent()).to.eq(this.master.address);
+    expect(await this.strategy.want()).to.eq(this.erc20.address);
+    expect(await this.strategy.core()).to.eq(this.bob.address);
   });
   describe('replaceAsChild()', function () {
     before(async function () {
@@ -596,11 +601,6 @@ describe.only('BaseNode', function () {
       expect(await this.strategy.parent()).to.eq(this.master.address);
     });
   });
-  it('default', async function () {
-    expect(await this.strategy.parent()).to.eq(this.master.address);
-    expect(await this.strategy.want()).to.eq(this.erc20.address);
-    expect(await this.strategy.core()).to.eq(this.bob.address);
-  });
   describe('withdrawAll()', function () {
     before(async function () {
       await timeTraveler.revertSnapshot();
@@ -697,35 +697,138 @@ describe.only('BaseNode', function () {
     });
   });
 });
-// describe.only('Basenode', function () {
-//   before(async function () {
-//     // deploy master strategy
-//     // set EOA as owner and sherlock core
+describe.only('BaseSplitter', function () {
+  before(async function () {
+    timeTraveler = new TimeTraveler(network.provider);
+    // deploy master strategy
+    // set EOA as owner and sherlock core
 
-//     await prepare(this, ['MasterStrategy', 'TreeSplitterMock', 'TreeStrategyMock', 'ERC20Mock6d']);
+    await prepare(this, [
+      'InfoStorage',
+      'MasterStrategy',
+      'TreeSplitterMock',
+      'TreeSplitterMockCustom',
+      'TreeStrategyMock',
+      'TreeStrategyMockCustom',
+      'ERC20Mock6d',
+    ]);
 
-//     await deploy(this, [['erc20', this.ERC20Mock6d, ['USDC Token', 'USDC', maxTokens]]]);
+    // mare this.core a proxy for this.bob
+    this.core = this.bob;
 
-//     await deploy(this, [
-//       ['strategy', this.TreeStrategyMock, [this.bob.address, this.erc20.address]],
-//     ]);
-//     await deploy(this, [['master', this.MasterStrategy, [this.strategy.address]]]);
+    await deploy(this, [['erc20', this.ERC20Mock6d, ['USDC Token', 'USDC', maxTokens]]]);
 
-//     await this.strategy.setInitialParent(this.master.address);
-//   });
-//   describe('Initial state', function () {
-//     it('state', async function () {
-//       expect(await this.master.childOne()).to.eq(this.strategy.address);
-//       expect(await this.master.parent()).to.eq(constants.AddressZero);
-//       expect(await this.master.want()).to.eq(this.erc20.address);
-//       expect(await this.master.core()).to.eq(this.bob.address);
+    await deploy(this, [['store', this.InfoStorage, [this.erc20.address, this.core.address]]]);
+    await deploy(this, [['master', this.MasterStrategy, [this.store.address]]]);
+    await deploy(this, [['splitter', this.TreeSplitterMock, [this.master.address]]]);
+    await deploy(this, [['splitterCustom', this.TreeSplitterMockCustom, []]]);
 
-//       expect(await this.strategy.parent()).to.eq(this.master.address);
-//       expect(await this.strategy.want()).to.eq(this.erc20.address);
-//       expect(await this.strategy.core()).to.eq(this.bob.address);
-//     });
-//   });
-//   describe('constructor', function () {
-//     it('Zero aToken', async function () {});
-//   });
-// });
+    await deploy(this, [['strategy', this.TreeStrategyMock, [this.splitter.address]]]);
+    await deploy(this, [['strategy2', this.TreeStrategyMock, [this.splitter.address]]]);
+
+    await this.master.setInitialChildOne(this.splitter.address);
+
+    await timeTraveler.snapshot();
+  });
+  it('default', async function () {
+    expect(await this.splitter.parent()).to.eq(this.master.address);
+    expect(await this.splitter.want()).to.eq(this.erc20.address);
+    expect(await this.splitter.core()).to.eq(this.core.address);
+    expect(await this.splitter.isMaster()).to.eq(false);
+  });
+  describe('replaceForce()', function () {
+    before(async function () {
+      await timeTraveler.revertSnapshot();
+    });
+    it('Invalid sender', async function () {
+      await expect(
+        this.splitter.connect(this.carol).replaceForce(this.splitterCustom.address),
+      ).to.be.revertedWith('Ownable: caller is not the owner');
+    });
+  });
+  describe('replace()', function () {
+    before(async function () {
+      await timeTraveler.revertSnapshot();
+    });
+    it('Invalid sender', async function () {
+      await expect(
+        this.splitter.connect(this.carol).replace(this.splitterCustom.address),
+      ).to.be.revertedWith('Ownable: caller is not the owner');
+    });
+    it('Not completed', async function () {
+      await expect(this.splitter.replace(this.splitterCustom.address)).to.be.revertedWith(
+        'SetupNotCompleted()',
+      );
+    });
+    it('Invalid node', async function () {
+      await this.splitter.setInitialChildOne(this.strategy.address);
+      await this.splitter.setInitialChildTwo(this.strategy2.address);
+
+      await expect(this.splitter.replace(this.splitter.address)).to.be.revertedWith('InvalidArg()');
+    });
+    it('Invalid child one', async function () {
+      await this.splitterCustom.setChildOne(this.strategy2.address);
+
+      await expect(this.splitter.replace(this.splitterCustom.address)).to.be.revertedWith(
+        'InvalidChildOne()',
+      );
+    });
+    it('Invalid child two', async function () {
+      await this.splitterCustom.setChildOne(this.strategy.address);
+      await this.splitterCustom.setChildTwo(this.strategy.address);
+
+      await expect(this.splitter.replace(this.splitterCustom.address)).to.be.revertedWith(
+        'InvalidChildTwo()',
+      );
+    });
+    it('Invalid parent', async function () {
+      await this.splitterCustom.setChildOne(this.strategy.address);
+      await this.splitterCustom.setChildTwo(this.strategy2.address);
+
+      await expect(this.splitter.replace(this.splitterCustom.address)).to.be.revertedWith(
+        'InvalidParent()',
+      );
+    });
+    it('Invalid core', async function () {
+      await this.splitterCustom.setChildOne(this.strategy.address);
+      await this.splitterCustom.setChildTwo(this.strategy2.address);
+      await this.splitterCustom.setParent(this.master.address);
+
+      await expect(this.splitter.replace(this.splitterCustom.address)).to.be.revertedWith(
+        'InvalidCore()',
+      );
+    });
+    it('Invalid want', async function () {
+      await this.splitterCustom.setChildOne(this.strategy.address);
+      await this.splitterCustom.setChildTwo(this.strategy2.address);
+      await this.splitterCustom.setParent(this.master.address);
+      await this.splitterCustom.setCore(this.core.address);
+
+      await expect(this.splitter.replace(this.splitterCustom.address)).to.be.revertedWith(
+        'InvalidWant()',
+      );
+    });
+    it('Success', async function () {
+      await this.splitterCustom.setChildOne(this.strategy.address);
+      await this.splitterCustom.setChildTwo(this.strategy2.address);
+      await this.splitterCustom.setParent(this.master.address);
+      await this.splitterCustom.setCore(this.core.address);
+      await this.splitterCustom.setWant(this.erc20.address);
+
+      expect(await this.strategy.parent()).to.eq(this.splitter.address);
+      expect(await this.strategy2.parent()).to.eq(this.splitter.address);
+      expect(await this.master.childOne()).to.eq(this.splitter.address);
+
+      this.t0 = await meta(this.splitter.replace(this.splitterCustom.address));
+      expect(this.t0.events.length).to.eq(5);
+      expect(this.t0.events[3].event).to.eq('Replace');
+      expect(this.t0.events[3].args.newAddress).to.eq(this.splitterCustom.address);
+      expect(this.t0.events[4].event).to.eq('Obsolete');
+      expect(this.t0.events[4].args.implementation).to.eq(this.splitter.address);
+
+      expect(await this.strategy.parent()).to.eq(this.splitterCustom.address);
+      expect(await this.strategy2.parent()).to.eq(this.splitterCustom.address);
+      expect(await this.master.childOne()).to.eq(this.splitterCustom.address);
+    });
+  });
+});

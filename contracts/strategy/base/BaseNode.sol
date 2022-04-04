@@ -80,6 +80,7 @@ abstract contract BaseNode is INode, Ownable {
   }
 
   function _verifyNewParent(IMaster _newParent) internal view {
+    // TODO check for isCompleted? Could be that one address is zero and passes
     bool firstChild = address((_newParent).childOne()) == address(this);
     bool secondChild = false;
 

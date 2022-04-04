@@ -17,6 +17,7 @@ interface INode {
 
   error NotImplemented(bytes4 func);
   error SenderNotParent();
+  error SenderNotChild();
   error InvalidParent();
   error InvalidCore();
   error InvalidWant();
@@ -28,6 +29,7 @@ interface INode {
   error BothChild();
   error NotChild();
   error InvalidParentAddress();
+  error SetupNotCompleted();
 
   /// @return Returns the token type being deposited into a node
   function want() external view returns (IERC20);
@@ -102,6 +104,9 @@ interface IMaster is INode {
 
 interface ISplitter is IMaster {
   event ChildTwoUpdate(INode previous, INode current);
+
+  error InvalidChildOne();
+  error InvalidChildTwo();
 
   function childTwo() external view returns (INode);
 
