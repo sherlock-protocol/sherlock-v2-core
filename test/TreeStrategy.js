@@ -32,7 +32,7 @@ const maxTokens = parseUnits('100000000000', 6);
 
 // first test master strategy
 
-describe('MasterStrategy', function () {
+describe.only('MasterStrategy', function () {
   before(async function () {
     timeTraveler = new TimeTraveler(network.provider);
     // deploy master strategy
@@ -155,7 +155,15 @@ describe('MasterStrategy', function () {
         this.strategy.mockUpdateChild(this.master.address, this.strategy.address),
       ).to.be.revertedWith('InvalidArg()');
     });
+    it('Not setup', async function () {
+      await this.strategyCustom.setSetupCompleted(false);
+
+      await expect(
+        this.strategy.mockUpdateChild(this.master.address, this.strategyCustom.address),
+      ).to.be.revertedWith('SetupNotCompleted("' + this.strategyCustom.address + '")');
+    });
     it('Wrong parent', async function () {
+      await this.strategyCustom.setSetupCompleted(true);
       await this.strategyCustom.setParent(this.alice.address);
 
       await expect(
@@ -330,7 +338,7 @@ describe('MasterStrategy', function () {
     });
   });
 });
-describe('BaseNode', function () {
+describe.only('BaseNode', function () {
   before(async function () {
     timeTraveler = new TimeTraveler(network.provider);
     // deploy master strategy
@@ -432,12 +440,25 @@ describe('BaseNode', function () {
         'InvalidParent()',
       );
     });
+    it('Target setup not completed ', async function () {
+      await this.splitterCustom.setCore(this.core.address);
+      await this.splitterCustom.setWant(this.erc20.address);
+      await this.splitterCustom.setChildOne(this.strategy.address);
+      await this.splitterCustom.setChildTwo(this.carol.address);
+      await this.splitterCustom.setParent(this.master.address);
+      await this.splitterCustom.setSetupCompleted(false);
+
+      await expect(this.strategy.replaceAsChild(this.splitterCustom.address)).to.be.revertedWith(
+        'SetupNotCompleted("' + this.splitterCustom.address + '")',
+      );
+    });
     it('Success', async function () {
       await this.splitterCustom.setCore(this.core.address);
       await this.splitterCustom.setWant(this.erc20.address);
       await this.splitterCustom.setChildOne(this.strategy.address);
       await this.splitterCustom.setChildTwo(this.carol.address);
       await this.splitterCustom.setParent(this.master.address);
+      await this.splitterCustom.setSetupCompleted(true);
 
       expect(await this.strategy.parent()).to.eq(this.master.address);
       expect(await this.master.childOne()).to.eq(this.strategy.address);
@@ -707,7 +728,7 @@ describe('BaseNode', function () {
     });
   });
 });
-describe('BaseSplitter', function () {
+describe.only('BaseSplitter', function () {
   before(async function () {
     timeTraveler = new TimeTraveler(network.provider);
     // deploy master strategy

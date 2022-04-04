@@ -126,8 +126,6 @@ abstract contract BaseSplitter is BaseMaster, ISplitter {
 
   function setInitialChildTwo(INode _newChild) external override onlyOwner {
     if (address(childTwo) != address(0)) revert InvalidState();
-    if (address(_newChild) == address(0)) revert ZeroArg();
-    if (_newChild.setupCompleted() == false) revert SetupNotCompleted(_newChild);
 
     _setChildTwo(INode(address(0)), _newChild);
   }
