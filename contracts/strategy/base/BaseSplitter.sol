@@ -56,21 +56,12 @@ abstract contract BaseSplitter is BaseMaster, ISplitter {
 
     ISplitter _newNode = ISplitter(address(__newNode));
 
-    if (_newNode.setupCompleted() == false) revert SetupNotCompleted(_newNode);
-    if (address(_newNode) == address(this)) revert InvalidArg();
     if (_newNode.childOne() != _childOne) revert InvalidChildOne();
     if (_newNode.childTwo() != _childTwo) revert InvalidChildTwo();
-    if (_newNode.parent() != parent) revert InvalidParent();
-    if (_newNode.core() != core) revert InvalidCore();
-    if (_newNode.want() != want) revert InvalidWant();
 
+    _replace(_newNode);
     _childOne.updateParent(_newNode);
     _childTwo.updateParent(_newNode);
-
-    parent.updateChild(_newNode);
-
-    emit Replace(_newNode);
-    emit Obsolete(INode(address(this)));
   }
 
   function updateChild(INode _newChild) external virtual override {

@@ -835,21 +835,9 @@ describe.only('BaseSplitter', function () {
         'SetupNotCompleted("' + this.splitter.address + '")',
       );
     });
-    it('Target not completed', async function () {
+    it('Invalid child one', async function () {
       await this.splitter.setInitialChildOne(this.strategy.address);
       await this.splitter.setInitialChildTwo(this.strategy2.address);
-      await this.splitterCustom.setSetupCompleted(false);
-
-      await expect(this.splitter.replace(this.splitterCustom.address)).to.be.revertedWith(
-        'SetupNotCompleted("' + this.splitterCustom.address + '")',
-      );
-    });
-    it('Invalid node', async function () {
-      await this.splitterCustom.setSetupCompleted(true);
-
-      await expect(this.splitter.replace(this.splitter.address)).to.be.revertedWith('InvalidArg()');
-    });
-    it('Invalid child one', async function () {
       await this.splitterCustom.setChildOne(this.strategy2.address);
 
       await expect(this.splitter.replace(this.splitterCustom.address)).to.be.revertedWith(
@@ -863,6 +851,20 @@ describe.only('BaseSplitter', function () {
       await expect(this.splitter.replace(this.splitterCustom.address)).to.be.revertedWith(
         'InvalidChildTwo()',
       );
+    });
+    it('Target not completed', async function () {
+      await this.splitterCustom.setChildOne(this.strategy.address);
+      await this.splitterCustom.setChildTwo(this.strategy2.address);
+      await this.splitterCustom.setSetupCompleted(false);
+
+      await expect(this.splitter.replace(this.splitterCustom.address)).to.be.revertedWith(
+        'SetupNotCompleted("' + this.splitterCustom.address + '")',
+      );
+    });
+    it('Invalid node', async function () {
+      await this.splitterCustom.setSetupCompleted(true);
+
+      await expect(this.splitter.replace(this.splitter.address)).to.be.revertedWith('InvalidArg()');
     });
     it('Invalid parent', async function () {
       await this.splitterCustom.setChildOne(this.strategy.address);
@@ -906,10 +908,10 @@ describe.only('BaseSplitter', function () {
 
       this.t0 = await meta(this.splitter.replace(this.splitterCustom.address));
       expect(this.t0.events.length).to.eq(5);
-      expect(this.t0.events[3].event).to.eq('Replace');
-      expect(this.t0.events[3].args.newAddress).to.eq(this.splitterCustom.address);
-      expect(this.t0.events[4].event).to.eq('Obsolete');
-      expect(this.t0.events[4].args.implementation).to.eq(this.splitter.address);
+      expect(this.t0.events[1].event).to.eq('Replace');
+      expect(this.t0.events[1].args.newAddress).to.eq(this.splitterCustom.address);
+      expect(this.t0.events[2].event).to.eq('Obsolete');
+      expect(this.t0.events[2].args.implementation).to.eq(this.splitter.address);
 
       expect(await this.strategy.parent()).to.eq(this.splitterCustom.address);
       expect(await this.strategy2.parent()).to.eq(this.splitterCustom.address);

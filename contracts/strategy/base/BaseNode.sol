@@ -109,6 +109,20 @@ abstract contract BaseNode is INode, Ownable {
     emit ParentUpdate(_currentParent, _newParent);
   }
 
+  function _replace(INode _newNode) internal {
+    if (address(_newNode) == address(0)) revert ZeroArg();
+    if (_newNode.setupCompleted() == false) revert SetupNotCompleted(_newNode);
+    if (address(_newNode) == address(this)) revert InvalidArg();
+    if (_newNode.parent() != parent) revert InvalidParent();
+    if (_newNode.core() != core) revert InvalidCore();
+    if (_newNode.want() != want) revert InvalidWant();
+
+    parent.updateChild(_newNode);
+
+    emit Replace(_newNode);
+    emit Obsolete(INode(address(this)));
+  }
+
   /*//////////////////////////////////////////////////////////////
                         YIELD STRATEGY LOGIC
   //////////////////////////////////////////////////////////////*/
