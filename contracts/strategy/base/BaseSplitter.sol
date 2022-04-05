@@ -48,6 +48,7 @@ abstract contract BaseSplitter is BaseMaster, ISplitter {
 
   function replaceForce(INode _node) external virtual override {
     replace(_node);
+    emit ForceReplace();
   }
 
   function replace(INode __newNode) public virtual override onlyOwner {

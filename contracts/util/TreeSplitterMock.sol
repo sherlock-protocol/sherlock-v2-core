@@ -51,6 +51,7 @@ contract TreeSplitterMockCustom is ISplitter {
   uint256 public withdrawByAdminCalled;
   uint256 public withdrawAllCalled;
   uint256 public withdrawAllByAdminCalled;
+  uint256 public childRemovedCalled;
   INode public updateChildCalled;
   INode public override childOne;
   INode public override childTwo;
@@ -117,7 +118,9 @@ contract TreeSplitterMockCustom is ISplitter {
   }
 
   /// @notice Call by child if removed
-  function childRemoved() external override {}
+  function childRemoved() external override {
+    childRemovedCalled++;
+  }
 
   function isMaster() external view override returns (bool) {}
 

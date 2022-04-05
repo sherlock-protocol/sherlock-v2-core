@@ -13,6 +13,7 @@ interface INode {
   event ReplaceAsChild();
   event ParentUpdate(IMaster previous, IMaster current);
   event Obsolete(INode implementation);
+  event ForceReplace();
   event Replace(INode newAddress);
 
   error NotImplemented(bytes4 func);

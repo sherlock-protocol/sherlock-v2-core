@@ -677,14 +677,14 @@ describe.only('BaseNode', function () {
       await timeTraveler.revertSnapshot();
     });
     it('Invalid sender', async function () {
-      await expect(this.master.connect(this.bob).withdrawAllByAdmin()).to.be.revertedWith(
+      await expect(this.strategy.connect(this.bob).withdrawAllByAdmin()).to.be.revertedWith(
         'Ownable: caller is not the owner',
       );
     });
     it('Do', async function () {
       expect(await this.strategy.internalWithdrawAllCalled()).to.eq(0);
 
-      this.t0 = await meta(this.master.withdrawAllByAdmin());
+      this.t0 = await meta(this.strategy.withdrawAllByAdmin());
       expect(this.t0.events.length).to.eq(3);
       expect(this.t0.events[2].event).to.eq('AdminWithdraw');
       expect(this.t0.events[2].args.amount).to.eq(0);
@@ -819,6 +819,34 @@ describe.only('BaseSplitter', function () {
       await expect(
         this.splitter.connect(this.carol).replaceForce(this.splitterCustom.address),
       ).to.be.revertedWith('Ownable: caller is not the owner');
+    });
+    it('Success', async function () {
+      await this.splitter.setInitialChildOne(this.strategy.address);
+      await this.splitter.setInitialChildTwo(this.strategy2.address);
+      await this.master.setInitialChildOne(this.splitter.address);
+
+      await this.splitterCustom.setChildOne(this.strategy.address);
+      await this.splitterCustom.setChildTwo(this.strategy2.address);
+      await this.splitterCustom.setParent(this.master.address);
+      await this.splitterCustom.setCore(this.core.address);
+      await this.splitterCustom.setWant(this.erc20.address);
+      await this.splitterCustom.setSetupCompleted(true);
+
+      expect(await this.strategy.parent()).to.eq(this.splitter.address);
+      expect(await this.strategy2.parent()).to.eq(this.splitter.address);
+      expect(await this.master.childOne()).to.eq(this.splitter.address);
+
+      this.t0 = await meta(this.splitter.replaceForce(this.splitterCustom.address));
+      expect(this.t0.events.length).to.eq(6);
+      expect(this.t0.events[1].event).to.eq('Replace');
+      expect(this.t0.events[1].args.newAddress).to.eq(this.splitterCustom.address);
+      expect(this.t0.events[2].event).to.eq('Obsolete');
+      expect(this.t0.events[2].args.implementation).to.eq(this.splitter.address);
+      expect(this.t0.events[5].event).to.eq('ForceReplace');
+
+      expect(await this.strategy.parent()).to.eq(this.splitterCustom.address);
+      expect(await this.strategy2.parent()).to.eq(this.splitterCustom.address);
+      expect(await this.master.childOne()).to.eq(this.splitterCustom.address);
     });
   });
   describe('replace()', function () {
@@ -1174,6 +1202,180 @@ describe.only('BaseSplitter', function () {
       await expect(this.splitter.setInitialChildTwo(this.strategy.address)).to.be.revertedWith(
         'InvalidState()',
       );
+    });
+  });
+  describe('withdrawAllByAdmin()', function () {
+    before(async function () {
+      await timeTraveler.revertSnapshot();
+    });
+    it('Invalid sender', async function () {
+      await expect(this.splitter.connect(this.bob).withdrawAllByAdmin()).to.be.revertedWith(
+        'Ownable: caller is not the owner',
+      );
+    });
+    it('Do', async function () {
+      await this.splitter.setInitialChildOne(this.strategy.address);
+      await this.splitter.setInitialChildTwo(this.strategy2.address);
+
+      expect(await this.strategy.internalWithdrawAllCalled()).to.eq(0);
+      expect(await this.strategy2.internalWithdrawAllCalled()).to.eq(0);
+
+      this.t0 = await meta(this.splitter.withdrawAllByAdmin());
+      expect(this.t0.events.length).to.eq(5);
+
+      expect(await this.strategy.internalWithdrawAllCalled()).to.eq(1);
+      expect(await this.strategy2.internalWithdrawAllCalled()).to.eq(1);
+    });
+  });
+  describe('balanceOf()', function () {
+    before(async function () {
+      await timeTraveler.revertSnapshot();
+      await this.splitter.setInitialChildOne(this.strategy.address);
+      await this.splitter.setInitialChildTwo(this.strategy2.address);
+    });
+    it('Default', async function () {
+      expect(await this.splitter.balanceOf()).to.eq(0);
+    });
+    it('Single balance', async function () {
+      await this.erc20.transfer(this.strategy.address, parseUnits('100', 6));
+      expect(await this.splitter.balanceOf()).to.eq(parseUnits('100', 6));
+    });
+    it('Double balance', async function () {
+      await this.erc20.transfer(this.strategy2.address, parseUnits('100', 6));
+      expect(await this.splitter.balanceOf()).to.eq(parseUnits('200', 6));
+    });
+  });
+});
+describe.only('BaseStrategy', function () {
+  before(async function () {
+    timeTraveler = new TimeTraveler(network.provider);
+    // deploy master strategy
+    // set EOA as owner and sherlock core
+
+    await prepare(this, [
+      'InfoStorage',
+      'MasterStrategy',
+      'TreeSplitterMock',
+      'TreeSplitterMockCustom',
+      'TreeStrategyMock',
+      'TreeStrategyMockCustom',
+      'ERC20Mock6d',
+    ]);
+
+    // mare this.core a proxy for this.bob
+    this.core = this.bob;
+
+    await deploy(this, [['erc20', this.ERC20Mock6d, ['USDC Token', 'USDC', maxTokens]]]);
+
+    await deploy(this, [['splitterCustom', this.TreeSplitterMockCustom, []]]);
+    // await this.splitterCustom.setParent(this.address);
+    await this.splitterCustom.setCore(this.core.address);
+    await this.splitterCustom.setWant(this.erc20.address);
+
+    await deploy(this, [['strategy', this.TreeStrategyMock, [this.splitterCustom.address]]]);
+    await deploy(this, [['strategyCustom', this.TreeStrategyMockCustom, []]]);
+
+    await timeTraveler.snapshot();
+  });
+  describe('pause()', function () {
+    before(async function () {
+      await timeTraveler.revertSnapshot();
+    });
+    it('Invalid sender', async function () {
+      await expect(this.strategy.connect(this.carol).pause()).to.be.revertedWith(
+        'Ownable: caller is not the owner',
+      );
+    });
+  });
+  describe('unpause()', function () {
+    before(async function () {
+      await timeTraveler.revertSnapshot();
+    });
+    it('Invalid sender', async function () {
+      await expect(this.strategy.connect(this.carol).unpause()).to.be.revertedWith(
+        'Ownable: caller is not the owner',
+      );
+    });
+  });
+  describe('remove()', function () {
+    before(async function () {
+      await timeTraveler.revertSnapshot();
+    });
+    it('Invalid sender', async function () {
+      await expect(this.strategy.connect(this.carol).remove()).to.be.revertedWith(
+        'Ownable: caller is not the owner',
+      );
+    });
+    it('Do', async function () {
+      expect(await this.strategy.internalWithdrawAllCalled()).to.eq(0);
+      expect(await this.splitterCustom.childRemovedCalled()).to.eq(0);
+
+      this.t0 = await meta(this.strategy.connect(this.alice).remove());
+
+      expect(await this.strategy.internalWithdrawAllCalled()).to.eq(1);
+      expect(await this.splitterCustom.childRemovedCalled()).to.eq(1);
+    });
+  });
+  describe('replace()', function () {
+    before(async function () {
+      await timeTraveler.revertSnapshot();
+    });
+    it('Invalid sender', async function () {
+      await expect(
+        this.strategy.connect(this.carol).replace(constants.AddressZero),
+      ).to.be.revertedWith('Ownable: caller is not the owner');
+    });
+    it('Zero arg', async function () {
+      await expect(
+        this.strategy.connect(this.alice).replace(constants.AddressZero),
+      ).to.be.revertedWith('ZeroArg()');
+    });
+    it('Do', async function () {
+      await this.strategyCustom.setSetupCompleted(true);
+      await this.strategyCustom.setParent(this.splitterCustom.address);
+      await this.strategyCustom.setCore(this.core.address);
+      await this.strategyCustom.setWant(this.erc20.address);
+
+      expect(await this.splitterCustom.updateChildCalled()).to.eq(constants.AddressZero);
+      expect(await this.strategy.internalWithdrawAllCalled()).to.eq(0);
+
+      await this.strategy.connect(this.alice).replace(this.strategyCustom.address);
+
+      expect(await this.splitterCustom.updateChildCalled()).to.eq(this.strategyCustom.address);
+      expect(await this.strategy.internalWithdrawAllCalled()).to.eq(1);
+    });
+  });
+  describe('replaceForce()', function () {
+    before(async function () {
+      await timeTraveler.revertSnapshot();
+    });
+    it('Invalid sender', async function () {
+      await expect(
+        this.strategy.connect(this.carol).replaceForce(constants.AddressZero),
+      ).to.be.revertedWith('Ownable: caller is not the owner');
+    });
+    it('Zero arg', async function () {
+      await expect(
+        this.strategy.connect(this.alice).replaceForce(constants.AddressZero),
+      ).to.be.revertedWith('ZeroArg()');
+    });
+    it('Do', async function () {
+      await this.strategyCustom.setSetupCompleted(true);
+      await this.strategyCustom.setParent(this.splitterCustom.address);
+      await this.strategyCustom.setCore(this.core.address);
+      await this.strategyCustom.setWant(this.erc20.address);
+
+      expect(await this.splitterCustom.updateChildCalled()).to.eq(constants.AddressZero);
+      expect(await this.strategy.internalWithdrawAllCalled()).to.eq(0);
+
+      this.t0 = await meta(
+        this.strategy.connect(this.alice).replaceForce(this.strategyCustom.address),
+      );
+      expect(this.t0.events.length).to.eq(3);
+      expect(this.t0.events[2].event).to.eq('ForceReplace');
+
+      expect(await this.splitterCustom.updateChildCalled()).to.eq(this.strategyCustom.address);
+      expect(await this.strategy.internalWithdrawAllCalled()).to.eq(0);
     });
   });
 });

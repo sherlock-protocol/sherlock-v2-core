@@ -38,5 +38,6 @@ abstract contract BaseStrategy is IStrategy, BaseNode, Pausable {
 
   function replaceForce(INode _newNode) external virtual override onlyOwner {
     _replace(_newNode);
+    emit ForceReplace();
   }
 }
