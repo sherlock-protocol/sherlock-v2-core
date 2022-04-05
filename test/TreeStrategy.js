@@ -897,58 +897,51 @@ describe.only('BaseSplitter', function () {
       await this.splitter.setInitialChildTwo(this.strategy2.address);
       await this.splitterCustom.setSetupCompleted(false);
 
-      await expect(this.splitter.updateChild(this.splitterCustom.address)).to.be.revertedWith(
-        'SetupNotCompleted("' + this.splitterCustom.address + '")',
-      );
-    });
-    it('Invalid node', async function () {
-      await this.splitterCustom.setSetupCompleted(true);
-
-      await expect(this.splitter.updateChild(this.splitter.address)).to.be.revertedWith(
-        'InvalidArg()',
-      );
+      await expect(
+        this.splitter.connect(this.s).updateChild(this.splitterCustom.address),
+      ).to.be.revertedWith('SetupNotCompleted("' + this.splitterCustom.address + '")');
     });
     it('Same as child one', async function () {
-      await expect(this.splitter.updateChild(this.strategy.address)).to.be.revertedWith(
-        'InvalidArg()',
-      );
+      await expect(
+        this.splitter.connect(this.s).updateChild(this.strategy.address),
+      ).to.be.revertedWith('InvalidArg()');
     });
     it('Same as child two', async function () {
-      await expect(this.splitter.updateChild(this.strategy2.address)).to.be.revertedWith(
-        'InvalidArg()',
-      );
+      await expect(
+        this.splitter.connect(this.s).updateChild(this.strategy2.address),
+      ).to.be.revertedWith('InvalidArg()');
+    });
+    it('Invalid parent', async function () {
+      await this.splitterCustom.setSetupCompleted(true);
+
+      await expect(
+        this.splitter.connect(this.s).updateChild(this.splitterCustom.address),
+      ).to.be.revertedWith('InvalidParent()');
     });
     it('Invalid core', async function () {
+      await this.splitterCustom.setParent(this.splitter.address);
       await this.splitterCustom.setCore(this.alice.address);
 
-      await expect(this.splitter.updateChild(this.splitterCustom.address)).to.be.revertedWith(
-        'InvalidCore()',
-      );
+      await expect(
+        this.splitter.connect(this.s).updateChild(this.splitterCustom.address),
+      ).to.be.revertedWith('InvalidCore()');
     });
     it('Invalid want', async function () {
       await this.splitterCustom.setCore(this.core.address);
       await this.splitterCustom.setWant(this.alice.address);
 
-      await expect(this.splitter.updateChild(this.splitterCustom.address)).to.be.revertedWith(
-        'InvalidWant()',
-      );
-    });
-    it('Invalid parent', async function () {
-      await this.splitterCustom.setCore(this.core.address);
-      await this.splitterCustom.setWant(this.erc20.address);
-
-      await expect(this.splitter.updateChild(this.splitterCustom.address)).to.be.revertedWith(
-        'InvalidParent()',
-      );
+      await expect(
+        this.splitter.connect(this.s).updateChild(this.splitterCustom.address),
+      ).to.be.revertedWith('InvalidWant()');
     });
     it('Invalid sender', async function () {
-      await this.splitterCustom.setParent(this.splitter.address);
-
       await expect(
         this.splitter.connect(this.carol).updateChild(this.splitterCustom.address),
       ).to.be.revertedWith('SenderNotChild()');
     });
     it('Update child one', async function () {
+      await this.splitterCustom.setWant(this.erc20.address);
+
       expect(await this.splitter.childOne()).to.eq(this.strategy.address);
       expect(await this.splitter.childTwo()).to.eq(this.strategy2.address);
 
@@ -965,7 +958,7 @@ describe.only('BaseSplitter', function () {
     it('Update child one again', async function () {
       await expect(
         this.splitter.connect(this.s).updateChild(this.splitterCustom.address),
-      ).to.be.revertedWith('InvalidArg()');
+      ).to.be.revertedWith('SenderNotChild()');
     });
     it('Prepare child two', async function () {
       await timeTraveler.revertSnapshot();
@@ -1004,7 +997,7 @@ describe.only('BaseSplitter', function () {
     it('Update child two again', async function () {
       await expect(
         this.splitter.connect(this.s2).updateChild(this.splitterCustom.address),
-      ).to.be.revertedWith('InvalidArg()');
+      ).to.be.revertedWith('SenderNotChild()');
     });
   });
   describe('childRemoved()', function () {

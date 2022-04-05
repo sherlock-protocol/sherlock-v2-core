@@ -77,20 +77,14 @@ abstract contract BaseSplitter is BaseMaster, ISplitter {
     (bool completed, INode _childOne, INode _childTwo) = _setupCompleted();
     if (completed == false) revert SetupNotCompleted(INode(address(this)));
 
-    if (_newChild.setupCompleted() == false) revert SetupNotCompleted(_newChild);
-    if (address(_newChild) == address(this)) revert InvalidArg();
-    if (_newChild == _childOne) revert InvalidArg();
-    if (_newChild == _childTwo) revert InvalidArg();
-    if (_newChild.core() != core) revert InvalidCore();
-    if (_newChild.want() != want) revert InvalidWant();
-    if (address(_newChild.parent()) != address(this)) revert InvalidParent();
-
     if (msg.sender == address(_childOne)) {
-      childOne = _newChild;
-      emit ChildOneUpdate(_childOne, _newChild);
+      if (_newChild == _childTwo) revert InvalidArg();
+
+      _setChildOne(_childOne, _newChild);
     } else if (msg.sender == address(_childTwo)) {
-      childTwo = _newChild;
-      emit ChildTwoUpdate(_childTwo, _newChild);
+      if (_newChild == _childOne) revert InvalidArg();
+
+      _setChildTwo(_childTwo, _newChild);
     } else {
       revert SenderNotChild();
     }
