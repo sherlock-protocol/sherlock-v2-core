@@ -415,8 +415,20 @@ describe.only('BaseNode', function () {
         'InvalidWant()',
       );
     });
+    it('Not setup', async function () {
+      await this.splitterCustom.setCore(this.core.address);
+      await this.splitterCustom.setWant(this.erc20.address);
+
+      await expect(this.strategy.replaceAsChild(this.splitterCustom.address)).to.be.revertedWith(
+        'SetupNotCompleted("' + this.splitterCustom.address + '")',
+      );
+    });
     it('Not child', async function () {
-      await expect(this.strategy.replaceAsChild(this.splitter.address)).to.be.revertedWith(
+      await this.splitterCustom.setCore(this.core.address);
+      await this.splitterCustom.setWant(this.erc20.address);
+      await this.splitterCustom.setSetupCompleted(true);
+
+      await expect(this.strategy.replaceAsChild(this.splitterCustom.address)).to.be.revertedWith(
         'NotChild()',
       );
     });
@@ -425,6 +437,7 @@ describe.only('BaseNode', function () {
       await this.splitterCustom.setWant(this.erc20.address);
       await this.splitterCustom.setChildOne(this.strategy.address);
       await this.splitterCustom.setChildTwo(this.strategy.address);
+
       await expect(this.strategy.replaceAsChild(this.splitterCustom.address)).to.be.revertedWith(
         'BothChild()',
       );
@@ -524,14 +537,28 @@ describe.only('BaseNode', function () {
         this.strategy.connect(this.m).updateParent(this.splitterCustom.address),
       ).to.be.revertedWith('InvalidWant()');
     });
-    it('Not child', async function () {
+    it('Setup not completed', async function () {
+      await this.splitterCustom.setCore(this.core.address);
+      await this.splitterCustom.setWant(this.erc20.address);
+      await this.splitterCustom.setSetupCompleted(false);
+
       await expect(
-        this.strategy.connect(this.m).updateParent(this.splitter.address),
+        this.strategy.connect(this.m).updateParent(this.splitterCustom.address),
+      ).to.be.revertedWith('SetupNotCompleted("' + this.splitterCustom.address + '")');
+    });
+    it('Not child', async function () {
+      await this.splitterCustom.setCore(this.core.address);
+      await this.splitterCustom.setWant(this.erc20.address);
+      await this.splitterCustom.setSetupCompleted(true);
+
+      await expect(
+        this.strategy.connect(this.m).updateParent(this.splitterCustom.address),
       ).to.be.revertedWith('NotChild()');
     });
     it('Both child', async function () {
       await this.splitterCustom.setCore(this.core.address);
       await this.splitterCustom.setWant(this.erc20.address);
+      await this.splitterCustom.setSetupCompleted(true);
       await this.splitterCustom.setChildOne(this.strategy.address);
       await this.splitterCustom.setChildTwo(this.strategy.address);
 
@@ -761,6 +788,22 @@ describe.only('BaseSplitter', function () {
     await deploy(this, [['strategyC2', this.TreeStrategyMockCustom, []]]);
 
     await timeTraveler.snapshot();
+  });
+  describe('setupCompleted()', function () {
+    before(async function () {
+      await timeTraveler.revertSnapshot();
+    });
+    it('Default', async function () {
+      expect(await this.splitter.setupCompleted()).to.eq(false);
+    });
+    it('Single child', async function () {
+      await this.splitter.setInitialChildOne(this.strategy.address);
+      expect(await this.splitter.setupCompleted()).to.eq(false);
+    });
+    it('Double child', async function () {
+      await this.splitter.setInitialChildTwo(this.strategy2.address);
+      expect(await this.splitter.setupCompleted()).to.eq(true);
+    });
   });
   it('default', async function () {
     expect(await this.splitter.parent()).to.eq(this.master.address);
