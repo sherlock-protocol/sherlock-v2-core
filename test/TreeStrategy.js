@@ -13,26 +13,9 @@ const {
 } = require('./utilities');
 const { TimeTraveler } = require('./utilities/snapshot');
 
-// test basenode (as strategy)
-// - deploy with master as parent
-// - deploy with master --> node --> as parent
-// -- call replaceAsChild on strategy to test `_executeParentUpdate` on node
-// -- remove child to test `updateParent`
-
-// test baseSplitter
-// - replace child --> `updateChild`
-// - remove child --> `childRemoved`
-// - call replace
-
-// test basestrategy
-// - remove
-// - replace
-
 const maxTokens = parseUnits('100000000000', 6);
 
-// first test master strategy
-
-describe('MasterStrategy', function () {
+describe.only('MasterStrategy', function () {
   before(async function () {
     timeTraveler = new TimeTraveler(network.provider);
     // deploy master strategy
@@ -338,7 +321,7 @@ describe('MasterStrategy', function () {
     });
   });
 });
-describe('BaseNode', function () {
+describe.only('BaseNode', function () {
   before(async function () {
     timeTraveler = new TimeTraveler(network.provider);
     // deploy master strategy
@@ -373,9 +356,15 @@ describe('BaseNode', function () {
     ]);
     await deploy(this, [['splitterCustom', this.TreeSplitterMockCustom, []]]);
 
+    // Set want and core for this deployment
+    await this.splitterCustom.setWant(this.alice.address);
+    await this.splitterCustom.setCore(this.alice.address);
     await deploy(this, [
       ['strategyOfSplitter', this.TreeStrategyMock, [this.splitterCustom.address]],
     ]);
+    // Reset to zero
+    await this.splitterCustom.setWant(constants.AddressZero);
+    await this.splitterCustom.setCore(constants.AddressZero);
 
     await this.master.setInitialChildOne(this.strategy.address);
 
@@ -385,6 +374,33 @@ describe('BaseNode', function () {
     expect(await this.strategy.parent()).to.eq(this.master.address);
     expect(await this.strategy.want()).to.eq(this.erc20.address);
     expect(await this.strategy.core()).to.eq(this.bob.address);
+  });
+  describe('constructor', function () {
+    it('Zero parent', async function () {
+      await expect(this.TreeStrategyMock.deploy(constants.AddressZero)).to.be.revertedWith(
+        'ZeroArg()',
+      );
+    });
+    it('Invalid parent', async function () {
+      await expect(this.TreeStrategyMock.deploy(this.alice.address)).to.be.revertedWith(
+        'Transaction reverted: function returned an unexpected amount of data',
+      );
+    });
+    it('Zero want parent', async function () {
+      await this.splitterCustom.setWant(constants.AddressZero);
+
+      await expect(this.TreeStrategyMock.deploy(this.splitterCustom.address)).to.be.revertedWith(
+        'InvalidWant()',
+      );
+    });
+    it('Zero core parent', async function () {
+      await this.splitterCustom.setWant(this.erc20.address);
+      await this.splitterCustom.setCore(constants.AddressZero);
+
+      await expect(this.TreeStrategyMock.deploy(this.splitterCustom.address)).to.be.revertedWith(
+        'InvalidCore()',
+      );
+    });
   });
   describe('replaceAsChild()', function () {
     before(async function () {
@@ -775,7 +791,7 @@ describe('BaseNode', function () {
     });
   });
 });
-describe('BaseSplitter', function () {
+describe.only('BaseSplitter', function () {
   before(async function () {
     timeTraveler = new TimeTraveler(network.provider);
     // deploy master strategy
@@ -814,6 +830,35 @@ describe('BaseSplitter', function () {
     await deploy(this, [['strategyC2', this.TreeStrategyMockCustom, []]]);
 
     await timeTraveler.snapshot();
+  });
+  describe('constructor', function () {
+    it('Zero childs', async function () {
+      const x = await this.TreeSplitterMock.deploy(
+        this.master.address,
+        constants.AddressZero,
+        constants.AddressZero,
+      );
+      expect(await x.childOne()).to.eq(constants.AddressZero);
+      expect(await x.childTwo()).to.eq(constants.AddressZero);
+    });
+    it('Single child', async function () {
+      const x = await this.TreeSplitterMock.deploy(
+        this.master.address,
+        this.strategy.address,
+        constants.AddressZero,
+      );
+      expect(await x.childOne()).to.eq(this.strategy.address);
+      expect(await x.childTwo()).to.eq(constants.AddressZero);
+    });
+    it('Double child', async function () {
+      const x = await this.TreeSplitterMock.deploy(
+        this.master.address,
+        this.strategy.address,
+        this.strategy2.address,
+      );
+      expect(await x.childOne()).to.eq(this.strategy.address);
+      expect(await x.childTwo()).to.eq(this.strategy2.address);
+    });
   });
   describe('setupCompleted()', function () {
     before(async function () {
@@ -1275,7 +1320,7 @@ describe('BaseSplitter', function () {
     });
   });
 });
-describe('BaseStrategy', function () {
+describe.only('BaseStrategy', function () {
   before(async function () {
     timeTraveler = new TimeTraveler(network.provider);
     // deploy master strategy

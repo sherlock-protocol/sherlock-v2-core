@@ -20,11 +20,17 @@ abstract contract BaseNode is INode, Ownable {
   address public immutable override core;
 
   constructor(IMaster _initialParent) {
-    want = _initialParent.want();
-    core = _initialParent.core();
-    parent = _initialParent;
+    if (address(_initialParent) == address(0)) revert ZeroArg();
 
-    // TODO zero checks
+    IERC20 _want = _initialParent.want();
+    address _core = _initialParent.core();
+
+    if (address(_want) == address(0)) revert InvalidWant();
+    if (address(_core) == address(0)) revert InvalidCore();
+
+    want = _want;
+    core = _core;
+    parent = _initialParent;
 
     emit ParentUpdate(IMaster(address(0)), _initialParent);
   }

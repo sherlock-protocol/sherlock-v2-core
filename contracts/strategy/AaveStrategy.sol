@@ -39,8 +39,8 @@ contract AaveStrategy is BaseStrategy {
     IAToken _aWant,
     address _aaveLmReceiver
   ) BaseNode(_initialParent) {
-    if (address(_aWant) == address(0)) revert('ZeroArgument');
-    if (_aaveLmReceiver == address(0)) revert('ZeroArgument');
+    if (address(_aWant) == address(0)) revert ZeroArg();
+    if (_aaveLmReceiver == address(0)) revert ZeroArg();
 
     aWant = _aWant;
     // Gets the specific rewards controller for this token type
@@ -68,7 +68,7 @@ contract AaveStrategy is BaseStrategy {
     ILendingPool lp = getLp();
     // Checking the USDC balance of this contract
     uint256 amount = want.balanceOf(address(this));
-    if (amount == 0) revert('InvalidConditions');
+    if (amount == 0) revert InvalidState();
 
     // If allowance for this contract is too low, approve the max allowance
     if (want.allowance(address(this), address(lp)) < amount) {
@@ -96,12 +96,12 @@ contract AaveStrategy is BaseStrategy {
   function _withdraw(uint256 _amount) internal override {
     // Ensures that it doesn't execute a withdrawAll() call
     // AAVE V2 uses uint256.max as a magic number to withdraw max amount
-    if (_amount == type(uint256).max) revert('InvalidArgument');
+    if (_amount == type(uint256).max) revert InvalidArg();
 
     ILendingPool lp = getLp();
     // Withdraws _amount of USDC and sends it to the Sherlock core contract
     // If the amount withdrawn is not equal to _amount, it reverts
-    if (lp.withdraw(address(want), _amount, core) != _amount) revert('InvalidConditions');
+    if (lp.withdraw(address(want), _amount, core) != _amount) revert InvalidState();
   }
 
   // Claims the stkAAVE rewards and sends them to the receiver address

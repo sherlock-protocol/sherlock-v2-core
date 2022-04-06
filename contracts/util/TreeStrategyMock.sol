@@ -8,13 +8,13 @@ pragma solidity 0.8.10;
 
 import '../strategy/base/BaseStrategy.sol';
 
-abstract contract StrategyMock {
+abstract contract BaseStrategyMock {
   function mockUpdateChild(IMaster _parent, INode _newNode) external {
     _parent.updateChild(_newNode);
   }
 }
 
-contract TreeStrategyMock is StrategyMock, BaseStrategy {
+contract TreeStrategyMock is BaseStrategyMock, BaseStrategy {
   event WithdrawAll();
   event Withdraw(uint256 amount);
   event Deposit();
@@ -60,7 +60,7 @@ contract TreeStrategyMock is StrategyMock, BaseStrategy {
   }
 }
 
-contract TreeStrategyMockCustom is StrategyMock, IStrategy {
+contract TreeStrategyMockCustom is BaseStrategyMock, IStrategy {
   address public override core;
   IERC20 public override want;
   IMaster public override parent;
