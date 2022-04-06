@@ -75,6 +75,7 @@ contract MasterStrategy is
     if (_childOne == address(0)) revert NotSetup();
     if (_childOne != msg.sender) revert InvalidSender();
 
+    _verifySetChild(INode(msg.sender), _newChild);
     _setChildOne(INode(msg.sender), _newChild);
   }
 

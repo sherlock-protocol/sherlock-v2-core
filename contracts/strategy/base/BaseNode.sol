@@ -24,6 +24,8 @@ abstract contract BaseNode is INode, Ownable {
     core = _initialParent.core();
     parent = _initialParent;
 
+    // TODO zero checks
+
     emit ParentUpdate(IMaster(address(0)), _initialParent);
   }
 
@@ -36,6 +38,13 @@ abstract contract BaseNode is INode, Ownable {
                         TREE STRUCTURE LOGIC
   //////////////////////////////////////////////////////////////*/
 
+  /*
+    Replace as child ensures that (this) is the child of the _newParent.
+    It will also enfore a `_executeParentUpdate` to make that relation bi-directional
+
+    For the other child is does minimal checks, it only checks if it isn't the same as address(this)
+    We should check if the parent is the same as `_newParent`
+  */
   function replaceAsChild(ISplitter _newParent) external virtual override onlyOwner {
     // Gas savings
     IMaster _currentParent = parent;
@@ -45,7 +54,10 @@ abstract contract BaseNode is INode, Ownable {
 
     // Verify if the new parent has the right connections
     _verifyParentUpdate(_currentParent, _newParent);
-    _verifyNewParent(_newParent);
+    INode otherChild = _verifyNewParent(_newParent);
+    if (address(otherChild) != address(0)) {
+      if (otherChild.parent() != _newParent) revert InvalidParent();
+    }
 
     // Revert if parent connection isn't there
     // This is specific to `replaceAsChild` as it creates a connection between the parent and address(this)
@@ -79,17 +91,28 @@ abstract contract BaseNode is INode, Ownable {
     _executeParentUpdate(IMaster(msg.sender), _newParent);
   }
 
-  function _verifyNewParent(IMaster _newParent) internal view {
+  function _verifyNewParent(IMaster _newParent) internal view returns (INode otherChild) {
     if (_newParent.setupCompleted() == false) revert SetupNotCompleted(_newParent);
-    bool firstChild = address((_newParent).childOne()) == address(this);
-    bool secondChild = false;
+
+    INode firstChild = _newParent.childOne();
+    INode secondChild;
+
+    bool isFirstChild = address(firstChild) == address(this);
+    bool isSecondChild = false;
 
     if (!_newParent.isMaster()) {
-      secondChild = address(ISplitter(address(_newParent)).childTwo()) == address(this);
+      secondChild = ISplitter(address(_newParent)).childTwo();
+      isSecondChild = address(secondChild) == address(this);
     }
+
     // Verify if address(this) is a child
-    if (firstChild && secondChild) revert BothChild();
-    if (!firstChild && !secondChild) revert NotChild();
+    if (isFirstChild && isSecondChild) revert BothChild();
+    if (!isFirstChild && !isSecondChild) revert NotChild();
+
+    if (isFirstChild) {
+      return secondChild;
+    }
+    return firstChild;
   }
 
   function _verifyParentUpdate(IMaster _currentParent, IMaster _newParent) internal view {

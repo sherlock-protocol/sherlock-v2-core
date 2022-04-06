@@ -11,7 +11,11 @@ import './base/BaseSplitter.sol';
 /// Always withdraw from childOne first
 /// Only to deposit to childTwo if childOne balance is lower
 contract AlphaBetaSplitter is BaseSplitter {
-  constructor(IMaster _initialParent) BaseNode(_initialParent) {}
+  constructor(
+    IMaster _initialParent,
+    INode _initialChildOne,
+    INode _initialChildTwo
+  ) BaseSplitter(_initialParent, _initialChildOne, _initialChildTwo) {}
 
   function _withdraw(uint256 _amount) internal virtual override {
     uint256 alphaBalance = childOne.balanceOf();

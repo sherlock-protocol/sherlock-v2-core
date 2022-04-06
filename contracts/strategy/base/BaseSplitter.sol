@@ -23,6 +23,22 @@ abstract contract BaseSplitter is BaseMaster, ISplitter {
                         TREE STRUCTURE LOGIC
   //////////////////////////////////////////////////////////////*/
 
+  constructor(
+    IMaster _initialParent,
+    INode _initialChildOne,
+    INode _initialChildTwo
+  ) BaseNode(_initialParent) {
+    if (address(_initialChildOne) != address(0)) {
+      _verifySetChildSkipParentCheck(INode(address(0)), _initialChildOne);
+      _setChildOne(INode(address(0)), _initialChildOne);
+    }
+
+    if (address(_initialChildTwo) != address(0)) {
+      _verifySetChildSkipParentCheck(INode(address(0)), _initialChildTwo);
+      _setChildTwo(INode(address(0)), _initialChildTwo);
+    }
+  }
+
   function isMaster() external view override returns (bool) {
     return false;
   }
@@ -72,10 +88,12 @@ abstract contract BaseSplitter is BaseMaster, ISplitter {
     if (msg.sender == address(_childOne)) {
       if (_newChild == _childTwo) revert InvalidArg();
 
+      _verifySetChild(_childOne, _newChild);
       _setChildOne(_childOne, _newChild);
     } else if (msg.sender == address(_childTwo)) {
       if (_newChild == _childOne) revert InvalidArg();
 
+      _verifySetChild(_childTwo, _newChild);
       _setChildTwo(_childTwo, _newChild);
     } else {
       revert SenderNotChild();
@@ -104,8 +122,6 @@ abstract contract BaseSplitter is BaseMaster, ISplitter {
   }
 
   function _setChildTwo(INode _currentChild, INode _newChild) internal {
-    _verifySetChild(_currentChild, _newChild);
-
     childTwo = _newChild;
     emit ChildTwoUpdate(_currentChild, _newChild);
   }
@@ -113,6 +129,7 @@ abstract contract BaseSplitter is BaseMaster, ISplitter {
   function setInitialChildTwo(INode _newChild) external override onlyOwner {
     if (address(childTwo) != address(0)) revert InvalidState();
 
+    _verifySetChild(INode(address(0)), _newChild);
     _setChildTwo(INode(address(0)), _newChild);
   }
 

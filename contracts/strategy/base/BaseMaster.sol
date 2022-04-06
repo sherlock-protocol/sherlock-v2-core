@@ -15,19 +15,22 @@ import './BaseNode.sol';
 abstract contract BaseMaster is IMaster, BaseNode {
   INode public override childOne;
 
-  function _verifySetChild(INode _currentChild, INode _newChild) internal {
+  function _verifySetChildSkipParentCheck(INode _currentChild, INode _newChild) internal {
     if (address(_newChild) == address(0)) revert ZeroArg();
     if (_newChild.setupCompleted() == false) revert SetupNotCompleted(_newChild);
 
     if (_newChild == _currentChild) revert InvalidArg();
-    if (address(_newChild.parent()) != address(this)) revert InvalidParent();
     if (core != _newChild.core()) revert InvalidCore();
     if (want != _newChild.want()) revert InvalidWant();
   }
 
-  function _setChildOne(INode _currentChild, INode _newChild) internal {
-    _verifySetChild(_currentChild, _newChild);
+  function _verifySetChild(INode _currentChild, INode _newChild) internal {
+    _verifySetChildSkipParentCheck(_currentChild, _newChild);
+    // NOTE this check is basically one here for the `updateChild` call in splitter
+    if (address(_newChild.parent()) != address(this)) revert InvalidParent();
+  }
 
+  function _setChildOne(INode _currentChild, INode _newChild) internal {
     childOne = _newChild;
     emit ChildOneUpdate(_currentChild, _newChild);
   }
@@ -35,6 +38,7 @@ abstract contract BaseMaster is IMaster, BaseNode {
   function setInitialChildOne(INode _newChild) external override onlyOwner {
     if (address(childOne) != address(0)) revert InvalidState();
 
+    _verifySetChild(INode(address(0)), _newChild);
     _setChildOne(INode(address(0)), _newChild);
   }
 }
