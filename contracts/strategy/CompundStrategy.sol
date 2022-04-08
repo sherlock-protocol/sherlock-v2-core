@@ -67,7 +67,7 @@ contract CompoundStrategy is BaseStrategy {
   }
 
   /**
-   * @notice Withdraw a specific cWant amount from Compound.
+   * @notice Withdraw a specific underlying asset amount from Compound.
    */
   function _withdraw(uint256 amount) internal override returns (uint256) {
     if (amount == 0) {
