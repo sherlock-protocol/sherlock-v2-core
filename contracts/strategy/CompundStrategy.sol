@@ -73,8 +73,7 @@ contract CompoundStrategy is BaseStrategy {
     if (amount == 0) {
       return 0;
     }
-
-    if (cWant.redeem(amount) != 0) revert InvalidState();
+    if (cWant.redeemUnderlying(amount) != 0) revert InvalidState();
 
     return amount;
   }
