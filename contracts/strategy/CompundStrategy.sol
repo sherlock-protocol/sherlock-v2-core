@@ -8,12 +8,13 @@ pragma solidity 0.8.10;
 
 import './base/BaseStrategy.sol';
 import '../interfaces/compound/ICToken.sol';
-import { FixedPointMathLib } from 'solmate/utils/FixedPointMathLib.sol';
+import { FixedPointMathLib } from '@rari-capital/solmate/src/utils/FixedPointMathLib.sol';
 
 /**
  * This contract implements the logic to deposit and withdraw
  * funds from Compund as a yield strategy.
- * @see https://compound.finance/docs
+ *
+ * Docs: https://compound.finance/docs
  */
 
 contract CompoundStrategy is BaseStrategy {
@@ -21,7 +22,7 @@ contract CompoundStrategy is BaseStrategy {
   using FixedPointMathLib for uint256;
 
   // This is the receipt token Compound gives in exchange for a token deposit (cUSDC)
-  // @see https://compound.finance/docs#protocol-math
+  // https://compound.finance/docs#protocol-math
   ICToken public immutable cWant;
 
   constructor(IMaster _initialParent, ICToken _cWant) BaseNode(_initialParent) {
@@ -58,24 +59,19 @@ contract CompoundStrategy is BaseStrategy {
 
   /**
    * @notice Withdraw the entire cWant balance from Compound.
-   * @see _withdraw(uint256).
    */
-  function _withdrawAll() internal override returns (uint256) {
-    amount = balanceOf();
-
-    return _withdraw(amount);
+  function _withdrawAll() internal override returns (uint256 amount) {
+    uint256 amount = balanceOf();
+    _withdraw(amount);
   }
 
   /**
    * @notice Withdraw a specific underlying asset amount from Compound.
    */
-  function _withdraw(uint256 amount) internal override returns (uint256) {
-    if (amount == 0) {
-      return 0;
-    }
-    if (cWant.redeemUnderlying(amount) != 0) revert InvalidState();
+  function _withdraw(uint256 amount) internal override {
+    if (amount == 0) revert ZeroArg();
 
-    return amount;
+    if (cWant.redeemUnderlying(amount) != 0) revert InvalidState();
   }
 
   /**

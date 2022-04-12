@@ -580,10 +580,14 @@
   resolved "https://registry.npmjs.org/@openzeppelin/contracts/-/contracts-4.4.2.tgz"
   integrity sha512-NyJV7sJgoGYqbtNUWgzzOGW4T6rR19FmX1IJgXGdapGPWsuMelGJn9h03nos0iqfforCbCB0iYIR0MtIuIFLLw==
 
-"@rari-capital/solmate@^6.2.0":
+"@rari-capital/solmate@github:Rari-Capital/solmate#e802bcf2fb24dda2bf7e513bea86d15c48b57486":
   version "6.2.0"
-  resolved "https://registry.yarnpkg.com/@rari-capital/solmate/-/solmate-6.2.0.tgz#4f70dc236606c27ec2cb1b4261dd830235d01fe4"
-  integrity sha512-g94F+Ra9ixyJyNgvnOIufNjUz488uEG0nxIEEtJ7+g+tA1XGUupRB2kB5b+VO7WYO26RNOVD2fW6xE4e14iWpg==
+  resolved "git+ssh://git@github.com/Rari-Capital/solmate.git#e802bcf2fb24dda2bf7e513bea86d15c48b57486"
+  integrity sha512-fSafdRX1yEQG23YWPN00EiCjHXjJfxEOkIqoIio14yAawDcDckogIhYHBz4p1hOepi6uXIkYC577/sKchFbp/g==
+
+"@rari-capital/solmate@https://github.com/Rari-Capital/solmate#e802bcf2fb24dda2bf7e513bea86d15c48b57486":
+  version "6.2.0"
+  resolved "https://github.com/Rari-Capital/solmate#e802bcf2fb24dda2bf7e513bea86d15c48b57486"
 
 "@resolver-engine/core@^0.3.3":
   version "0.3.3"
