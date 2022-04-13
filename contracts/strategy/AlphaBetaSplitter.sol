@@ -29,16 +29,24 @@ contract AlphaBetaSplitter is BaseSplitter {
     }
   }
 
+  function _alphaDeposit(uint256 amount) internal virtual {
+    want.transfer(address(childOne), amount);
+    childOne.deposit();
+  }
+
+  function _betaDeposit(uint256 amount) internal virtual {
+    want.transfer(address(childTwo), amount);
+    childTwo.deposit();
+  }
+
   function _deposit() internal virtual override {
     uint256 alphaBalance = childOne.balanceOf();
     uint256 betaBalance = childTwo.balanceOf();
 
     if (alphaBalance < betaBalance) {
-      want.transfer(address(childOne), want.balanceOf(address(this)));
-      childOne.deposit();
+      _alphaDeposit(want.balanceOf(address(this)));
     } else {
-      want.transfer(address(childTwo), want.balanceOf(address(this)));
-      childTwo.deposit();
+      _betaDeposit(want.balanceOf(address(this)));
     }
   }
 }
