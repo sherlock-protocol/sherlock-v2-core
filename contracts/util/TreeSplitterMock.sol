@@ -134,3 +134,28 @@ contract TreeSplitterMockCustom is ISplitter {
 
   function siblingRemoved() external override {}
 }
+
+contract TreeSplitterMockTest {
+  address public core;
+  IERC20 public want;
+
+  function setCore(address _core) external {
+    core = _core;
+  }
+
+  function setWant(IERC20 _want) external {
+    want = _want;
+  }
+
+  function deposit(INode _strategy) external {
+    _strategy.deposit();
+  }
+
+  function withdraw(INode _strategy, uint256 _amount) external {
+    _strategy.withdraw(_amount);
+  }
+
+  function withdrawAll(INode _strategy) external {
+    _strategy.withdrawAll();
+  }
+}
