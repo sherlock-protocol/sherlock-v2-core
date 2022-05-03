@@ -64,7 +64,7 @@ interface IPool is IERC20 {
 
   function DL_FACTORY() external view returns (uint8);
 
-  function liquidityAsset() external view returns (address);
+  function liquidityAsset() external view returns (IERC20);
 
   function liquidityLocker() external view returns (address);
 
