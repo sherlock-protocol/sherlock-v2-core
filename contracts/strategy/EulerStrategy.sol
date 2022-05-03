@@ -39,6 +39,7 @@ contract EulerStrategy is BaseStrategy {
     return true;
   }
 
+  /// @notice View the current balance of this strategy in USDC
   /// @dev will return wrong balance if this contract somehow has USDC instead of only eUSDC
   function balanceOf() public view override returns (uint256) {
     return eUSDC.balanceOfUnderlying(address(this));
