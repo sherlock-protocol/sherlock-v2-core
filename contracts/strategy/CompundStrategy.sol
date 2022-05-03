@@ -62,8 +62,11 @@ contract CompoundStrategy is BaseStrategy {
    * @notice Withdraw the entire underlying asset balance from Compound.
    */
   function _withdrawAll() internal override returns (uint256 amount) {
-    amount = balanceOf();
-    _withdraw(amount);
+    uint256 cUSDCAmount = cUSDC.balanceOf(address(this));
+    if (cUSDC.redeem(cUSDCAmount) != 0) revert InvalidState();
+
+    amount = want.balanceOf(address(this));
+    want.safeTransfer(core, amount);
   }
 
   /**

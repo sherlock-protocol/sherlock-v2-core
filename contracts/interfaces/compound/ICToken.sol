@@ -35,6 +35,8 @@ interface ICToken is IERC20 {
 
   function accrualBlockNumber() external view returns (uint256);
 
+  function redeem(uint256) external returns (uint256);
+
   function redeemUnderlying(uint256) external returns (uint256);
 
   function balanceOfUnderlying(address) external returns (uint256);
