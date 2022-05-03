@@ -163,4 +163,62 @@ describe('Compound', function () {
       expect(await this.compound.balanceOf()).to.eq(0);
     });
   });
+
+  describe('withdraw()', async function() {
+    before(async function () {
+      await timeTraveler.revertSnapshot();
+    });
+
+    it('Initial state', async function () {
+      expect(await this.usdc.balanceOf(this.compound.address)).to.eq(0);
+      expect(await this.usdc.balanceOf(this.core.address)).to.eq(0);
+
+      expect(await this.cUSDC.balanceOf(this.compound.address)).to.eq(0);
+      expect(await this.compound.balanceOf()).to.eq(0);
+    });
+
+    it('Invalid arg', async function () {
+      await expect(
+        this.splitter.withdraw(this.compound.address, 0),
+      ).to.be.revertedWith('ZeroArg()');
+    });
+
+    it('100 USDC deposit + 20 USDC withdraw', async function () {
+      // deposit
+      await this.mintUSDC(this.compound.address, parseUnits('100', 6));
+      await this.splitter.deposit(this.compound.address);
+
+      // withdraw
+      await this.splitter.withdraw(this.compound.address, parseUnits('20', 6));
+
+      expect(await this.usdc.balanceOf(this.compound.address)).to.eq(0);
+      expect(await this.usdc.balanceOf(this.core.address)).to.be.closeTo(parseUnits('20', 6), 1);
+
+      expect(await this.compound.balanceOf()).to.be.closeTo(parseUnits('80', 6), 1);
+    });
+
+    it('20 USDC deposit + 1y', async function () {
+      // deposit
+      await this.mintUSDC(this.compound.address, parseUnits('20', 6));
+      await this.splitter.deposit(this.compound.address);
+
+      await timeTraveler.hardhatMine(YEAR_IN_BLOCKS);
+
+      await this.makeDeposit(this.alice, parseUnits('1000000000', 6));
+      await this.makeDeposit(this.bob, parseUnits('5000000', 6));
+    });
+
+    it('Withdraw 80 USDC', async function () {
+      // withdraw
+      await this.splitter.withdraw(this.compound.address, parseUnits('80', 6));
+
+      expect(await this.usdc.balanceOf(this.compound.address)).to.eq(0);
+      expect(await this.usdc.balanceOf(this.core.address)).to.be.closeTo(parseUnits('100', 6), 1);
+
+      expect(await this.compound.balanceOf()).to.be.closeTo(
+        parseUnits('22.7', 6),
+        parseUnits('0.1', 6),
+      );
+    });
+  });
 });
