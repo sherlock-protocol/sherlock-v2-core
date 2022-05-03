@@ -96,7 +96,9 @@ contract CompoundStrategy is BaseStrategy {
       reservesPrior
     );
 
-    if (borrowRateMantissa <= 0.0005e16) revert InvalidState();
+    // This value is the same set as borrowRateMaxMantissa in CtokenInterfaces.sol
+    // https://github.com/compound-finance/compound-protocol/blob/3affca87636eecd901eb43f81a4813186393905d/contracts/CTokenInterfaces.sol#L32
+    if (borrowRateMantissa > 0.0005e16) revert InvalidState();
 
     uint256 interestAccumulated = (borrowRateMantissa * (block.number - accrualBlockNumberPrior))
       .mulWadDown(borrowsPrior);

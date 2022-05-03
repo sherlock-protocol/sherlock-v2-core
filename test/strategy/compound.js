@@ -15,20 +15,21 @@ const { constants, BigNumber } = require('ethers');
 const { TimeTraveler } = require('../utilities/snapshot');
 const { id, formatBytes32String, keccak256 } = require('ethers/lib/utils');
 
-const usdcWhaleAddress = '0xe78388b4ce79068e89bf8aa7f218ef6b9ab0e9d0';
+const usdcWhaleAddress = '0xE78388b4CE79068e89Bf8aA7f218eF6b9AB0e9d0';
 const USDC = '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48';
-const cUSDC = '0x39AA39c021dfbaE8faC545936693aC917d5E7563';
+const cUSDC = '0x39aa39c021dfbae8fac545936693ac917d5e7563';
 
 const BLOCK = 14699000;
 const TIMESTAMP = 1651503884;
 const YEAR = 60 * 60 * 24 * 365;
 
-describe('Compound', () => {
-  before(async () => {
-    this.timeTraveler = new TimeTraveler(network.provider);
-    await this.timeTraveler.fork(BLOCK);
+describe('Compound', function () {
+  const timeTraveler = new TimeTraveler(network.provider);
 
-    await this.timeTraveler.request({
+  before(async function () {
+    await timeTraveler.fork(BLOCK);
+
+    await timeTraveler.request({
       method: 'hardhat_impersonateAccount',
       params: [usdcWhaleAddress]
     });
@@ -51,16 +52,28 @@ describe('Compound', () => {
       await this.usdc.connect(usdcWhale).transfer(target, amount);
     };
 
-    await this.timeTraveler.snapshot();
+    await timeTraveler.snapshot();
   });
 
   describe('setupCompleted()', async function () {
     before(async function () {
-      await this.timeTraveler.revertSnapshot();
+      await timeTraveler.revertSnapshot();
     });
 
     it('Default', async function () {
       expect(await this.compound.setupCompleted()).to.eq(true);
+    });
+  });
+
+  describe('deposit()', async function () {
+    before(async function () {
+      timeTraveler.revertSnapshot();
+    });
+
+    it('Initial state', async function () {
+      expect(await this.usdc.balanceOf(this.compound.address)).to.eq(0);
+      expect(await this.cUSDC.balanceOf(this.compound.address)).to.eq(0);
+      expect(await this.compound.balanceOf()).to.eq(0);
     });
   });
 });
