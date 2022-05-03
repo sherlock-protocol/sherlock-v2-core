@@ -24,6 +24,8 @@ const TIMESTAMP = 1651503884;
 const YEAR = 60 * 60 * 24 * 365;
 const day90 = 60 * 60 * 24 * 90;
 const day45 = 60 * 60 * 24 * 45;
+const day10 = 60 * 60 * 24 * 10;
+const day2 = 60 * 60 * 24 * 2;
 
 describe.only('Maple', function () {
   before(async function () {
@@ -39,7 +41,7 @@ describe.only('Maple', function () {
 
     this.core = this.carol;
     this.usdc = await ethers.getContractAt('ERC20', USDC);
-    this.mapleMaven11 = await ethers.getContractAt('ERC20', mapleMaven11);
+    this.mapleMaven11 = await ethers.getContractAt('IPool', mapleMaven11);
 
     await deploy(this, [['splitter', this.TreeSplitterMockTest, []]]);
 
@@ -205,6 +207,146 @@ describe.only('Maple', function () {
       // https://github.com/maple-labs/maple-core/blob/main/contracts/library/PoolLib.sol#L215
 
       expect(await this.maple.maturityTime()).to.eq(this.t1.time.add(day90 - day45 / 3));
+    });
+  });
+  describe('intendToWithdraw()', async function () {
+    before(async function () {
+      await timeTraveler.revertSnapshot();
+    });
+    it('Initial state', async function () {
+      expect(await this.mapleMaven11.withdrawCooldown(this.maple.address)).to.eq(0);
+    });
+    it('Now owner', async function () {
+      await expect(this.maple.connect(this.bob).intendToWithdraw()).to.be.revertedWith(
+        'Ownable: caller is not the owner',
+      );
+    });
+    it('Do fail', async function () {
+      await expect(this.maple.intendToWithdraw()).to.be.revertedWith('P:ZERO_BAL');
+    });
+    it('Do success', async function () {
+      // deposit first
+      await this.mintUSDC(this.maple.address, parseUnits('100', 6));
+      await this.splitter.deposit(this.maple.address);
+
+      this.t0 = await meta(this.maple.intendToWithdraw());
+
+      expect(await this.mapleMaven11.withdrawCooldown(this.maple.address)).to.eq(this.t0.time);
+    });
+  });
+  describe('withdrawFromMaple()', async function () {
+    before(async function () {
+      await timeTraveler.revertSnapshot();
+    });
+    it('Initial state', async function () {
+      expect(await this.usdc.balanceOf(this.maple.address)).to.eq(0);
+      expect(await this.mapleMaven11.balanceOf(this.maple.address)).to.eq(0);
+      expect(await this.maple.balanceOf()).to.eq(0);
+    });
+    it('Now owner', async function () {
+      await expect(
+        this.maple.connect(this.bob).withdrawFromMaple(parseUnits('100', 6)),
+      ).to.be.revertedWith('Ownable: caller is not the owner');
+    });
+    it('Do fail', async function () {
+      await expect(this.maple.withdrawFromMaple(parseUnits('100', 6))).to.be.reverted;
+    });
+    it('Deposit, start cooldown, and withdraw', async function () {
+      await this.mintUSDC(this.maple.address, parseUnits('100', 6));
+      this.t0 = await meta(this.splitter.deposit(this.maple.address));
+
+      // intent withdraw 10 days before lockup ends
+      await timeTraveler.setNextBlockTimestamp(Number(this.t0.time) + day90 - day10);
+      this.t1 = await meta(this.maple.intendToWithdraw());
+
+      // skip 10 days (total of 90 days since deposit)
+      await timeTraveler.setNextBlockTimestamp(Number(this.t0.time) + day90);
+
+      // do withdraw
+      await this.maple.withdrawFromMaple(parseUnits('100', 6));
+
+      expect(await this.usdc.balanceOf(this.maple.address)).to.eq(parseUnits('100', 6));
+      expect(await this.mapleMaven11.balanceOf(this.maple.address)).to.eq(0);
+      expect(await this.maple.balanceOf()).to.eq(parseUnits('100', 6));
+    });
+  });
+  describe('withdrawFromMaple() - MAX', async function () {
+    before(async function () {
+      await timeTraveler.revertSnapshot();
+    });
+    it('Deposit, start cooldown, and withdraw', async function () {
+      await this.mintUSDC(this.maple.address, parseUnits('100', 6));
+      this.t0 = await meta(this.splitter.deposit(this.maple.address));
+
+      // intent withdraw 10 days before lockup ends
+      await timeTraveler.setNextBlockTimestamp(Number(this.t0.time) + day90 - day10);
+      this.t1 = await meta(this.maple.intendToWithdraw());
+
+      // skip 10 days (total of 90 days since deposit)
+      await timeTraveler.setNextBlockTimestamp(Number(this.t0.time) + day90);
+      expect(await this.maple.maturityTime()).to.eq(Number(this.t0.time) + day90);
+
+      // do withdraw
+      await this.maple.withdrawFromMaple(constants.MaxUint256);
+
+      expect(await this.maple.maturityTime()).to.eq(Number(this.t0.time) + day90);
+      expect(await this.usdc.balanceOf(this.maple.address)).to.eq(parseUnits('100', 6));
+      expect(await this.mapleMaven11.balanceOf(this.maple.address)).to.eq(0);
+      expect(await this.maple.balanceOf()).to.eq(parseUnits('100', 6));
+    });
+    it('100 USDC deposit', async function () {
+      await this.mintUSDC(this.maple.address, parseUnits('100', 6));
+
+      this.t2 = await meta(this.splitter.deposit(this.maple.address));
+
+      // Make sure maturity time resets
+      expect(await this.maple.maturityTime()).to.eq(Number(this.t2.time) + day90);
+    });
+  });
+  describe('withdrawAll()', async function () {
+    before(async function () {
+      await timeTraveler.revertSnapshot();
+
+      // mint
+      await this.mintUSDC(this.maple.address, parseUnits('100', 6));
+    });
+    it('Initial state', async function () {
+      expect(await this.usdc.balanceOf(this.maple.address)).to.eq(parseUnits('100', 6));
+      expect(await this.usdc.balanceOf(this.core.address)).to.eq(0);
+    });
+    it('withdrawAll', async function () {
+      // withdraw
+      await this.splitter.withdrawAll(this.maple.address);
+    });
+    it('State', async function () {
+      expect(await this.usdc.balanceOf(this.maple.address)).to.eq(0);
+      expect(await this.usdc.balanceOf(this.core.address)).to.eq(parseUnits('100', 6));
+    });
+  });
+  describe('withdraw()', async function () {
+    before(async function () {
+      await timeTraveler.revertSnapshot();
+
+      // mint
+      await this.mintUSDC(this.maple.address, parseUnits('100', 6));
+    });
+    it('Initial state', async function () {
+      expect(await this.usdc.balanceOf(this.maple.address)).to.eq(parseUnits('100', 6));
+      expect(await this.usdc.balanceOf(this.core.address)).to.eq(0);
+    });
+    it('withdraw 20', async function () {
+      // withdraw
+      await this.splitter.withdraw(this.maple.address, parseUnits('20', 6));
+
+      expect(await this.usdc.balanceOf(this.maple.address)).to.eq(parseUnits('80', 6));
+      expect(await this.usdc.balanceOf(this.core.address)).to.eq(parseUnits('20', 6));
+    });
+    it('withdraw 20', async function () {
+      // withdraw
+      await this.splitter.withdraw(this.maple.address, parseUnits('20', 6));
+
+      expect(await this.usdc.balanceOf(this.maple.address)).to.eq(parseUnits('60', 6));
+      expect(await this.usdc.balanceOf(this.core.address)).to.eq(parseUnits('40', 6));
     });
   });
 });

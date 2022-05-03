@@ -49,9 +49,14 @@ contract MapleStrategy is BaseStrategy {
   // stakerCooldownPeriod uint256 :  864000 (10 days to cooldown)
   // stakerUnstakeWindow  uint256 :  172800 (2 days to unstake)
   function maturityTime() external view returns (uint256) {
+    // Get current deposit date from the maple pool
+    // Value uses a weigthed average on multiple deposits
     uint256 date = maplePool.depositDate(address(this));
+
+    // Return 0 if no deposit
     if (date == 0) return 0;
 
+    // Deposit will mature when lockup period ends
     return date + maplePool.lockupPeriod();
   }
 
@@ -60,6 +65,7 @@ contract MapleStrategy is BaseStrategy {
   // https://github.com/maple-labs/maple-core/blob/main/contracts/Pool.sol#L377
   // Multiple deposits = weighted average of unlock time https://github.com/maple-labs/maple-core/blob/main/contracts/library/PoolLib.sol#L209
   function _deposit() internal override whenNotPaused {
+    // Deposit all USDC into maple
     maplePool.deposit(want.balanceOf(address(this)));
   }
 
@@ -116,6 +122,9 @@ contract MapleStrategy is BaseStrategy {
 
     // Withdraw all USDC
     if (_amount == type(uint256).max) {
+      // maplePool = 18 decimals
+      // USDC = 6 decimals
+      // Dividing by 10**12 to make up the difference
       _amount = maplePool.balanceOf(address(this)) / 10**12;
     }
 
