@@ -75,5 +75,12 @@ describe('Compound', function () {
       expect(await this.cUSDC.balanceOf(this.compound.address)).to.eq(0);
       expect(await this.compound.balanceOf()).to.eq(0);
     });
+    it('Empty deposit', async function () {
+      await this.splitter.deposit(this.compound.address);
+
+      expect(await this.usdc.balanceOf(this.compound.address)).to.eq(0);
+      expect(await this.cUSDC.balanceOf(this.compound.address)).to.eq(0);
+      expect(await this.compound.balanceOf()).to.eq(0);
+    });
   });
 });

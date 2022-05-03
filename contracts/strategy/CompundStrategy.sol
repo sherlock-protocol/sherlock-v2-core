@@ -49,12 +49,12 @@ contract CompoundStrategy is BaseStrategy {
    */
   function _deposit() internal override whenNotPaused {
     uint256 amount = want.balanceOf(address(this));
-    if (amount == 0) revert InvalidState();
 
     if (want.allowance(address(this), address(cUSDC)) < amount) {
       want.safeIncreaseAllowance(address(cUSDC), amount);
     }
 
+    // https://compound.finance/docs/ctokens#mint
     if (cUSDC.mint(amount) != 0) revert InvalidState();
   }
 
