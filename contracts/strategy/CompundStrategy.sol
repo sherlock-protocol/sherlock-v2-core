@@ -81,7 +81,7 @@ contract CompoundStrategy is BaseStrategy {
    * @notice Calculate cToken to underlying asset exchange rate without mutating state.
    * @dev based on transmissions11's lib (https://github.com/transmissions11/libcompound)
    */
-  function _viewExchangeRate() internal view returns (uint256) {
+  function _viewExchangeRate() public view returns (uint256) {
     uint256 accrualBlockNumberPrior = cUSDC.accrualBlockNumber();
 
     if (accrualBlockNumberPrior == block.number) return cUSDC.exchangeRateStored();
