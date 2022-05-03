@@ -23,12 +23,12 @@ contract CompoundStrategy is BaseStrategy {
 
   // This is the receipt token Compound gives in exchange for a token deposit (cUSDC)
   // https://compound.finance/docs#protocol-math
-  ICToken public immutable cWant;
 
-  constructor(IMaster _initialParent, ICToken _cWant) BaseNode(_initialParent) {
-    if (address(_cWant) == address(0)) revert ZeroArg();
+  address constant CUSDC = 0x39AA39c021dfbaE8faC545936693aC917d5E7563;
+  ICToken immutable cUSDC;
 
-    cWant = _cWant;
+  constructor(IMaster _initialParent) BaseNode(_initialParent) {
+    cUSDC = ICToken(CUSDC);
   }
 
   function setupCompleted() external view override returns (bool) {
@@ -37,31 +37,32 @@ contract CompoundStrategy is BaseStrategy {
 
   /**
    * @notice Return the contract's want(USDC) balance.
-   * note exchange rate isn't 1:1 between cToken and underlying asset.
+   * @dev Since balanceOf() is pure, we can't use Compound's balanceOfUnderlying(adress) function
+   * We calculate the exchange rate ourselves instead.
    */
   function balanceOf() public view override returns (uint256) {
-    return cWant.balanceOf(address(this)).mulWadDown(_viewExchangeRate());
+    return cUSDC.balanceOf(address(this)).mulWadDown(_viewExchangeRate());
   }
 
   /**
-   * @notice Deposit the entire contract's balance into Compound.
+   * @notice Deposit the entire contract's want(USDC) balance into Compound.
    */
   function _deposit() internal override whenNotPaused {
     uint256 amount = want.balanceOf(address(this));
     if (amount == 0) revert InvalidState();
 
-    if (want.allowance(address(this), address(cWant)) < amount) {
-      want.safeIncreaseAllowance(address(cWant), type(uint256).max);
+    if (want.allowance(address(this), address(cUSDC)) < amount) {
+      want.safeIncreaseAllowance(address(cUSDC), amount);
     }
 
-    cWant.mint(amount);
+    if (cUSDC.mint(amount) != 0) revert InvalidState();
   }
 
   /**
-   * @notice Withdraw the entire cWant balance from Compound.
+   * @notice Withdraw the entire underlying asset balance from Compound.
    */
   function _withdrawAll() internal override returns (uint256 amount) {
-    uint256 amount = balanceOf();
+    amount = balanceOf();
     _withdraw(amount);
   }
 
@@ -71,23 +72,25 @@ contract CompoundStrategy is BaseStrategy {
   function _withdraw(uint256 amount) internal override {
     if (amount == 0) revert ZeroArg();
 
-    if (cWant.redeemUnderlying(amount) != 0) revert InvalidState();
+    if (cUSDC.redeemUnderlying(amount) != 0) revert InvalidState();
+
+    want.safeTransfer(core, amount);
   }
 
   /**
    * @notice Calculate cToken to underlying asset exchange rate without mutating state.
-   * note based on transmissions11's lib (https://github.com/transmissions11/libcompound)
+   * @dev based on transmissions11's lib (https://github.com/transmissions11/libcompound)
    */
   function _viewExchangeRate() internal view returns (uint256) {
-    uint256 accrualBlockNumberPrior = cWant.accrualBlockNumber();
+    uint256 accrualBlockNumberPrior = cUSDC.accrualBlockNumber();
 
-    if (accrualBlockNumberPrior == block.number) return cWant.exchangeRateStored();
+    if (accrualBlockNumberPrior == block.number) return cUSDC.exchangeRateStored();
 
-    uint256 totalCash = want.balanceOf(address(cWant));
-    uint256 borrowsPrior = cWant.totalBorrows();
-    uint256 reservesPrior = cWant.totalReserves();
+    uint256 totalCash = want.balanceOf(address(cUSDC));
+    uint256 borrowsPrior = cUSDC.totalBorrows();
+    uint256 reservesPrior = cUSDC.totalReserves();
 
-    uint256 borrowRateMantissa = cWant.interestRateModel().getBorrowRate(
+    uint256 borrowRateMantissa = cUSDC.interestRateModel().getBorrowRate(
       totalCash,
       borrowsPrior,
       reservesPrior
@@ -98,14 +101,14 @@ contract CompoundStrategy is BaseStrategy {
     uint256 interestAccumulated = (borrowRateMantissa * (block.number - accrualBlockNumberPrior))
       .mulWadDown(borrowsPrior);
 
-    uint256 totalReserves = cWant.reserveFactorMantissa().mulWadDown(interestAccumulated) +
+    uint256 totalReserves = cUSDC.reserveFactorMantissa().mulWadDown(interestAccumulated) +
       reservesPrior;
     uint256 totalBorrows = interestAccumulated + borrowsPrior;
-    uint256 totalSupply = cWant.totalSupply();
+    uint256 totalSupply = cUSDC.totalSupply();
 
     return
       totalSupply == 0
-        ? cWant.initialExchangeRateMantissa()
+        ? cUSDC.initialExchangeRateMantissa()
         : (totalCash + totalBorrows - totalReserves).divWadDown(totalSupply);
   }
 }
