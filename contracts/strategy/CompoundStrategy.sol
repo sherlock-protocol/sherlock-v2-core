@@ -9,6 +9,7 @@ pragma solidity 0.8.10;
 import './base/BaseStrategy.sol';
 import '../interfaces/compound/ICToken.sol';
 import { FixedPointMathLib } from '@rari-capital/solmate/src/utils/FixedPointMathLib.sol';
+import { LibCompound } from './compound/LibCompound.sol';
 
 /**
  *  This contract implements the logic to deposit and withdraw funds from Compound as a yield strategy.
@@ -39,7 +40,7 @@ contract CompoundStrategy is BaseStrategy {
    * We calculate the exchange rate ourselves instead.
    */
   function balanceOf() public view override returns (uint256) {
-    return cUSDC.balanceOf(address(this)).mulWadDown(_viewExchangeRate());
+    return LibCompound.viewUnderlyingBalanceOf(cUSDC, address(this));
   }
 
   /**
@@ -76,42 +77,5 @@ contract CompoundStrategy is BaseStrategy {
     if (cUSDC.redeemUnderlying(amount) != 0) revert InvalidState();
 
     want.safeTransfer(core, amount);
-  }
-
-  /**
-   * @notice Calculate cToken to underlying asset exchange rate without mutating state.
-   * @dev based on transmissions11's lib (https://github.com/transmissions11/libcompound)
-   */
-  function _viewExchangeRate() public view returns (uint256) {
-    uint256 accrualBlockNumberPrior = cUSDC.accrualBlockNumber();
-
-    if (accrualBlockNumberPrior == block.number) return cUSDC.exchangeRateStored();
-
-    uint256 totalCash = want.balanceOf(address(cUSDC));
-    uint256 borrowsPrior = cUSDC.totalBorrows();
-    uint256 reservesPrior = cUSDC.totalReserves();
-
-    uint256 borrowRateMantissa = cUSDC.interestRateModel().getBorrowRate(
-      totalCash,
-      borrowsPrior,
-      reservesPrior
-    );
-
-    // This value is the same set as borrowRateMaxMantissa in CtokenInterfaces.sol
-    // https://github.com/compound-finance/compound-protocol/blob/3affca87636eecd901eb43f81a4813186393905d/contracts/CTokenInterfaces.sol#L32
-    if (borrowRateMantissa > 0.0005e16) revert InvalidState();
-
-    uint256 interestAccumulated = (borrowRateMantissa * (block.number - accrualBlockNumberPrior))
-      .mulWadDown(borrowsPrior);
-
-    uint256 totalReserves = cUSDC.reserveFactorMantissa().mulWadDown(interestAccumulated) +
-      reservesPrior;
-    uint256 totalBorrows = interestAccumulated + borrowsPrior;
-    uint256 totalSupply = cUSDC.totalSupply();
-
-    return
-      totalSupply == 0
-        ? cUSDC.initialExchangeRateMantissa()
-        : (totalCash + totalBorrows - totalReserves).divWadDown(totalSupply);
   }
 }
