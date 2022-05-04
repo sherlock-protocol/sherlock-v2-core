@@ -11,10 +11,8 @@ import '../interfaces/compound/ICToken.sol';
 import { FixedPointMathLib } from '@rari-capital/solmate/src/utils/FixedPointMathLib.sol';
 
 /**
- * This contract implements the logic to deposit and withdraw
- * funds from Compund as a yield strategy.
- *
- * Docs: https://compound.finance/docs
+ *  This contract implements the logic to deposit and withdraw funds from Compound as a yield strategy.
+ *  Docs: https://compound.finance/docs
  */
 
 contract CompoundStrategy is BaseStrategy {
