@@ -49,7 +49,7 @@ If we call `liquidExit()` with 10 USDC, 0% will be liquid and the exit fee jumps
 `balanceOf()` would show 10 USDC + 81 (90 USDC - 10% exit fee) = 91 USDC
 */
 
-// All tfPoolTokens will be staked in the farm at any time (except runtime of a transaction)
+// All tfUSDC will be staked in the farm at any time (except runtime of a transaction)
 contract TrueFiStrategy is BaseStrategy {
   using SafeERC20 for IERC20;
 
@@ -57,15 +57,15 @@ contract TrueFiStrategy is BaseStrategy {
   uint256 private constant BASIS_PRECISION = 10000;
 
   // the tfUSDC pool
-  ITrueFiPool2 public constant tfPool = ITrueFiPool2(0xA991356d261fbaF194463aF6DF8f0464F8f1c742);
+  ITrueFiPool2 public constant tfUSDC = ITrueFiPool2(0xA991356d261fbaF194463aF6DF8f0464F8f1c742);
   ITrueMultiFarm public constant tfFarm =
     ITrueMultiFarm(0xec6c3FD795D6e6f202825Ddb56E01b3c128b0b10);
   IERC20 public constant rewardToken = IERC20(0x4C19596f5aAfF459fA38B0f7eD92F11AE6543784);
 
   /// @param _initialParent contract that will be the parent in the tree structure
   constructor(IMaster _initialParent) BaseNode(_initialParent) {
-    want.approve(address(tfPool), type(uint256).max);
-    tfPool.approve(address(tfFarm), type(uint256).max);
+    want.approve(address(tfUSDC), type(uint256).max);
+    tfUSDC.approve(address(tfFarm), type(uint256).max);
   }
 
   /// @notice signal if strategy is ready to be used
@@ -77,12 +77,13 @@ contract TrueFiStrategy is BaseStrategy {
   /// @notice joining fee may apply, this will lower the balance of the system on deposit
   function _deposit() internal override whenNotPaused {
     // https://github.com/trusttoken/contracts-pre22/blob/main/contracts/truefi2/TrueFiPool2.sol#L469
-    tfPool.join(want.balanceOf(address(this)));
+    tfUSDC.join(want.balanceOf(address(this)));
 
-    // How much tokens did we receive because we joined the pool?
-    uint256 tfPoolTokens = tfPool.balanceOf(address(this));
+    // How much tfUSDC did we receive because we joined the pool?
+    uint256 tfUsdcBalance = tfUSDC.balanceOf(address(this));
 
-    tfFarm.stake(tfPool, tfPoolTokens);
+    // Stake all tfUSDC in the tfFarm
+    tfFarm.stake(tfUSDC, tfUsdcBalance);
   }
 
   /// @notice Send all USDC in this contract to core
@@ -100,41 +101,47 @@ contract TrueFiStrategy is BaseStrategy {
     want.safeTransfer(core, _amount);
   }
 
-  function _viewTfPoolTokensStaked() private view returns (uint256) {
-    // Using tfPool tokens staked in the tfFarm
-    return tfFarm.staked(tfPool, address(this));
+  function _viewTfUsdcStaked() private view returns (uint256) {
+    // Using tfUSDC staked in the tfFarm
+    return tfFarm.staked(tfUSDC, address(this));
   }
 
   /// @notice return USDC in this contract + USDC in TrueFi
-  function balanceOf() public view override returns (uint256) {
+  function balanceOf() external view override returns (uint256) {
     // https://docs.truefi.io/faq/main-lending-pools/developer-guide/truefipool2-contract#calculating-lending-pool-token-prices
 
     // How much USDC is locked in TrueFi
-    uint256 tfUsdcBalance = (tfPool.poolValue() * _viewTfPoolTokensStaked()) / tfPool.totalSupply();
+    uint256 tfUsdcBalance = (tfUSDC.poolValue() * _viewTfUsdcStaked()) / tfUSDC.totalSupply();
 
     // How much USDC we get if we liquidate the full position
-    tfUsdcBalance = (tfUsdcBalance * tfPool.liquidExitPenalty(tfUsdcBalance)) / BASIS_PRECISION;
+    tfUsdcBalance = (tfUsdcBalance * tfUSDC.liquidExitPenalty(tfUsdcBalance)) / BASIS_PRECISION;
 
     // Return USDC in contract + USDC we can get from TrueFi
     return want.balanceOf(address(this)) + tfUsdcBalance;
   }
 
-  /// @notice Exit `_amount` of pool LP tokens
+  /// @notice Exit `_amount` of tfUSDC (pool LP tokens)
   /// @notice Up to 10% exit fee may apply, this will lower the balance of the system
   function liquidExit(uint256 _amount) external onlyOwner {
     // https://github.com/trusttoken/contracts-pre22/blob/main/contracts/truefi2/TrueFiPool2.sol#L487
     // here's a spreadsheet that shows the exit penalty at different liquidRatio levels ( = liquidValue / poolValue):
     // https://docs.google.com/spreadsheets/d/1ZXGRxunIwe0eYPu7j4QjCwXxe63tNKtpCvRiJnqK0jo/edit#gid=0
 
+    // Exiting 0 tokens doesn't make sense
+    if (_amount == 0) revert ZeroArg();
+
+    // Exit MAX amount of tokens
     if (_amount == type(uint256).max) {
-      _amount = _viewTfPoolTokensStaked();
+      _amount = _viewTfUsdcStaked();
+      // Exiting 0 tokens doesn't make sense
+      if (_amount == 0) revert InvalidState();
     }
 
-    // First unstake tfPool tokens from the farm
-    tfFarm.unstake(tfPool, _amount);
+    // First unstake tfUSDC tokens from the farm
+    tfFarm.unstake(tfUSDC, _amount);
 
-    // Unstake tfPool tokens from the pool, this will send USDC to this contract
-    tfPool.liquidExit(_amount);
+    // Unstake tfUSDC tokens from the pool, this will send USDC to this contract
+    tfUSDC.liquidExit(_amount);
   }
 
   /// @notice Claim TrueFi tokens earned by farming
@@ -142,9 +149,15 @@ contract TrueFiStrategy is BaseStrategy {
   /// @dev TrueFi tokens will be send to caller
   function claimReward() external onlyOwner {
     IERC20[] memory tokens = new IERC20[](1);
-    tokens[0] = tfPool;
+    tokens[0] = tfUSDC;
 
+    // Claim TrueFi tokens for tfUSDC
     tfFarm.claim(tokens);
-    rewardToken.safeTransfer(msg.sender, rewardToken.balanceOf(address(this)));
+
+    // How much TrueFi tokens does this contract hold
+    uint256 rewardBalance = rewardToken.balanceOf(address(this));
+
+    // Send all TrueFi tokens to owner (msg.sender)
+    if (rewardBalance != 0) rewardToken.safeTransfer(msg.sender, rewardBalance);
   }
 }
