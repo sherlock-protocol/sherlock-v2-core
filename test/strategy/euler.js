@@ -138,7 +138,14 @@ describe('Euler', function () {
       await this.splitter.deposit(this.euler.address);
 
       // withdraw
-      await this.splitter.withdrawAll(this.euler.address);
+      this.t0 = await meta(this.euler.withdrawAllByAdmin());
+
+      expect(this.t0.events.length).to.eq(7);
+      expect(this.t0.events[6].event).to.eq('AdminWithdraw');
+      expect(this.t0.events[6].args.amount).to.be.closeTo(
+        parseUnits('100', 6),
+        parseUnits('0.1', 6),
+      );
 
       expect(await this.usdc.balanceOf(this.euler.address)).to.eq(0);
       expect(await this.usdc.balanceOf(this.core.address)).to.be.closeTo(parseUnits('100', 6), 1);
@@ -156,7 +163,31 @@ describe('Euler', function () {
     });
     it('Withdraw', async function () {
       // withdraw
-      await this.splitter.withdrawAll(this.euler.address);
+      this.t0 = await meta(this.euler.withdrawAllByAdmin());
+
+      expect(this.t0.events.length).to.eq(7);
+      expect(this.t0.events[6].event).to.eq('AdminWithdraw');
+      expect(this.t0.events[6].args.amount).to.be.closeTo(
+        parseUnits('108.5', 6),
+        parseUnits('0.1', 6),
+      );
+
+      expect(await this.usdc.balanceOf(this.euler.address)).to.eq(0);
+      expect(await this.usdc.balanceOf(this.core.address)).to.be.closeTo(
+        parseUnits('208.5', 6),
+        parseUnits('0.1', 6),
+      );
+
+      expect(await this.eUSDC.balanceOf(this.euler.address)).to.eq(0);
+      expect(await this.euler.balanceOf()).to.eq(0);
+    });
+    it('Withdraw again', async function () {
+      // withdraw
+      this.t0 = await meta(this.euler.withdrawAllByAdmin());
+
+      expect(this.t0.events.length).to.eq(1);
+      expect(this.t0.events[0].event).to.eq('AdminWithdraw');
+      expect(this.t0.events[0].args.amount).to.eq(0);
 
       expect(await this.usdc.balanceOf(this.euler.address)).to.eq(0);
       expect(await this.usdc.balanceOf(this.core.address)).to.be.closeTo(
@@ -216,6 +247,18 @@ describe('Euler', function () {
         parseUnits('28.5', 6),
         parseUnits('0.1', 6),
       );
+    });
+    it('Withdraw too much', async function () {
+      // withdraw
+      await expect(
+        this.splitter.withdraw(this.euler.address, parseUnits('80', 6)),
+      ).to.be.revertedWith('e/insufficient-balance');
+    });
+    it('Withdraw max', async function () {
+      // withdraw
+      await expect(
+        this.splitter.withdraw(this.euler.address, constants.MaxUint256),
+      ).to.be.revertedWith('InvalidArg()');
     });
   });
 });

@@ -27,38 +27,49 @@ contract EulerStrategy is BaseStrategy {
   // https://github.com/euler-xyz/euler-contracts/blob/master/contracts/modules/EToken.sol
   IEulerEToken public constant EUSDC = IEulerEToken(0xEb91861f8A4e1C12333F42DCE8fB0Ecdc28dA716);
 
-  /// @param _initialParent contract that will be the parent in the tree structure
+  /// @param _initialParent Contract that will be the parent in the tree structure
   constructor(IMaster _initialParent) BaseNode(_initialParent) {
     // Approve Euler max amount of USDC
     want.approve(EULER, type(uint256).max);
   }
 
-  /// @notice signal if strategy is ready to be used
+  /// @notice Signal if strategy is ready to be used
+  /// @return Boolean indicating if strategy is ready
   function setupCompleted() external view override returns (bool) {
     return true;
   }
 
   /// @notice View the current balance of this strategy in USDC
-  /// @dev will return wrong balance if this contract somehow has USDC instead of only eUSDC
+  /// @dev Will return wrong balance if this contract somehow has USDC instead of only eUSDC
+  /// @return Amount of USDC in this strategy
   function balanceOf() public view override returns (uint256) {
     return EUSDC.balanceOfUnderlying(address(this));
   }
 
   /// @notice Deposit all USDC in this contract in Euler
+  /// @notice Works under the assumption this contract contains USDC
   function _deposit() internal override whenNotPaused {
     // Deposit all current balance into euler
     // https://github.com/euler-xyz/euler-contracts/blob/master/contracts/modules/EToken.sol#L148
     EUSDC.deposit(SUB_ACCOUNT, type(uint256).max);
   }
 
-  /// @notice Withdraw all USDC from Euler and send to core
-  function _withdrawAll() internal override returns (uint256) {
-    // Withdraw all underlying using max, this will translate to the full balance
-    // https://github.com/euler-xyz/euler-contracts/blob/master/contracts/BaseLogic.sol#L387
-    EUSDC.withdraw(SUB_ACCOUNT, type(uint256).max);
+  /// @notice Withdraw all USDC from Euler and send all USDC in contract to core
+  /// @return amount Amount of USDC withdrawn
+  function _withdrawAll() internal override returns (uint256 amount) {
+    // If eUSDC.balanceOf(this) != 0, we can start to withdraw the eUSDC
+    if (EUSDC.balanceOf(address(this)) != 0) {
+      // Withdraw all underlying using max, this will translate to the full balance
+      // https://github.com/euler-xyz/euler-contracts/blob/master/contracts/BaseLogic.sol#L387
+      EUSDC.withdraw(SUB_ACCOUNT, type(uint256).max);
+    }
 
+    // Amount of USDC in the contract
+    // This can be >0 even if eUSDC balance = 0
+    // As it could have been transferred to this contract by accident
+    amount = want.balanceOf(address(this));
     // Transfer USDC to core
-    want.safeTransfer(core, want.balanceOf(address(this)));
+    if (amount != 0) want.safeTransfer(core, amount);
   }
 
   /// @notice Withdraw `_amount` USDC from Euler and send to core
