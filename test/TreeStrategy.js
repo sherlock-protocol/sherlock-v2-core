@@ -15,7 +15,7 @@ const { TimeTraveler } = require('./utilities/snapshot');
 
 const maxTokens = parseUnits('100000000000', 6);
 
-describe.only('MasterStrategy', function () {
+describe('MasterStrategy', function () {
   before(async function () {
     timeTraveler = new TimeTraveler(network.provider);
     // deploy master strategy
@@ -321,7 +321,7 @@ describe.only('MasterStrategy', function () {
     });
   });
 });
-describe.only('BaseNode', function () {
+describe('BaseNode', function () {
   before(async function () {
     timeTraveler = new TimeTraveler(network.provider);
     // deploy master strategy
@@ -791,7 +791,7 @@ describe.only('BaseNode', function () {
     });
   });
 });
-describe.only('BaseSplitter', function () {
+describe('BaseSplitter', function () {
   before(async function () {
     timeTraveler = new TimeTraveler(network.provider);
     // deploy master strategy
@@ -1320,7 +1320,7 @@ describe.only('BaseSplitter', function () {
     });
   });
 });
-describe.only('BaseStrategy', function () {
+describe('BaseStrategy', function () {
   before(async function () {
     timeTraveler = new TimeTraveler(network.provider);
     // deploy master strategy
