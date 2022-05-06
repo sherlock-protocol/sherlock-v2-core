@@ -23,32 +23,36 @@ contract CompoundStrategy is BaseStrategy {
 
   // This is the receipt token Compound gives in exchange for a token deposit (cUSDC)
   // https://compound.finance/docs#protocol-math
+  // https://github.com/compound-finance/compound-protocol/blob/master/contracts/CErc20.sol
+  // https://github.com/compound-finance/compound-protocol/blob/master/contracts/CToken.sol
 
   // https://compound.finance/docs#networks
   // CUSDC address
   ICToken public constant CUSDC = ICToken(0x39AA39c021dfbaE8faC545936693aC917d5E7563);
 
+  /// @param _initialParent Contract that will be the parent in the tree structure
   constructor(IMaster _initialParent) BaseNode(_initialParent) {
     // Approve max USDC to cUSDC
     want.approve(address(CUSDC), type(uint256).max);
   }
 
+  /// @notice Signal if strategy is ready to be used
+  /// @return Boolean indicating if strategy is ready
   function setupCompleted() external view override returns (bool) {
     return true;
   }
 
-  /**
-   * @notice Return the contract's want(USDC) balance.
-   * @dev Since balanceOf() is pure, we can't use Compound's balanceOfUnderlying(adress) function
-   * We calculate the exchange rate ourselves instead.
-   */
+  /// @notice View the current balance of this strategy in USDC
+  /// @dev Since balanceOf() is pure, we can't use Compound's balanceOfUnderlying(adress) function
+  /// @dev We calculate the exchange rate ourselves instead using LibCompound
+  /// @dev Will return wrong balance if this contract somehow has USDC instead of only cUSDC
+  /// @return Amount of USDC in this strategy
   function balanceOf() public view override returns (uint256) {
     return LibCompound.viewUnderlyingBalanceOf(CUSDC, address(this));
   }
 
-  /**
-   * @notice Deposit the entire contract's want(USDC) balance into Compound.
-   */
+  /// @notice Deposit all USDC in this contract into Compound
+  /// @notice Works under the assumption this contract contains USDC
   function _deposit() internal override whenNotPaused {
     uint256 amount = want.balanceOf(address(this));
 
@@ -56,23 +60,33 @@ contract CompoundStrategy is BaseStrategy {
     if (CUSDC.mint(amount) != 0) revert InvalidState();
   }
 
-  /**
-   * @notice Withdraw the entire underlying asset balance from Compound.
-   */
+  /// @notice Withdraw all USDC from Compound and send all USDC in contract to core
+  /// @return amount Amount of USDC withdrawn
   function _withdrawAll() internal override returns (uint256 amount) {
     uint256 cUSDCAmount = CUSDC.balanceOf(address(this));
-    if (CUSDC.redeem(cUSDCAmount) != 0) revert InvalidState();
 
+    // If cUSDC.balanceOf(this) != 0, we can start to withdraw the eUSDC
+    if (cUSDCAmount != 0) {
+      // Revert if redeem function returns error code
+      if (CUSDC.redeem(cUSDCAmount) != 0) revert InvalidState();
+    }
+
+    // Amount of USDC in the contract
+    // This can be >0 even if cUSDC balance = 0
+    // As it could have been transferred to this contract by accident
     amount = want.balanceOf(address(this));
-    want.safeTransfer(core, amount);
+
+    // Transfer USDC to core
+    if (amount != 0) want.safeTransfer(core, amount);
   }
 
-  /**
-   * @notice Withdraw a specific underlying asset amount from Compound.
-   */
-  function _withdraw(uint256 amount) internal override {
-    if (CUSDC.redeemUnderlying(amount) != 0) revert InvalidState();
+  /// @notice Withdraw `_amount` USDC from Compound and send to core
+  /// @param _amount Amount of USDC to withdraw
+  function _withdraw(uint256 _amount) internal override {
+    // Revert if redeem function returns error code
+    if (CUSDC.redeemUnderlying(_amount) != 0) revert InvalidState();
 
-    want.safeTransfer(core, amount);
+    // Transfer USDC to core
+    want.safeTransfer(core, _amount);
   }
 }
