@@ -10,7 +10,7 @@
     "chai": "^4.3.4",
     "ethereum-waffle": "^3.4.0",
     "ethers": "^5.5.1",
-    "hardhat": "^2.6.8",
+    "hardhat": "^2.9.3",
     "hardhat-contract-sizer": "^2.1.1"
   },
   "prettier": {
@@ -26,6 +26,7 @@
     "@nomiclabs/hardhat-etherscan": "^3.0.1",
     "@openzeppelin/contracts": "^4.4.2",
     "dotenv": "^8.2.0",
+    "@rari-capital/solmate": "https://github.com/Rari-Capital/solmate#e802bcf2fb24dda2bf7e513bea86d15c48b57486",
     "hardhat-gas-reporter": "^1.0.4",
     "prettier-plugin-solidity": "^1.0.0-beta.18",
     "solidity-coverage": "^0.7.17"
