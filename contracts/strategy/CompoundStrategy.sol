@@ -71,8 +71,6 @@ contract CompoundStrategy is BaseStrategy {
    * @notice Withdraw a specific underlying asset amount from Compound.
    */
   function _withdraw(uint256 amount) internal override {
-    if (amount == 0) revert ZeroArg();
-
     if (CUSDC.redeemUnderlying(amount) != 0) revert InvalidState();
 
     want.safeTransfer(core, amount);
