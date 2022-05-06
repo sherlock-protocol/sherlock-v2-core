@@ -33,7 +33,7 @@ describe('Compound', function () {
 
     await timeTraveler.request({
       method: 'hardhat_impersonateAccount',
-      params: [usdcWhaleAddress]
+      params: [usdcWhaleAddress],
     });
 
     await prepare(this, ['TreeSplitterMockTest', 'CompoundStrategy']);
@@ -62,28 +62,23 @@ describe('Compound', function () {
 
     await timeTraveler.snapshot();
   });
-
   describe('setupCompleted()', async function () {
     before(async function () {
       await timeTraveler.revertSnapshot();
     });
-
     it('Default', async function () {
       expect(await this.compound.setupCompleted()).to.eq(true);
     });
   });
-
   describe('deposit()', async function () {
     before(async function () {
       timeTraveler.revertSnapshot();
     });
-
     it('Initial state', async function () {
       expect(await this.usdc.balanceOf(this.compound.address)).to.eq(0);
       expect(await this.cUSDC.balanceOf(this.compound.address)).to.eq(0);
       expect(await this.compound.balanceOf()).to.eq(0);
     });
-
     it('Empty deposit', async function () {
       await this.splitter.deposit(this.compound.address);
 
@@ -91,8 +86,7 @@ describe('Compound', function () {
       expect(await this.cUSDC.balanceOf(this.compound.address)).to.eq(0);
       expect(await this.compound.balanceOf()).to.eq(0);
     });
-
-    it('100 USDC deposit', async function() {
+    it('100 USDC deposit', async function () {
       await this.mintUSDC(this.compound.address, parseUnits('100', 6));
 
       await this.splitter.deposit(this.compound.address);
@@ -100,25 +94,35 @@ describe('Compound', function () {
       expect(await this.usdc.balanceOf(this.compound.address)).to.be.eq(0);
       expect(await this.compound.balanceOf()).to.be.closeTo(parseUnits('100', 6), 1);
     });
-
     it('Year later', async function () {
       await timeTraveler.hardhatMine(YEAR_IN_BLOCKS);
 
       // Advancing blocks isn't enough to make the exchage rate vary,
-      // we also need to make some deposits/borrows.
-      await this.makeDeposit(this.alice, parseUnits('1000000000', 6));
-      await this.makeDeposit(this.bob, parseUnits('5000000', 6));
+      // we also need to 'ping the system'
+      await this.makeDeposit(this.alice, parseUnits('1', 6));
 
       // ~2.7%  APY
-      expect(await this.compound.balanceOf()).to.be.closeTo(parseUnits('102.7', 6), parseUnits('0.1', 6));
-    })
-  });
+      expect(await this.compound.balanceOf()).to.be.closeTo(
+        parseUnits('102.7', 6),
+        parseUnits('0.1', 6),
+      );
+    });
+    it('100 USDC deposit', async function () {
+      await this.mintUSDC(this.compound.address, parseUnits('100', 6));
 
-  describe('withdrawAll()', async function() {
+      await this.splitter.deposit(this.compound.address);
+
+      expect(await this.usdc.balanceOf(this.compound.address)).to.be.eq(0);
+      expect(await this.compound.balanceOf()).to.be.closeTo(
+        parseUnits('202.7', 6),
+        parseUnits('0.1', 6),
+      );
+    });
+  });
+  describe('withdrawAll()', async function () {
     before(async function () {
       await timeTraveler.revertSnapshot();
     });
-
     it('Initial state', async function () {
       expect(await this.usdc.balanceOf(this.compound.address)).to.eq(0);
       expect(await this.usdc.balanceOf(this.core.address)).to.eq(0);
@@ -126,14 +130,20 @@ describe('Compound', function () {
       expect(await this.cUSDC.balanceOf(this.compound.address)).to.eq(0);
       expect(await this.compound.balanceOf()).to.eq(0);
     });
-
     it('100 USDC deposit + withdraw', async function () {
       // deposit
       await this.mintUSDC(this.compound.address, parseUnits('100', 6));
       await this.splitter.deposit(this.compound.address);
 
       // withdraw
-      await this.splitter.withdrawAll(this.compound.address);
+      this.t0 = await meta(this.compound.withdrawAllByAdmin());
+
+      expect(this.t0.events.length).to.eq(7);
+      expect(this.t0.events[6].event).to.eq('AdminWithdraw');
+      expect(this.t0.events[6].args.amount).to.be.closeTo(
+        parseUnits('100', 6),
+        parseUnits('0.1', 6),
+      );
 
       expect(await this.usdc.balanceOf(this.compound.address)).to.eq(0);
       expect(await this.usdc.balanceOf(this.core.address)).to.be.closeTo(parseUnits('100', 6), 1);
@@ -141,17 +151,22 @@ describe('Compound', function () {
       expect(await this.cUSDC.balanceOf(this.compound.address)).to.eq(0);
       expect(await this.compound.balanceOf()).to.eq(0);
     });
-
     it('100 USDC deposit + 1y + withdraw', async function () {
       // deposit
       await this.mintUSDC(this.compound.address, parseUnits('100', 6));
       await this.splitter.deposit(this.compound.address);
 
       await timeTraveler.hardhatMine(YEAR_IN_BLOCKS);
-      await this.makeDeposit(this.alice, parseUnits('1000000000', 6));
-      await this.makeDeposit(this.bob, parseUnits('5000000', 6));
+      await this.makeDeposit(this.alice, parseUnits('1', 6));
 
-      await this.splitter.withdrawAll(this.compound.address);
+      this.t0 = await meta(this.compound.withdrawAllByAdmin());
+
+      expect(this.t0.events.length).to.eq(7);
+      expect(this.t0.events[6].event).to.eq('AdminWithdraw');
+      expect(this.t0.events[6].args.amount).to.be.closeTo(
+        parseUnits('102.7', 6),
+        parseUnits('0.1', 6),
+      );
 
       expect(await this.usdc.balanceOf(this.compound.address)).to.eq(0);
       expect(await this.usdc.balanceOf(this.core.address)).to.be.closeTo(
@@ -162,13 +177,18 @@ describe('Compound', function () {
       expect(await this.cUSDC.balanceOf(this.compound.address)).to.eq(0);
       expect(await this.compound.balanceOf()).to.eq(0);
     });
-  });
+    it('Withdraw again', async function () {
+      this.t0 = await meta(this.compound.withdrawAllByAdmin());
 
-  describe('withdraw()', async function() {
+      expect(this.t0.events.length).to.eq(1);
+      expect(this.t0.events[0].event).to.eq('AdminWithdraw');
+      expect(this.t0.events[0].args.amount).to.eq(0);
+    });
+  });
+  describe('withdraw()', async function () {
     before(async function () {
       await timeTraveler.revertSnapshot();
     });
-
     it('Initial state', async function () {
       expect(await this.usdc.balanceOf(this.compound.address)).to.eq(0);
       expect(await this.usdc.balanceOf(this.core.address)).to.eq(0);
@@ -176,13 +196,11 @@ describe('Compound', function () {
       expect(await this.cUSDC.balanceOf(this.compound.address)).to.eq(0);
       expect(await this.compound.balanceOf()).to.eq(0);
     });
-
     it('Invalid arg', async function () {
-      await expect(
-        this.splitter.withdraw(this.compound.address, 0),
-      ).to.be.revertedWith('ZeroArg()');
+      await expect(this.splitter.withdraw(this.compound.address, 0)).to.be.revertedWith(
+        'ZeroArg()',
+      );
     });
-
     it('100 USDC deposit + 20 USDC withdraw', async function () {
       // deposit
       await this.mintUSDC(this.compound.address, parseUnits('100', 6));
@@ -196,7 +214,6 @@ describe('Compound', function () {
 
       expect(await this.compound.balanceOf()).to.be.closeTo(parseUnits('80', 6), 1);
     });
-
     it('20 USDC deposit + 1y', async function () {
       // deposit
       await this.mintUSDC(this.compound.address, parseUnits('20', 6));
@@ -204,10 +221,8 @@ describe('Compound', function () {
 
       await timeTraveler.hardhatMine(YEAR_IN_BLOCKS);
 
-      await this.makeDeposit(this.alice, parseUnits('1000000000', 6));
-      await this.makeDeposit(this.bob, parseUnits('5000000', 6));
+      await this.makeDeposit(this.alice, parseUnits('1', 6));
     });
-
     it('Withdraw 80 USDC', async function () {
       // withdraw
       await this.splitter.withdraw(this.compound.address, parseUnits('80', 6));
@@ -219,6 +234,18 @@ describe('Compound', function () {
         parseUnits('22.7', 6),
         parseUnits('0.1', 6),
       );
+    });
+    it('Withdraw too much', async function () {
+      // withdraw
+      await expect(
+        this.splitter.withdraw(this.compound.address, parseUnits('80', 6)),
+      ).to.be.revertedWith('InvalidState()');
+    });
+    it('Withdraw max', async function () {
+      // withdraw
+      await expect(
+        this.splitter.withdraw(this.compound.address, constants.MaxUint256),
+      ).to.be.revertedWith('InvalidState()');
     });
   });
 });
