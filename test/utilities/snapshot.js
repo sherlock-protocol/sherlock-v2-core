@@ -23,6 +23,10 @@ class TimeTraveler {
     }
   }
 
+  async hardhatMine(amount) {
+    await this.ethereum.send('hardhat_mine', [`0x${amount.toString(16)}`])
+  }
+
   async increaseTime(amount) {
     await this.ethereum.send('evm_increaseTime', [amount]);
   }
