@@ -289,7 +289,7 @@ describe('Aave', function () {
       ).to.be.revertedWith('InvalidArg()');
     });
   });
-  describe('claimRewards()', function () {
+  describe('claimReward()', function () {
     before(async function () {
       await timeTraveler.revertSnapshot();
     });
@@ -308,7 +308,7 @@ describe('Aave', function () {
       expect(await this.stkAAVE.balanceOf(this.bob.address)).to.eq(0);
     });
     it('t=2, do', async function () {
-      await this.aave.claimRewards();
+      await this.aave.claimReward();
 
       expect(
         await this.incentives.getRewardsBalance([this.aUSDC.address], this.aave.address),
@@ -320,7 +320,7 @@ describe('Aave', function () {
       );
     });
     it('t=3, do again', async function () {
-      await this.aave.claimRewards();
+      await this.aave.claimReward();
 
       expect(
         await this.incentives.getRewardsBalance([this.aUSDC.address], this.aave.address),
