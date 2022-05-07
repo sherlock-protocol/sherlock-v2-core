@@ -29,7 +29,7 @@ const day45 = 60 * 60 * 24 * 45;
 const day10 = 60 * 60 * 24 * 10;
 const day2 = 60 * 60 * 24 * 2;
 
-describe.only('TrueFi', function () {
+describe('TrueFi', function () {
   before(async function () {
     timeTraveler = new TimeTraveler(network.provider);
     await timeTraveler.fork(BLOCK);
@@ -358,11 +358,26 @@ describe.only('TrueFi', function () {
     });
     it('withdrawAll', async function () {
       // withdraw
-      await this.splitter.withdrawAll(this.truefi.address);
+      this.t0 = await meta(this.truefi.withdrawAllByAdmin());
+
+      expect(this.t0.events.length).to.eq(2);
+      expect(this.t0.events[1].event).to.eq('AdminWithdraw');
+      expect(this.t0.events[1].args.amount).to.be.closeTo(
+        parseUnits('100', 6),
+        parseUnits('0.1', 6),
+      );
     });
     it('State', async function () {
       expect(await this.usdc.balanceOf(this.truefi.address)).to.eq(0);
       expect(await this.usdc.balanceOf(this.core.address)).to.eq(parseUnits('100', 6));
+    });
+    it('withdrawAll again', async function () {
+      // withdraw
+      this.t0 = await meta(this.truefi.withdrawAllByAdmin());
+
+      expect(this.t0.events.length).to.eq(1);
+      expect(this.t0.events[0].event).to.eq('AdminWithdraw');
+      expect(this.t0.events[0].args.amount).to.eq(0);
     });
   });
   describe('withdraw()', async function () {
@@ -389,6 +404,18 @@ describe.only('TrueFi', function () {
 
       expect(await this.usdc.balanceOf(this.truefi.address)).to.eq(parseUnits('60', 6));
       expect(await this.usdc.balanceOf(this.core.address)).to.eq(parseUnits('40', 6));
+    });
+    it('Withdraw too much', async function () {
+      // withdraw
+      await expect(
+        this.splitter.withdraw(this.truefi.address, parseUnits('80', 6)),
+      ).to.be.revertedWith('ERC20: transfer amount exceeds balance');
+    });
+    it('Withdraw max', async function () {
+      // withdraw
+      await expect(
+        this.splitter.withdraw(this.truefi.address, constants.MaxUint256),
+      ).to.be.revertedWith('ERC20: transfer amount exceeds balance');
     });
   });
 });
