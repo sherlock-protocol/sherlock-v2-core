@@ -9,6 +9,7 @@ pragma solidity 0.8.10;
 
 import './base/BaseStrategy.sol';
 import '../interfaces/compound/ICToken.sol';
+import '../interfaces/compound/IComptroller.sol';
 import { FixedPointMathLib } from '@rari-capital/solmate/src/utils/FixedPointMathLib.sol';
 import { LibCompound } from './compound/LibCompound.sol';
 
@@ -29,6 +30,9 @@ contract CompoundStrategy is BaseStrategy {
   // https://compound.finance/docs#networks
   // CUSDC address
   ICToken public constant CUSDC = ICToken(0x39AA39c021dfbaE8faC545936693aC917d5E7563);
+  IComptroller public constant COMPTROLLER =
+    IComptroller(0x3d9819210A31b4961b30EF54bE2aeD79B9c9Cd3B);
+  IERC20 internal constant COMP = IERC20(0xc00e94Cb662C3520282E6f5717214004A7f26888);
 
   /// @param _initialParent Contract that will be the parent in the tree structure
   constructor(IMaster _initialParent) BaseNode(_initialParent) {
@@ -88,5 +92,28 @@ contract CompoundStrategy is BaseStrategy {
 
     // Transfer USDC to core
     want.safeTransfer(core, _amount);
+  }
+
+  /// @notice Claim COMP tokens earned by supplying
+  /// @dev Can only be called by owner
+  /// @dev COMP tokens will be send to caller
+  function claimReward() external onlyOwner {
+    // Claim COMP for address(this)
+    address[] memory holders = new address[](1);
+    holders[0] = address(this);
+
+    // Claim COMP for CUSDC
+    ICToken[] memory tokens = new ICToken[](1);
+    tokens[0] = CUSDC;
+
+    // Claim COMP tokens for CUSDC
+    // https://github.com/compound-finance/compound-protocol/blob/master/contracts/Comptroller.sol#L1341
+    COMPTROLLER.claimComp(holders, tokens, false, true);
+
+    // How much COMP tokens does this contract hold
+    uint256 rewardBalance = COMP.balanceOf(address(this));
+
+    // Send all COMP tokens to owner (msg.sender)
+    if (rewardBalance != 0) COMP.safeTransfer(msg.sender, rewardBalance);
   }
 }

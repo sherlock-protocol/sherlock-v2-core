@@ -19,6 +19,8 @@ const { deployMockContract } = require('ethereum-waffle');
 const usdcWhaleAddress = '0xE78388b4CE79068e89Bf8aA7f218eF6b9AB0e9d0';
 const USDC = '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48';
 const cUSDC = '0x39aa39c021dfbae8fac545936693ac917d5e7563';
+const COMP = '0xc00e94Cb662C3520282E6f5717214004A7f26888';
+const COMPTROLLER = '0x3d9819210A31b4961b30EF54bE2aeD79B9c9Cd3B';
 
 const BLOCK = 13699000;
 const TIMESTAMP = 1638052444;
@@ -41,6 +43,8 @@ describe('Compound', function () {
     this.core = this.carol;
     this.usdc = await ethers.getContractAt('ERC20', USDC);
     this.cUSDC = await ethers.getContractAt('ICToken', cUSDC);
+    this.COMP = await ethers.getContractAt('ERC20', COMP);
+    this.COMPTROLLER = await ethers.getContractAt('IComptroller', COMPTROLLER);
 
     await deploy(this, [['splitter', this.TreeSplitterMockTest, []]]);
 
@@ -246,6 +250,39 @@ describe('Compound', function () {
       await expect(
         this.splitter.withdraw(this.compound.address, constants.MaxUint256),
       ).to.be.revertedWith('InvalidState()');
+    });
+  });
+  describe('claimReward()', async function () {
+    before(async function () {
+      await timeTraveler.revertSnapshot();
+      // mint 1m USDC
+      await this.mintUSDC(this.compound.address, parseUnits('1000000', 6));
+    });
+    it('Initial state', async function () {
+      expect(await this.COMP.balanceOf(this.compound.address)).to.eq(0);
+      expect(await this.COMP.balanceOf(this.alice.address)).to.eq(0);
+    });
+    it('Claim', async function () {
+      await this.splitter.deposit(this.compound.address);
+      await timeTraveler.hardhatMine(YEAR_IN_BLOCKS);
+
+      await this.compound.claimReward();
+
+      expect(await this.COMP.balanceOf(this.compound.address)).to.eq(0);
+      // = 3800$ = 0.38% APY
+      expect(await this.COMP.balanceOf(this.alice.address)).to.be.closeTo(
+        parseUnits('38.8', 18),
+        parseUnits('0.1', 18),
+      );
+    });
+    it('Claim again', async function () {
+      await this.compound.claimReward();
+
+      expect(await this.COMP.balanceOf(this.compound.address)).to.eq(0);
+      expect(await this.COMP.balanceOf(this.alice.address)).to.be.closeTo(
+        parseUnits('38.8', 18),
+        parseUnits('0.1', 18),
+      );
     });
   });
 });
