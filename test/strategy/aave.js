@@ -35,16 +35,6 @@ const stkAAVE = '0x4da27a545c0c5b758a6ba100e3a049001de870f5';
 describe('Aave', function () {
   before(async function () {
     timeTraveler = new TimeTraveler(network.provider);
-    await timeTraveler.fork(13671132);
-
-    await prepare(this, ['AaveV2Strategy', 'Sherlock']);
-
-    await timeTraveler.request({
-      method: 'hardhat_impersonateAccount',
-      params: [usdcWhaleAddress],
-    });
-
-    timeTraveler = new TimeTraveler(network.provider);
     await timeTraveler.fork(BLOCK);
 
     await timeTraveler.request({
@@ -97,6 +87,11 @@ describe('Aave', function () {
     expect(await this.aave.LP_ADDRESS_PROVIDER()).to.eq(LP_ADDRESS_PROVIDER);
 
     expect(await this.usdc.allowance(this.aave.address, LP)).to.eq(0);
+  });
+  it('Allowance error test', async function () {
+    await prepare(this, ['AllowanceErrorTest']);
+
+    await expect(this.AllowanceErrorTest.deploy(this.usdc.address)).to.be.reverted;
   });
   describe('deposit()', async function () {
     before(async function () {
