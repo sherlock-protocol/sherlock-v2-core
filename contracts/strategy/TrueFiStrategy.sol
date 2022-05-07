@@ -52,6 +52,7 @@ If we call `liquidExit()` with 10 USDC, 0% will be liquid and the exit fee jumps
 // All tfUSDC will be staked in the farm at any time (except runtime of a transaction)
 contract TrueFiStrategy is BaseStrategy {
   using SafeERC20 for IERC20;
+  using SafeERC20 for ITrueFiPool2;
 
   // Value copied from https://github.com/trusttoken/contracts-pre22/blob/main/contracts/truefi2/TrueFiPool2.sol#L487
   uint256 private constant BASIS_PRECISION = 10000;
@@ -67,9 +68,9 @@ contract TrueFiStrategy is BaseStrategy {
   /// @param _initialParent Contract that will be the parent in the tree structure
   constructor(IMaster _initialParent) BaseNode(_initialParent) {
     // Approve tfUSDC max amount of USDC
-    want.approve(address(tfUSDC), type(uint256).max);
+    want.safeIncreaseAllowance(address(tfUSDC), type(uint256).max);
     // Approve tfFarm max amount of tfUSDC
-    tfUSDC.approve(address(tfFarm), type(uint256).max);
+    tfUSDC.safeIncreaseAllowance(address(tfFarm), type(uint256).max);
   }
 
   /// @notice Signal if strategy is ready to be used

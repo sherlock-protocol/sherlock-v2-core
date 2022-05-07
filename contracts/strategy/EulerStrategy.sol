@@ -30,7 +30,7 @@ contract EulerStrategy is BaseStrategy {
   /// @param _initialParent Contract that will be the parent in the tree structure
   constructor(IMaster _initialParent) BaseNode(_initialParent) {
     // Approve Euler max amount of USDC
-    want.approve(EULER, type(uint256).max);
+    want.safeIncreaseAllowance(EULER, type(uint256).max);
   }
 
   /// @notice Signal if strategy is ready to be used

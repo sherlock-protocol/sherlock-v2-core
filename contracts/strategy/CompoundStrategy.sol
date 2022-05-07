@@ -33,7 +33,7 @@ contract CompoundStrategy is BaseStrategy {
   /// @param _initialParent Contract that will be the parent in the tree structure
   constructor(IMaster _initialParent) BaseNode(_initialParent) {
     // Approve max USDC to cUSDC
-    want.approve(address(CUSDC), type(uint256).max);
+    want.safeIncreaseAllowance(address(CUSDC), type(uint256).max);
   }
 
   /// @notice Signal if strategy is ready to be used
