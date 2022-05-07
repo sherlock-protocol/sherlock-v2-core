@@ -58,23 +58,29 @@ contract TrueFiStrategy is BaseStrategy {
 
   // the tfUSDC pool
   ITrueFiPool2 public constant tfUSDC = ITrueFiPool2(0xA991356d261fbaF194463aF6DF8f0464F8f1c742);
+  // TrueFi farm, used to stake tfUSDC and earn TrueFi tokens
   ITrueMultiFarm public constant tfFarm =
     ITrueMultiFarm(0xec6c3FD795D6e6f202825Ddb56E01b3c128b0b10);
+  // The TrueFi token
   IERC20 public constant rewardToken = IERC20(0x4C19596f5aAfF459fA38B0f7eD92F11AE6543784);
 
-  /// @param _initialParent contract that will be the parent in the tree structure
+  /// @param _initialParent Contract that will be the parent in the tree structure
   constructor(IMaster _initialParent) BaseNode(_initialParent) {
+    // Approve tfUSDC max amount of USDC
     want.approve(address(tfUSDC), type(uint256).max);
+    // Approve tfFarm max amount of tfUSDC
     tfUSDC.approve(address(tfFarm), type(uint256).max);
   }
 
-  /// @notice signal if strategy is ready to be used
+  /// @notice Signal if strategy is ready to be used
+  /// @return Boolean indicating if strategy is ready
   function setupCompleted() external view override returns (bool) {
     return true;
   }
 
   /// @notice Deposit all USDC in this contract in TrueFi
-  /// @notice joining fee may apply, this will lower the balance of the system on deposit
+  /// @notice Joining fee may apply, this will lower the balance of the system on deposit
+  /// @notice Works under the assumption this contract contains USDC
   function _deposit() internal override whenNotPaused {
     // https://github.com/trusttoken/contracts-pre22/blob/main/contracts/truefi2/TrueFiPool2.sol#L469
     tfUSDC.join(want.balanceOf(address(this)));
@@ -87,26 +93,33 @@ contract TrueFiStrategy is BaseStrategy {
   }
 
   /// @notice Send all USDC in this contract to core
-  /// @notice Funds need to be withdrawn first
-  function _withdrawAll() internal override returns (uint256) {
-    // Send USDC to core
-    want.safeTransfer(core, want.balanceOf(address(this)));
+  /// @notice Funds need to be withdrawn using `liquidExit()` first
+  /// @return amount Amount of USDC withdrawn
+  function _withdrawAll() internal override returns (uint256 amount) {
+    // Amount of USDC in the contract
+    amount = want.balanceOf(address(this));
+    // Transfer USDC to core
+    if (amount != 0) want.safeTransfer(core, amount);
   }
 
   /// @notice Send `_amount` USDC in this contract to core
-  /// @notice Funds need to be withdrawn first
+  /// @notice Funds need to be withdrawn using `liquidExit()` first
   /// @param _amount Amount of USDC to withdraw
   function _withdraw(uint256 _amount) internal override {
-    // Send USDC to core
+    // Transfer USDC to core
     want.safeTransfer(core, _amount);
   }
 
+  /// @notice View how much tfUSDC is staked in the farm
+  /// @return Amount of tfUSDC staked
   function _viewTfUsdcStaked() private view returns (uint256) {
-    // Using tfUSDC staked in the tfFarm
+    // Amount of tfUSDC staked in the tfFarm
     return tfFarm.staked(tfUSDC, address(this));
   }
 
-  /// @notice return USDC in this contract + USDC in TrueFi
+  /// @notice View USDC in this contract + USDC in TrueFi
+  /// @notice Takes into account exit penalty for liquidating full tfUSDC balance
+  /// @return Amount of USDC in this strategy
   function balanceOf() external view override returns (uint256) {
     // https://docs.truefi.io/faq/main-lending-pools/developer-guide/truefipool2-contract#calculating-lending-pool-token-prices
 
@@ -121,7 +134,11 @@ contract TrueFiStrategy is BaseStrategy {
   }
 
   /// @notice Exit `_amount` of tfUSDC (pool LP tokens)
-  /// @notice Up to 10% exit fee may apply, this will lower the balance of the system
+  /// @notice Up to 10% exit fee may apply.
+  /// @notice There are two situations in which the pool will not let you withdraw via Liquid Exit:
+  /// @notice 1) If there is no liquid asset in the lending pool and no liquid exit is deployed in Curve.
+  /// @notice 2) If the pool needs to liquidate its position in Curve and will incur a loss of more than 10 basis points.
+  /// @dev Can only be called by owner
   function liquidExit(uint256 _amount) external onlyOwner {
     // https://github.com/trusttoken/contracts-pre22/blob/main/contracts/truefi2/TrueFiPool2.sol#L487
     // here's a spreadsheet that shows the exit penalty at different liquidRatio levels ( = liquidValue / poolValue):
