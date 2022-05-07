@@ -15,7 +15,8 @@ const { constants, BigNumber } = require('ethers');
 const { TimeTraveler } = require('../utilities/snapshot');
 const { id, formatBytes32String, keccak256 } = require('ethers/lib/utils');
 
-const mapleMaven11 = '0x6f6c8013f639979c84b756c7fc1500eb5af18dc4';
+const mapleMaven11Rewards = '0x7C57bF654Bc16B0C9080F4F75FF62876f50B8259';
+const mapleMaven11 = '0x6F6c8013f639979C84b756C7FC1500eB5aF18Dc4';
 const usdcWhaleAddress = '0xe78388b4ce79068e89bf8aa7f218ef6b9ab0e9d0';
 const USDC = '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48';
 
@@ -42,6 +43,7 @@ describe.only('Maple', function () {
     this.core = this.carol;
     this.usdc = await ethers.getContractAt('ERC20', USDC);
     this.mapleMaven11 = await ethers.getContractAt('IPool', mapleMaven11);
+    this.mapleMaven11Rewards = await ethers.getContractAt('IMplRewards', mapleMaven11Rewards);
 
     await deploy(this, [['splitter', this.TreeSplitterMockTest, []]]);
 
@@ -49,7 +51,7 @@ describe.only('Maple', function () {
     await this.splitter.setWant(this.usdc.address);
 
     await deploy(this, [
-      ['maple', this.MapleStrategy, [this.splitter.address, this.mapleMaven11.address]],
+      ['maple', this.MapleStrategy, [this.splitter.address, this.mapleMaven11Rewards.address]],
     ]);
 
     this.mintUSDC = async (target, amount) => {
@@ -67,6 +69,8 @@ describe.only('Maple', function () {
       expect(await this.maple.setupCompleted()).to.eq(true);
       expect(await this.maple.maturityTime()).to.eq(0);
       expect(await this.maple.balanceOf()).to.eq(0);
+      expect(await this.maple.maplePool()).to.eq(mapleMaven11);
+      expect(await this.maple.mapleRewards()).to.eq(mapleMaven11Rewards);
     });
   });
   describe('deposit()', async function () {
