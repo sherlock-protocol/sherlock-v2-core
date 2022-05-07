@@ -248,10 +248,15 @@ describe.only('Maple', function () {
         this.maple.connect(this.bob).withdrawFromMaple(parseUnits('100', 6)),
       ).to.be.revertedWith('Ownable: caller is not the owner');
     });
-    it('Do fail', async function () {
-      await expect(this.maple.withdrawFromMaple(parseUnits('100', 6))).to.be.reverted;
+    it('Do zero', async function () {
+      await expect(this.maple.withdrawFromMaple(0)).to.be.revertedWith('ZeroArg()');
     });
-    it('Deposit, start cooldown, and withdraw', async function () {
+    it('Do MAX with current balance = 0', async function () {
+      await expect(this.maple.withdrawFromMaple(constants.MaxUint256)).to.be.revertedWith(
+        'InvalidState()',
+      );
+    });
+    it('Deposit, start cooldown', async function () {
       await this.mintUSDC(this.maple.address, parseUnits('100', 6));
       this.t0 = await meta(this.splitter.deposit(this.maple.address));
 
@@ -261,7 +266,13 @@ describe.only('Maple', function () {
 
       // skip 10 days (total of 90 days since deposit)
       await timeTraveler.setNextBlockTimestamp(Number(this.t0.time) + day90);
-
+    });
+    it('Do exceed balance', async function () {
+      await expect(this.maple.withdrawFromMaple(parseUnits('1000', 6))).to.be.revertedWith(
+        'SafeMath: subtraction overflow',
+      );
+    });
+    it('Do withdraw', async function () {
       // do withdraw
       await this.maple.withdrawFromMaple(parseUnits('100', 6));
 
@@ -316,11 +327,26 @@ describe.only('Maple', function () {
     });
     it('withdrawAll', async function () {
       // withdraw
-      await this.splitter.withdrawAll(this.maple.address);
+      this.t0 = await meta(this.maple.withdrawAllByAdmin());
+
+      expect(this.t0.events.length).to.eq(2);
+      expect(this.t0.events[1].event).to.eq('AdminWithdraw');
+      expect(this.t0.events[1].args.amount).to.be.closeTo(
+        parseUnits('100', 6),
+        parseUnits('0.1', 6),
+      );
     });
     it('State', async function () {
       expect(await this.usdc.balanceOf(this.maple.address)).to.eq(0);
       expect(await this.usdc.balanceOf(this.core.address)).to.eq(parseUnits('100', 6));
+    });
+    it('withdrawAll again', async function () {
+      // withdraw
+      this.t0 = await meta(this.maple.withdrawAllByAdmin());
+
+      expect(this.t0.events.length).to.eq(1);
+      expect(this.t0.events[0].event).to.eq('AdminWithdraw');
+      expect(this.t0.events[0].args.amount).to.eq(0);
     });
   });
   describe('withdraw()', async function () {
@@ -347,6 +373,18 @@ describe.only('Maple', function () {
 
       expect(await this.usdc.balanceOf(this.maple.address)).to.eq(parseUnits('60', 6));
       expect(await this.usdc.balanceOf(this.core.address)).to.eq(parseUnits('40', 6));
+    });
+    it('Withdraw too much', async function () {
+      // withdraw
+      await expect(
+        this.splitter.withdraw(this.maple.address, parseUnits('80', 6)),
+      ).to.be.revertedWith('ERC20: transfer amount exceeds balance');
+    });
+    it('Withdraw max', async function () {
+      // withdraw
+      await expect(
+        this.splitter.withdraw(this.maple.address, constants.MaxUint256),
+      ).to.be.revertedWith('ERC20: transfer amount exceeds balance');
     });
   });
 });
