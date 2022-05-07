@@ -17,12 +17,18 @@ const { id, formatBytes32String, keccak256 } = require('ethers/lib/utils');
 
 const mapleMaven11Rewards = '0x7C57bF654Bc16B0C9080F4F75FF62876f50B8259';
 const mapleMaven11 = '0x6F6c8013f639979C84b756C7FC1500eB5aF18Dc4';
+
+const mapleOrthoRewards = '0x7869D7a3B074b5fa484dc04798E254c9C06A5e90';
+const mapleOrtho = '0xFeBd6F15Df3B73DC4307B1d7E65D46413e710C27';
+
 const usdcWhaleAddress = '0xe78388b4ce79068e89bf8aa7f218ef6b9ab0e9d0';
 const USDC = '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48';
+const mapleToken = '0x33349b282065b0284d756f0577fb39c158f935e6';
 
 const BLOCK = 14699000;
 const TIMESTAMP = 1651503884;
 const YEAR = 60 * 60 * 24 * 365;
+const hundredOfAYEAR = (60 * 60 * 24 * 365) / 100;
 const day90 = 60 * 60 * 24 * 90;
 const day45 = 60 * 60 * 24 * 45;
 const day10 = 60 * 60 * 24 * 10;
@@ -43,7 +49,10 @@ describe.only('Maple', function () {
     this.core = this.carol;
     this.usdc = await ethers.getContractAt('ERC20', USDC);
     this.mapleMaven11 = await ethers.getContractAt('IPool', mapleMaven11);
+    this.mapleOrtho = await ethers.getContractAt('IPool', mapleOrtho);
     this.mapleMaven11Rewards = await ethers.getContractAt('IMplRewards', mapleMaven11Rewards);
+    this.mapleOrthoRewards = await ethers.getContractAt('IMplRewards', mapleOrthoRewards);
+    this.mapleToken = await ethers.getContractAt('ERC20', mapleToken);
 
     await deploy(this, [['splitter', this.TreeSplitterMockTest, []]]);
 
@@ -52,6 +61,10 @@ describe.only('Maple', function () {
 
     await deploy(this, [
       ['maple', this.MapleStrategy, [this.splitter.address, this.mapleMaven11Rewards.address]],
+    ]);
+
+    await deploy(this, [
+      ['maple2', this.MapleStrategy, [this.splitter.address, this.mapleOrthoRewards.address]],
     ]);
 
     this.mintUSDC = async (target, amount) => {
@@ -81,6 +94,7 @@ describe.only('Maple', function () {
       expect(await this.usdc.balanceOf(this.maple.address)).to.eq(0);
       expect(await this.mapleMaven11.balanceOf(this.maple.address)).to.eq(0);
       expect(await this.maple.balanceOf()).to.eq(0);
+      expect(await this.mapleMaven11Rewards.balanceOf(this.maple.address)).to.eq(0);
     });
     it('Empty deposit', async function () {
       await this.splitter.deposit(this.maple.address);
@@ -88,6 +102,7 @@ describe.only('Maple', function () {
       expect(await this.usdc.balanceOf(this.maple.address)).to.eq(0);
       expect(await this.mapleMaven11.balanceOf(this.maple.address)).to.eq(0);
       expect(await this.maple.balanceOf()).to.eq(0);
+      expect(await this.mapleMaven11Rewards.balanceOf(this.maple.address)).to.eq(0);
     });
     it('100 USDC deposit', async function () {
       await this.mintUSDC(this.maple.address, parseUnits('100', 6));
@@ -101,6 +116,10 @@ describe.only('Maple', function () {
       );
       expect(await this.maple.balanceOf()).to.be.closeTo(parseUnits('100', 6), 1);
       expect(await this.maple.maturityTime()).to.eq(this.t0.time.add(day90));
+      expect(await this.mapleMaven11Rewards.balanceOf(this.maple.address)).to.be.closeTo(
+        parseEther('100'),
+        1,
+      );
     });
     it('Year later', async function () {
       await timeTraveler.setNextBlockTimestamp(TIMESTAMP + YEAR);
@@ -114,6 +133,10 @@ describe.only('Maple', function () {
       );
       expect(await this.maple.balanceOf()).to.be.closeTo(parseUnits('100', 6), 1);
       expect(await this.maple.maturityTime()).to.eq(this.t0.time.add(day90));
+      expect(await this.mapleMaven11Rewards.balanceOf(this.maple.address)).to.be.closeTo(
+        parseEther('100'),
+        1,
+      );
     });
   });
   describe('deposit(), test weighted maturity', async function () {
@@ -124,6 +147,7 @@ describe.only('Maple', function () {
       expect(await this.usdc.balanceOf(this.maple.address)).to.eq(0);
       expect(await this.mapleMaven11.balanceOf(this.maple.address)).to.eq(0);
       expect(await this.maple.balanceOf()).to.eq(0);
+      expect(await this.mapleMaven11Rewards.balanceOf(this.maple.address)).to.eq(0);
     });
     it('Empty deposit', async function () {
       await this.splitter.deposit(this.maple.address);
@@ -131,6 +155,7 @@ describe.only('Maple', function () {
       expect(await this.usdc.balanceOf(this.maple.address)).to.eq(0);
       expect(await this.mapleMaven11.balanceOf(this.maple.address)).to.eq(0);
       expect(await this.maple.balanceOf()).to.eq(0);
+      expect(await this.mapleMaven11Rewards.balanceOf(this.maple.address)).to.eq(0);
     });
     it('100 USDC deposit', async function () {
       await this.mintUSDC(this.maple.address, parseUnits('100', 6));
@@ -144,6 +169,10 @@ describe.only('Maple', function () {
       );
       expect(await this.maple.balanceOf()).to.be.closeTo(parseUnits('100', 6), 1);
       expect(await this.maple.maturityTime()).to.eq(this.t0.time.add(day90));
+      expect(await this.mapleMaven11Rewards.balanceOf(this.maple.address)).to.be.closeTo(
+        parseEther('100'),
+        1,
+      );
     });
     it('45 days later 100 USDC deposit', async function () {
       await this.mintUSDC(this.maple.address, parseUnits('100', 6));
@@ -161,6 +190,10 @@ describe.only('Maple', function () {
       // But because we are already in the pool for 45 days (with same amount)
       // It will discount 50% of those days (- 45/2)
       expect(await this.maple.maturityTime()).to.eq(this.t1.time.add(day90 - day45 / 2));
+      expect(await this.mapleMaven11Rewards.balanceOf(this.maple.address)).to.be.closeTo(
+        parseEther('200'),
+        1,
+      );
     });
   });
   describe('deposit(), test weighted maturity again', async function () {
@@ -249,7 +282,7 @@ describe.only('Maple', function () {
     });
     it('Now owner', async function () {
       await expect(
-        this.maple.connect(this.bob).withdrawFromMaple(parseUnits('100', 6)),
+        this.maple.connect(this.bob).withdrawFromMaple(parseUnits('100', 18)),
       ).to.be.revertedWith('Ownable: caller is not the owner');
     });
     it('Do zero', async function () {
@@ -272,13 +305,13 @@ describe.only('Maple', function () {
       await timeTraveler.setNextBlockTimestamp(Number(this.t0.time) + day90);
     });
     it('Do exceed balance', async function () {
-      await expect(this.maple.withdrawFromMaple(parseUnits('1000', 6))).to.be.revertedWith(
+      await expect(this.maple.withdrawFromMaple(parseUnits('1000', 18))).to.be.revertedWith(
         'SafeMath: subtraction overflow',
       );
     });
     it('Do withdraw', async function () {
       // do withdraw
-      await this.maple.withdrawFromMaple(parseUnits('100', 6));
+      await this.maple.withdrawFromMaple(parseUnits('100', 18));
 
       expect(await this.usdc.balanceOf(this.maple.address)).to.eq(parseUnits('100', 6));
       expect(await this.mapleMaven11.balanceOf(this.maple.address)).to.eq(0);
@@ -389,6 +422,115 @@ describe.only('Maple', function () {
       await expect(
         this.splitter.withdraw(this.maple.address, constants.MaxUint256),
       ).to.be.revertedWith('ERC20: transfer amount exceeds balance');
+    });
+  });
+  describe('Calc MPL APY for maven11', async function () {
+    before(async function () {
+      await timeTraveler.revertSnapshot();
+      // mint 1m USDC
+      await this.mintUSDC(this.maple.address, parseUnits('1000000', 6));
+    });
+    it('Initial state', async function () {
+      expect(await this.mapleToken.balanceOf(this.maple.address)).to.eq(0);
+      expect(await this.mapleToken.balanceOf(this.alice.address)).to.eq(0);
+      expect(await this.mapleMaven11Rewards.earned(this.maple.address)).to.eq(0);
+    });
+    it('Deposit +0.01y', async function () {
+      // Skipping 0.01y as rewards are distributed per week
+      this.t0 = await meta(this.splitter.deposit(this.maple.address));
+      await timeTraveler.setNextBlockTimestamp(Number(this.t0.time) + hundredOfAYEAR);
+      await timeTraveler.mine(1);
+
+      expect(await this.mapleToken.balanceOf(this.maple.address)).to.eq(0);
+      expect(await this.mapleToken.balanceOf(this.alice.address)).to.eq(0);
+      // Earning 10.3 maple tokens = ~410 USDC = 41k per year = 4.1% APY
+      expect(await this.mapleMaven11Rewards.earned(this.maple.address)).to.be.closeTo(
+        parseUnits('10.3', 18),
+        parseUnits('0.5', 18),
+      );
+    });
+  });
+  describe('Calc MPL APY for ortho', async function () {
+    before(async function () {
+      await timeTraveler.revertSnapshot();
+      // mint 1m USDC
+      await this.mintUSDC(this.maple2.address, parseUnits('1000000', 6));
+    });
+    it('Initial state', async function () {
+      expect(await this.mapleToken.balanceOf(this.maple2.address)).to.eq(0);
+      expect(await this.mapleToken.balanceOf(this.alice.address)).to.eq(0);
+      expect(await this.mapleOrthoRewards.earned(this.maple2.address)).to.eq(0);
+    });
+    it('Deposit +0.01y', async function () {
+      // Skipping 0.01y as rewards are distributed per week
+      this.t0 = await meta(this.splitter.deposit(this.maple2.address));
+      await timeTraveler.setNextBlockTimestamp(Number(this.t0.time) + hundredOfAYEAR);
+      await timeTraveler.mine(1);
+
+      expect(await this.mapleToken.balanceOf(this.maple2.address)).to.eq(0);
+      expect(await this.mapleToken.balanceOf(this.alice.address)).to.eq(0);
+      // Earning 8.8 maple tokens = ~350 USDC = 35k per year = 3.5% APY
+      expect(await this.mapleOrthoRewards.earned(this.maple2.address)).to.be.closeTo(
+        parseUnits('8.8', 18),
+        parseUnits('0.5', 18),
+      );
+    });
+  });
+  describe('claimReward()', async function () {
+    before(async function () {
+      await timeTraveler.revertSnapshot();
+      // mint 1m USDC
+      await this.mintUSDC(this.maple.address, parseUnits('1000000', 6));
+    });
+    it('Initial state', async function () {
+      expect(await this.mapleToken.balanceOf(this.maple.address)).to.eq(0);
+      expect(await this.mapleToken.balanceOf(this.alice.address)).to.eq(0);
+      expect(await this.mapleMaven11Rewards.earned(this.maple.address)).to.eq(0);
+    });
+    it('Deposit +1y', async function () {
+      this.t0 = await meta(this.splitter.deposit(this.maple.address));
+      await timeTraveler.setNextBlockTimestamp(Number(this.t0.time) + day2);
+      await timeTraveler.mine(1);
+
+      expect(await this.mapleToken.balanceOf(this.maple.address)).to.eq(0);
+      expect(await this.mapleToken.balanceOf(this.alice.address)).to.eq(0);
+      expect(await this.mapleMaven11Rewards.earned(this.maple.address)).to.be.closeTo(
+        parseUnits('5.6', 18),
+        parseUnits('0.5', 18),
+      );
+    });
+    it('Deposit +1y', async function () {
+      await this.mintUSDC(this.maple.address, parseUnits('1000000', 6));
+      this.t0 = await meta(this.splitter.deposit(this.maple.address));
+      await timeTraveler.setNextBlockTimestamp(Number(this.t0.time) + day2);
+      await timeTraveler.mine(1);
+
+      expect(await this.mapleToken.balanceOf(this.maple.address)).to.eq(0);
+      expect(await this.mapleToken.balanceOf(this.alice.address)).to.eq(0);
+      expect(await this.mapleMaven11Rewards.earned(this.maple.address)).to.be.closeTo(
+        parseUnits('16.9', 18),
+        parseUnits('0.5', 18),
+      );
+    });
+    it('Claim', async function () {
+      await this.maple.claimReward();
+
+      expect(await this.mapleToken.balanceOf(this.maple.address)).to.eq(0);
+      expect(await this.mapleToken.balanceOf(this.alice.address)).to.be.closeTo(
+        parseUnits('16.9', 18),
+        parseUnits('0.5', 18),
+      );
+      expect(await this.mapleMaven11Rewards.earned(this.maple.address)).to.eq(0);
+    });
+    it('Claim again', async function () {
+      await this.maple.claimReward();
+
+      expect(await this.mapleToken.balanceOf(this.maple.address)).to.eq(0);
+      expect(await this.mapleToken.balanceOf(this.alice.address)).to.be.closeTo(
+        parseUnits('16.9', 18),
+        parseUnits('0.5', 18),
+      );
+      expect(await this.mapleMaven11Rewards.earned(this.maple.address)).to.eq(0);
     });
   });
 });

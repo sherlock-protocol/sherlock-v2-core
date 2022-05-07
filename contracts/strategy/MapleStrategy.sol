@@ -86,6 +86,8 @@ contract MapleStrategy is BaseStrategy {
     // How many maplePool tokens did we gain after depositing
     uint256 maplePoolDifference = maplePool.balanceOf(address(this)) - maplePoolBalanceBefore;
 
+    if (maplePoolDifference == 0) return;
+
     // Approve newly gained maple pool tokens to mapleRewards
     maplePool.increaseCustodyAllowance(address(mapleRewards), maplePoolDifference);
 
@@ -112,13 +114,6 @@ contract MapleStrategy is BaseStrategy {
     // Transfer USDC to core
     want.safeTransfer(core, _amount);
   }
-
-  // /// @notice View how much maple pool tokens are staked in the farm
-  // /// @return Amount of maple pool tokens staked
-  // function _viewMaplePoolTokensStaked() private view returns (uint256) {
-  //   // Amount of maple pool tokens staked in the maple rewards contract
-  //   return mapleRewards.balanceOf(address(this));
-  // }
 
   /// @notice View USDC in this contract + USDC in Maple
   /// @dev Important the balance is only increasing after a `claim()` call by the pool admin
@@ -195,11 +190,16 @@ contract MapleStrategy is BaseStrategy {
   /// @dev Can only be called by owner
   /// @dev Maple tokens will be send to caller
   function claimReward() external onlyOwner {
-    // Claim rewr
+    // Claim reward tokens
     mapleRewards.getReward();
 
-    uint256 balance = mapleRewards.rewardsToken().balanceOf(address(this));
+    // Cache reward token address
+    IERC20 rewardToken = mapleRewards.rewardsToken();
 
-    if (balance != 0) mapleRewards.rewardsToken().safeTransfer(msg.sender, balance);
+    // Query reward token balance
+    uint256 balance = rewardToken.balanceOf(address(this));
+
+    // Send all reward tokens to sender (owner)
+    if (balance != 0) rewardToken.safeTransfer(msg.sender, balance);
   }
 }
