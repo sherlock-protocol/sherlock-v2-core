@@ -137,13 +137,41 @@ abstract contract BaseSplitter is BaseMaster, ISplitter {
                         YIELD STRATEGY LOGIC
   //////////////////////////////////////////////////////////////*/
 
+  uint256 cachedChildOneBalance;
+  uint256 cachedChildTwoBalance;
+
+  function prepareBalanceCache() external override onlyParent returns (uint256) {
+    uint256 _cachedChildOneBalance = childOne.prepareBalanceCache();
+    uint256 _cachedChildTwoBalance = childTwo.prepareBalanceCache();
+
+    cachedChildOneBalance = _cachedChildOneBalance;
+    cachedChildTwoBalance = _cachedChildTwoBalance;
+
+    return _cachedChildOneBalance + _cachedChildTwoBalance;
+  }
+
+  function expireBalanceCache() external override onlyParent {
+    delete cachedChildOneBalance;
+    delete cachedChildTwoBalance;
+  }
+
+  // Remove external entry points from splitters (see issue #24)
+  function withdrawAllByAdmin() external override onlyOwner returns (uint256 amount) {
+    revert NotImplemented(msg.sig);
+  }
+
+  // Remove external entry points from splitters (see issue #24)
+  function withdrawByAdmin(uint256 _amount) external override onlyOwner {
+    revert NotImplemented(msg.sig);
+  }
+
   function _withdrawAll() internal virtual override returns (uint256 amount) {
     // Children will withdraw to core()
     amount = childOne.withdrawAll();
     amount += childTwo.withdrawAll();
   }
 
-  function balanceOf() external view virtual override returns (uint256 amount) {
+  function _balanceOf() internal view virtual override returns (uint256 amount) {
     amount = childOne.balanceOf();
     amount += childTwo.balanceOf();
   }

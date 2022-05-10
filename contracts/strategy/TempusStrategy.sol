@@ -63,7 +63,7 @@ contract TempusStrategy is BaseStrategy {
 
   // https://github.com/tempus-finance/tempus-protocol/blob/master/contracts/ITempusPool.sol#L269
   /// @dev return USDC in this contract + USDC in Tempus
-  function balanceOf() public view override returns (uint256) {
+  function _balanceOf() internal view override returns (uint256) {
     return
       want.balanceOf(address(this)) +
       tempusPool.estimatedRedeem(

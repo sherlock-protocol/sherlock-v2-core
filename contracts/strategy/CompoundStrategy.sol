@@ -51,7 +51,7 @@ contract CompoundStrategy is BaseStrategy {
   /// @dev We calculate the exchange rate ourselves instead using LibCompound
   /// @dev Will return wrong balance if this contract somehow has USDC instead of only cUSDC
   /// @return Amount of USDC in this strategy
-  function balanceOf() public view override returns (uint256) {
+  function _balanceOf() internal view override returns (uint256) {
     return LibCompound.viewUnderlyingBalanceOf(CUSDC, address(this));
   }
 

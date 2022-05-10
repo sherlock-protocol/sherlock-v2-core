@@ -121,7 +121,7 @@ contract TrueFiStrategy is BaseStrategy {
   /// @notice View USDC in this contract + USDC in TrueFi
   /// @notice Takes into account exit penalty for liquidating full tfUSDC balance
   /// @return Amount of USDC in this strategy
-  function balanceOf() external view override returns (uint256) {
+  function _balanceOf() internal view override returns (uint256) {
     // https://docs.truefi.io/faq/main-lending-pools/developer-guide/truefipool2-contract#calculating-lending-pool-token-prices
 
     // How much USDC is locked in TrueFi

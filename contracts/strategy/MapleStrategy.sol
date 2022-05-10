@@ -126,7 +126,7 @@ contract MapleStrategy is BaseStrategy {
   // This internal function is called by the public `updateFundsReceived()` which depends on `_updateFundsTokenBalance()` to be > 0 https://github.com/maple-labs/maple-core/blob/main/contracts/token/BasicFDT.sol#L179
   // This can only be >0 if `interestSum` mutates to a bigger value https://github.com/maple-labs/maple-core/blob/main/contracts/token/PoolFDT.sol#L51
   // The place where `interestSum` is mutated is the `claim()` function restricted by pool admin / delegate https://github.com/maple-labs/maple-core/blob/main/contracts/Pool.sol#L222
-  function balanceOf() public view override returns (uint256) {
+  function _balanceOf() internal view override returns (uint256) {
     // Source Lucas Manuel | Maple
     // Even though we 'stake' maple pool tokens in the reward contract
     // They are actually not transferred to the reward contract

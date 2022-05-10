@@ -86,7 +86,11 @@ interface INode {
 
   function siblingRemoved() external;
 
-  function setupCompleted() external view returns(bool);
+  function setupCompleted() external view returns (bool);
+
+  function prepareBalanceCache() external returns (uint256);
+
+  function expireBalanceCache() external;
 }
 
 interface IMaster is INode {

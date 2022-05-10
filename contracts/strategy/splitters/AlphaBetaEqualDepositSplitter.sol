@@ -23,8 +23,8 @@ contract AlphaBetaEqualDepositSplitter is AlphaBetaSplitter {
   }
 
   function _deposit() internal virtual override {
-    uint256 alphaBalance = childOne.balanceOf();
-    uint256 betaBalance = childTwo.balanceOf();
+    uint256 alphaBalance = cachedChildOneBalance;
+    uint256 betaBalance = cachedChildTwoBalance;
     uint256 amount = want.balanceOf(address(this));
 
     if (amount >= MIN_AMOUNT_FOR_EQUAL_SPLIT) {

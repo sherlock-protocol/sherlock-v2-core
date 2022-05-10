@@ -61,6 +61,12 @@ contract TreeSplitterMockCustom is ISplitter {
   INode public override childTwo;
   bool public override setupCompleted;
 
+  function prepareBalanceCache() external override returns (uint256) {
+  }
+
+  function expireBalanceCache() external override {
+  }
+
   function balanceOf() external view override returns (uint256) {}
 
   function setSetupCompleted(bool _completed) external {

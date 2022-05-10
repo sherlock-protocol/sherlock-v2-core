@@ -88,6 +88,20 @@ contract MasterStrategy is
                         YIELD STRATEGY LOGIC
   //////////////////////////////////////////////////////////////*/
 
+  modifier balanceCache() {
+    childOne.prepareBalanceCache();
+    _;
+    childOne.expireBalanceCache();
+  }
+
+  function prepareBalanceCache() external override returns (uint256) {
+    revert NotImplemented(msg.sig);
+  }
+
+  function expireBalanceCache() external override {
+    revert NotImplemented(msg.sig);
+  }
+
   function balanceOf()
     public
     view
@@ -108,6 +122,7 @@ contract MasterStrategy is
     )
     whenNotPaused
     onlySherlockCore
+    balanceCache
   {
     uint256 balance = want.balanceOf(address(this));
     if (balance == 0) revert InvalidConditions();
@@ -117,7 +132,7 @@ contract MasterStrategy is
     childOne.deposit();
   }
 
-  function withdrawAllByAdmin() external override onlyOwner returns (uint256 amount) {
+  function withdrawAllByAdmin() external override onlyOwner balanceCache returns (uint256 amount) {
     amount = childOne.withdrawAll();
     emit AdminWithdraw(amount);
   }
@@ -129,12 +144,13 @@ contract MasterStrategy is
       INode
     )
     onlySherlockCore
+    balanceCache
     returns (uint256)
   {
     return childOne.withdrawAll();
   }
 
-  function withdrawByAdmin(uint256 _amount) external override onlyOwner {
+  function withdrawByAdmin(uint256 _amount) external override onlyOwner balanceCache {
     if (_amount == 0) revert ZeroArg();
 
     childOne.withdraw(_amount);
@@ -148,6 +164,7 @@ contract MasterStrategy is
       INode
     )
     onlySherlockCore
+    balanceCache
   {
     if (_amount == 0) revert ZeroArg();
 
