@@ -36,7 +36,7 @@ module.exports = {
           'apart turn peace asthma useful mother tank math engine usage prefer orphan exile fold squirrel',
       },
       forking: {
-        url: `https://eth-mainnet.alchemyapi.io/v2/${ALCHEMY_API_KEY_GOERLI}`,
+        url: `https://eth-goerli.alchemyapi.io/v2/${ALCHEMY_API_KEY_GOERLI}`,
         // url: `https://eth-mainnet.alchemyapi.io/v2/${ALCHEMY_API_KEY_MAINNET}`,
         // blockNumber: 14617159,
         blockNumber: 6800270,
