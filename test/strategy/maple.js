@@ -34,7 +34,7 @@ const day45 = 60 * 60 * 24 * 45;
 const day10 = 60 * 60 * 24 * 10;
 const day2 = 60 * 60 * 24 * 2;
 
-describe('Maple', function () {
+describe.only('Maple', function () {
   before(async function () {
     timeTraveler = new TimeTraveler(network.provider);
     await timeTraveler.fork(BLOCK);

@@ -137,6 +137,16 @@ abstract contract BaseSplitter is BaseMaster, ISplitter {
                         YIELD STRATEGY LOGIC
   //////////////////////////////////////////////////////////////*/
 
+  // Remove external entry points from splitters (see issue #24)
+  function withdrawAllByAdmin() external override onlyOwner returns (uint256 amount) {
+    revert NotImplemented(msg.sig);
+  }
+
+  // Remove external entry points from splitters (see issue #24)
+  function withdrawByAdmin(uint256 _amount) external override onlyOwner {
+    revert NotImplemented(msg.sig);
+  }
+
   function _withdrawAll() internal virtual override returns (uint256 amount) {
     // Children will withdraw to core()
     amount = childOne.withdrawAll();

@@ -32,7 +32,7 @@ const LP_ADDRESS_PROVIDER = '0xB53C1a33016B2DC2fF3653530bfF1848a515c8c5';
 const LP = '0x7d2768dE32b0b80b7a3454c06BdAc94A69DDc7A9';
 const stkAAVE = '0x4da27a545c0c5b758a6ba100e3a049001de870f5';
 
-describe('Aave', function () {
+describe.only('Aave', function () {
   before(async function () {
     timeTraveler = new TimeTraveler(network.provider);
     await timeTraveler.fork(BLOCK);

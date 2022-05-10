@@ -27,7 +27,7 @@ const TIMESTAMP = 1638052444;
 const YEAR = 60 * 60 * 24 * 365;
 const YEAR_IN_BLOCKS = 6400 * 365;
 
-describe('Compound', function () {
+describe.only('Compound', function () {
   const timeTraveler = new TimeTraveler(network.provider);
 
   before(async function () {

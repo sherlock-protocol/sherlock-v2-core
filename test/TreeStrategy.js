@@ -15,7 +15,7 @@ const { TimeTraveler } = require('./utilities/snapshot');
 
 const maxTokens = parseUnits('100000000000', 6);
 
-describe('MasterStrategy', function () {
+describe.only('MasterStrategy', function () {
   before(async function () {
     timeTraveler = new TimeTraveler(network.provider);
     // deploy master strategy
@@ -321,7 +321,7 @@ describe('MasterStrategy', function () {
     });
   });
 });
-describe('BaseNode', function () {
+describe.only('BaseNode', function () {
   before(async function () {
     timeTraveler = new TimeTraveler(network.provider);
     // deploy master strategy
@@ -791,7 +791,7 @@ describe('BaseNode', function () {
     });
   });
 });
-describe('BaseSplitter', function () {
+describe.only('BaseSplitter', function () {
   before(async function () {
     timeTraveler = new TimeTraveler(network.provider);
     // deploy master strategy
@@ -1278,7 +1278,7 @@ describe('BaseSplitter', function () {
       );
     });
   });
-  describe('withdrawAllByAdmin()', function () {
+  describe.only('withdrawAllByAdmin()', function () {
     before(async function () {
       await timeTraveler.revertSnapshot();
     });
@@ -1288,17 +1288,26 @@ describe('BaseSplitter', function () {
       );
     });
     it('Do', async function () {
-      await this.splitter.setInitialChildOne(this.strategy.address);
-      await this.splitter.setInitialChildTwo(this.strategy2.address);
-
-      expect(await this.strategy.internalWithdrawAllCalled()).to.eq(0);
-      expect(await this.strategy2.internalWithdrawAllCalled()).to.eq(0);
-
-      this.t0 = await meta(this.splitter.withdrawAllByAdmin());
-      expect(this.t0.events.length).to.eq(5);
-
-      expect(await this.strategy.internalWithdrawAllCalled()).to.eq(1);
-      expect(await this.strategy2.internalWithdrawAllCalled()).to.eq(1);
+      await expect(this.splitter.withdrawAllByAdmin()).to.be.revertedWith(
+        'NotImplemented("' +
+          (await this.splitter.interface.getSighash('withdrawAllByAdmin()')) +
+          '")',
+      );
+    });
+  });
+  describe.only('withdrawByAdmin()', function () {
+    before(async function () {
+      await timeTraveler.revertSnapshot();
+    });
+    it('Invalid sender', async function () {
+      await expect(this.splitter.connect(this.bob).withdrawByAdmin(1)).to.be.revertedWith(
+        'Ownable: caller is not the owner',
+      );
+    });
+    it('Do', async function () {
+      await expect(this.splitter.withdrawByAdmin(1)).to.be.revertedWith(
+        'NotImplemented("' + (await this.splitter.interface.getSighash('withdrawByAdmin(uint256)')) + '")',
+      );
     });
   });
   describe('balanceOf()', function () {
@@ -1320,7 +1329,7 @@ describe('BaseSplitter', function () {
     });
   });
 });
-describe('BaseStrategy', function () {
+describe.only('BaseStrategy', function () {
   before(async function () {
     timeTraveler = new TimeTraveler(network.provider);
     // deploy master strategy
