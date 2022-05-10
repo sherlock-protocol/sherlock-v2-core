@@ -97,6 +97,8 @@ contract SherlockMock is ISherlock, ERC721, Ownable {
 
   function updateYieldStrategy(IStrategyManager _yieldStrategy) external override onlyOwner {}
 
+  function updateYieldStrategyForce(IStrategyManager _yieldStrategy) external override onlyOwner {}
+
   function yieldStrategyDeposit(uint256 _amount) external override onlyOwner {}
 
   function yieldStrategyWithdraw(uint256 _amount) external override onlyOwner {}
@@ -118,8 +120,6 @@ contract SherlockMock is ISherlock, ERC721, Ownable {
     uint256 _period,
     uint256 _id
   ) internal returns (uint256 _sher) {}
-
-  function tokenBalanceOfAddress(address _staker) external view override returns (uint256) {}
 
   function _verifyUnlockableByOwner(uint256 _id) internal view returns (address _nftOwner) {}
 

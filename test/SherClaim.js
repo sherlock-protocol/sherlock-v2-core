@@ -85,30 +85,6 @@ describe('SherClaim', function () {
       ).to.be.revertedWith('InvalidState()');
     });
   });
-  describe('active()', function () {
-    before(async function () {
-      await timeTraveler.revertSnapshot();
-    });
-    it('default', async function () {
-      expect(await this.sherClaim.active()).to.eq(false);
-    });
-    it('skip time t-1', async function () {
-      await timeTraveler.setNextBlockTimestamp(this.claimableAt - 1);
-      await timeTraveler.mine(1);
-
-      expect(await this.sherClaim.active()).to.eq(false);
-    });
-    it('skip time t', async function () {
-      await timeTraveler.mine(1);
-
-      expect(await this.sherClaim.active()).to.eq(true);
-    });
-    it('skip time t+1', async function () {
-      await timeTraveler.mine(1);
-
-      expect(await this.sherClaim.active()).to.eq(true);
-    });
-  });
   describe('add()', function () {
     before(async function () {
       await timeTraveler.revertSnapshot();
@@ -176,8 +152,12 @@ describe('SherClaim', function () {
     it('Invalid state', async function () {
       await expect(this.sherClaim.connect(this.carol).claim()).to.be.revertedWith('InvalidState()');
     });
-    it('Zero amount', async function () {
+    it('Invalid state 2', async function () {
       await timeTraveler.setNextBlockTimestamp(this.claimableAt);
+      await expect(this.sherClaim.connect(this.carol).claim()).to.be.revertedWith('InvalidState()');
+    });
+    it('Zero amount', async function () {
+      await timeTraveler.setNextBlockTimestamp(this.claimableAt + weeks1 * 26);
       await expect(this.sherClaim.connect(this.alice).claim()).to.be.revertedWith(
         'InvalidAmount()',
       );

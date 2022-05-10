@@ -6,6 +6,7 @@ pragma solidity 0.8.10;
 * Sherlock Protocol: https://sherlock.xyz
 /******************************************************************************/
 
+import '@openzeppelin/contracts/security/ReentrancyGuard.sol';
 import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 
 import './interfaces/ISherClaim.sol';
@@ -15,8 +16,8 @@ import './interfaces/ISherlock.sol';
 /// @author Evert Kors
 /// @dev The goal is to get TVL in Sherlock.sol and raise funds with `receiver`
 /// @dev Bought SHER tokens are moved to a timelock contract (SherClaim)
-/// @dev Admin should SHER tokens to the contract rounded by 0.01 SHER, otherwise logic will break.
-contract SherBuy {
+/// @dev Admin should send factor of 0.01 SHER tokens to the contract, otherwise logic will break.
+contract SherBuy is ReentrancyGuard {
   using SafeERC20 for IERC20;
 
   error InvalidSender();
@@ -84,7 +85,7 @@ contract SherBuy {
     if (_receiver == address(0)) revert ZeroArgument();
     if (address(_sherClaim) == address(0)) revert ZeroArgument();
 
-    // Verify is PERIOD is active
+    // Verify if PERIOD is active
     // Theoretically this period can be disabled during the lifetime of this contract, which will cause issues
     if (_sherlockPosition.stakingPeriods(PERIOD) == false) revert InvalidState();
 
@@ -97,7 +98,7 @@ contract SherBuy {
     sherClaim = _sherClaim;
 
     // Do max approve in constructor as this contract will not hold any USDC
-    usdc.approve(address(sherlockPosition), type(uint256).max);
+    usdc.safeIncreaseAllowance(address(sherlockPosition), type(uint256).max);
   }
 
   /// @notice Check if the liquidity event is active
@@ -105,7 +106,7 @@ contract SherBuy {
   /// @return True if the liquidity event is active
   function active() public view returns (bool) {
     // The claim contract will become active once the liquidity event is inactive
-    return block.timestamp < sherClaim.claimableAt();
+    return block.timestamp < sherClaim.newEntryDeadline();
   }
 
   /// @notice View the capital requirements needed to buy up until `_sherAmountWant`
@@ -154,7 +155,7 @@ contract SherBuy {
   /// @param _sherAmountWant The maximum amount of SHER the user wants to buy
   /// @dev Bought SHER tokens are moved to a timelock contract (SherClaim)
   /// @dev Will revert if liquidity event is inactive because of the viewCapitalRequirements call
-  function execute(uint256 _sherAmountWant) external {
+  function execute(uint256 _sherAmountWant) external nonReentrant {
     // Calculate the capital requirements
     // Check how much SHER can actually be bought
     (uint256 sherAmount, uint256 stake, uint256 price) = viewCapitalRequirements(_sherAmountWant);
@@ -166,8 +167,8 @@ contract SherBuy {
 
     // Stake usdc and send NFT to user
     sherlockPosition.initialStake(stake, PERIOD, msg.sender);
-    // Approve in function as this contract will hold SHER tokens
-    sher.approve(address(sherClaim), sherAmount);
+    // Increase allowance for SherClaim by the amount of SHER tokens bought
+    sher.safeIncreaseAllowance(address(sherClaim), sherAmount);
     // Add bought SHER tokens to timelock for user
     sherClaim.add(msg.sender, sherAmount);
 

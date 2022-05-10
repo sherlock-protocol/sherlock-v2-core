@@ -18,5 +18,5 @@ interface ISherClaim {
 
   function add(address _user, uint256 _amount) external;
 
-  function claimableAt() external view returns (uint256);
+  function newEntryDeadline() external view returns (uint256);
 }
