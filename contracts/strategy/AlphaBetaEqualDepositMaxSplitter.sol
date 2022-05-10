@@ -36,7 +36,7 @@ contract AlphaBetaEqualDepositMaxSplitter is AlphaBetaEqualDepositSplitter {
   }
 
   function _alphaDeposit(uint256 amount) internal virtual override {
-    uint256 alphaBalance = childOne.balanceOf();
+    uint256 alphaBalance = cachedChildOneBalance;
 
     if (MAX_AMOUNT_FOR_ALPHA == 0) {
       // Deposit all in alpha
@@ -62,7 +62,7 @@ contract AlphaBetaEqualDepositMaxSplitter is AlphaBetaEqualDepositSplitter {
   }
 
   function _betaDeposit(uint256 amount) internal virtual override {
-    uint256 betaBalance = childTwo.balanceOf();
+    uint256 betaBalance = cachedChildTwoBalance;
 
     if (MAX_AMOUNT_FOR_BETA == 0) {
       // Deposit all in beta

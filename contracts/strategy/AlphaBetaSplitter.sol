@@ -18,8 +18,8 @@ contract AlphaBetaSplitter is BaseSplitter {
   ) BaseSplitter(_initialParent, _initialChildOne, _initialChildTwo) {}
 
   function _withdraw(uint256 _amount) internal virtual override {
-    uint256 alphaBalance = childOne.balanceOf();
-    uint256 betaBalance = childTwo.balanceOf();
+    uint256 alphaBalance = cachedChildOneBalance;
+    uint256 betaBalance = cachedChildTwoBalance;
 
     // withdraws will send the USDC to core
     if (_amount > alphaBalance) {
@@ -40,8 +40,8 @@ contract AlphaBetaSplitter is BaseSplitter {
   }
 
   function _deposit() internal virtual override {
-    uint256 alphaBalance = childOne.balanceOf();
-    uint256 betaBalance = childTwo.balanceOf();
+    uint256 alphaBalance = cachedChildOneBalance;
+    uint256 betaBalance = cachedChildTwoBalance;
 
     if (alphaBalance < betaBalance) {
       _alphaDeposit(want.balanceOf(address(this)));
