@@ -23,7 +23,7 @@ const BLOCK = 14699000;
 const TIMESTAMP = 1651503884;
 const YEAR = 60 * 60 * 24 * 365;
 
-describe.only('Euler', function () {
+describe('Euler', function () {
   before(async function () {
     timeTraveler = new TimeTraveler(network.provider);
     await timeTraveler.fork(BLOCK);

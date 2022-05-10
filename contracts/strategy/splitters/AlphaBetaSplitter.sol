@@ -6,7 +6,7 @@ pragma solidity 0.8.10;
 * Sherlock Protocol: https://sherlock.xyz
 /******************************************************************************/
 
-import './base/BaseSplitter.sol';
+import '../base/BaseSplitter.sol';
 
 /// Always withdraw from childOne first
 /// Only to deposit to childTwo if childOne balance is lower

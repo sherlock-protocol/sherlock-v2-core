@@ -20,7 +20,7 @@ const { TimeTraveler } = require('./utilities/snapshot');
 
 const maxTokens = parseUnits('100000000000', 6);
 
-describe.only('Test', function () {
+describe('Test', function () {
   before(async function () {
     timeTraveler = new TimeTraveler(network.provider);
     // deploy master strategy
