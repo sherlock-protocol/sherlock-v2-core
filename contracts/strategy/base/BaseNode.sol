@@ -156,6 +156,10 @@ abstract contract BaseNode is INode, Ownable {
                         YIELD STRATEGY LOGIC
   //////////////////////////////////////////////////////////////*/
 
+  function balanceOf() external view override returns (uint256 amount) {
+    return _balanceOf();
+  }
+
   function withdrawAll() external override onlyParent returns (uint256 amount) {
     amount = _withdrawAll();
   }
@@ -181,6 +185,8 @@ abstract contract BaseNode is INode, Ownable {
   function deposit() external override onlyParent {
     _deposit();
   }
+
+  function _balanceOf() internal view virtual returns (uint256 amount) {}
 
   function _withdrawAll() internal virtual returns (uint256 amount) {}
 

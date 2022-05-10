@@ -193,17 +193,17 @@ describe.only('MasterStrategy', function () {
       await expect(this.master.deposit()).to.be.revertedWith('InvalidSender()');
     });
     it('Invalid balance', async function () {
+      await this.strategyCustom.setParent(this.master.address);
+      await this.strategyCustom.setCore(this.core.address);
+      await this.strategyCustom.setWant(this.erc20.address);
+      await this.strategyCustom.setSetupCompleted(true);
+
+      await this.master.setInitialChildOne(this.strategyCustom.address);
       await expect(this.master.connect(this.core).deposit()).to.be.revertedWith(
         'InvalidConditions()',
       );
     });
     it('Deposit', async function () {
-      await this.strategyCustom.setParent(this.master.address);
-      await this.strategyCustom.setCore(this.core.address);
-      await this.strategyCustom.setWant(this.erc20.address);
-      await this.strategyCustom.setSetupCompleted(true);
-      await this.master.setInitialChildOne(this.strategyCustom.address);
-
       await this.erc20.transfer(this.master.address, maxTokens);
 
       expect(await this.strategyCustom.depositCalled()).to.eq(0);
@@ -275,15 +275,15 @@ describe.only('MasterStrategy', function () {
       );
     });
     it('Zero amount', async function () {
-      await expect(this.master.withdrawByAdmin(0)).to.be.revertedWith('ZeroArg()');
-    });
-    it('Do', async function () {
       await this.strategyCustom.setParent(this.master.address);
       await this.strategyCustom.setCore(this.core.address);
       await this.strategyCustom.setWant(this.erc20.address);
       await this.strategyCustom.setSetupCompleted(true);
       await this.master.setInitialChildOne(this.strategyCustom.address);
 
+      await expect(this.master.withdrawByAdmin(0)).to.be.revertedWith('ZeroArg()');
+    });
+    it('Do', async function () {
       expect(await this.strategyCustom.withdrawCalled()).to.eq(0);
 
       this.t0 = await meta(this.master.withdrawByAdmin(maxTokens));
@@ -304,15 +304,15 @@ describe.only('MasterStrategy', function () {
       );
     });
     it('Zero amount', async function () {
-      await expect(this.master.connect(this.core).withdraw(0)).to.be.revertedWith('ZeroArg()');
-    });
-    it('Do', async function () {
       await this.strategyCustom.setParent(this.master.address);
       await this.strategyCustom.setCore(this.core.address);
       await this.strategyCustom.setWant(this.erc20.address);
       await this.strategyCustom.setSetupCompleted(true);
       await this.master.setInitialChildOne(this.strategyCustom.address);
 
+      await expect(this.master.connect(this.core).withdraw(0)).to.be.revertedWith('ZeroArg()');
+    });
+    it('Do', async function () {
       expect(await this.strategyCustom.withdrawCalled()).to.eq(0);
 
       await this.master.connect(this.core).withdraw(maxTokens);
@@ -1306,7 +1306,9 @@ describe.only('BaseSplitter', function () {
     });
     it('Do', async function () {
       await expect(this.splitter.withdrawByAdmin(1)).to.be.revertedWith(
-        'NotImplemented("' + (await this.splitter.interface.getSighash('withdrawByAdmin(uint256)')) + '")',
+        'NotImplemented("' +
+          (await this.splitter.interface.getSighash('withdrawByAdmin(uint256)')) +
+          '")',
       );
     });
   });
