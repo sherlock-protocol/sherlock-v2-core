@@ -8,19 +8,42 @@ pragma solidity 0.8.10;
 
 import './AlphaBetaEqualDepositSplitter.sol';
 
-/// Always withdraw from childOne first
-/// Only to deposit to childTwo if childOne balance is lower
-contract AlphaBetaEqualDepositMaxSplitter is AlphaBetaEqualDepositSplitter {
-  uint256 immutable MAX_AMOUNT_FOR_ALPHA;
-  uint256 immutable MAX_AMOUNT_FOR_BETA;
+/**
+  ChildOne is the first node that is being used to withdraw from
+  Only when ChildOne balance = 0 it will start withdrawing from ChildTwo
 
+  If the deposit amount is at least `MIN_AMOUNT_FOR_EQUAL_SPLIT` of USDC
+  It will try to balance out the childs by havng the option to deposit in both
+
+  If the deposit amount is less then `MIN_AMOUNT_FOR_EQUAL_SPLIT` of USDC
+  It will deposit in the child that returns the lowest balance
+
+  Either childOne or childTwo can have a limit for the amount of USDC to receive
+
+  Note: the child without a limit can receive two `deposit()` calls
+  if the initial amount is at least `MIN_AMOUNT_FOR_EQUAL_SPLIT` USDC
+*/
+contract AlphaBetaEqualDepositMaxSplitter is AlphaBetaEqualDepositSplitter {
+  uint256 private constant NO_LIMIT = 0;
+  // Max amount of USDC childOne can hold (0 = no limit)
+  uint256 public immutable MAX_AMOUNT_FOR_CHILD_ONE;
+  // Max amount of USDC childTwo can hold (0 = no limit)
+  uint256 public immutable MAX_AMOUNT_FOR_CHILD_TWO;
+
+  /// @param _initialParent Contract that will be the parent in the tree structure
+  /// @param _initialChildOne Contract that will be the initial childOne in the tree structure
+  /// @param _initialChildTwo Contract that will be the initial childTwo in the tree structure
+  /// @param _MIN_AMOUNT_FOR_EQUAL_SPLIT Min USDC deposit amount to activate logic to equal out balances
+  /// @param _MAX_AMOUNT_FOR_CHILD_ONE Max amount of USDC childOne can hold (0 = no limit)
+  /// @param _MAX_AMOUNT_FOR_CHILD_TWO Max amount of USDC childTwo can hold (0 = no limit)
+  /// @notice Either `_MAX_AMOUNT_FOR_CHILD_ONE` or `_MAX_AMOUNT_FOR_CHILD_TWO` has to be 0
   constructor(
     IMaster _initialParent,
     INode _initialChildOne,
     INode _initialChildTwo,
     uint256 _MIN_AMOUNT_FOR_EQUAL_SPLIT,
-    uint256 _MAX_AMOUNT_FOR_ALPHA,
-    uint256 _MAX_AMOUNT_FOR_BETA
+    uint256 _MAX_AMOUNT_FOR_CHILD_ONE,
+    uint256 _MAX_AMOUNT_FOR_CHILD_TWO
   )
     AlphaBetaEqualDepositSplitter(
       _initialParent,
@@ -29,61 +52,88 @@ contract AlphaBetaEqualDepositMaxSplitter is AlphaBetaEqualDepositSplitter {
       _MIN_AMOUNT_FOR_EQUAL_SPLIT
     )
   {
-    if (_MAX_AMOUNT_FOR_ALPHA != 0 && _MAX_AMOUNT_FOR_BETA != 0) revert('BOTH_LIMIT');
+    // Either `_MAX_AMOUNT_FOR_CHILD_ONE` or `_MAX_AMOUNT_FOR_CHILD_TWO` has to be 0
+    if (_MAX_AMOUNT_FOR_CHILD_ONE != NO_LIMIT && _MAX_AMOUNT_FOR_CHILD_TWO != NO_LIMIT) {
+      revert InvalidArg();
+    }
 
-    MAX_AMOUNT_FOR_ALPHA = _MAX_AMOUNT_FOR_ALPHA;
-    MAX_AMOUNT_FOR_BETA = _MAX_AMOUNT_FOR_BETA;
+    // Either `_MAX_AMOUNT_FOR_CHILD_ONE` or `_MAX_AMOUNT_FOR_CHILD_TWO` has to be non 0
+    if (_MAX_AMOUNT_FOR_CHILD_ONE == NO_LIMIT && _MAX_AMOUNT_FOR_CHILD_TWO == NO_LIMIT) {
+      revert InvalidArg();
+    }
+
+    // Write variables to storage
+    MAX_AMOUNT_FOR_CHILD_ONE = _MAX_AMOUNT_FOR_CHILD_ONE;
+    MAX_AMOUNT_FOR_CHILD_TWO = _MAX_AMOUNT_FOR_CHILD_TWO;
   }
 
-  function _alphaDeposit(uint256 amount) internal virtual override {
-    uint256 alphaBalance = cachedChildOneBalance;
-
-    if (MAX_AMOUNT_FOR_ALPHA == 0) {
-      // Deposit all in alpha
-      AlphaBetaSplitter._alphaDeposit(amount);
+  /// @notice Transfer USDC to one or both childs based on `MAX_AMOUNT_FOR_CHILD_ONE`
+  /// @param _amount Amount of USDC to deposit
+  function _childOneDeposit(uint256 _amount) internal virtual override {
+    // If childOne doesn't have a limit we can deposit all USDC in there
+    if (MAX_AMOUNT_FOR_CHILD_ONE == NO_LIMIT) {
+      // Deposit all USDC in childOne
+      AlphaBetaSplitter._childOneDeposit(_amount);
+      return;
     }
-    // Do we want to deposit into alpha at all?
-    else if (alphaBalance < MAX_AMOUNT_FOR_ALPHA) {
-      // Deposit total amount will be too much!
-      if (alphaBalance + amount > MAX_AMOUNT_FOR_ALPHA) {
-        uint256 alphaAmount = MAX_AMOUNT_FOR_ALPHA - alphaBalance;
-        AlphaBetaSplitter._alphaDeposit(alphaAmount);
 
-        // Deposit rest in beta
-        AlphaBetaSplitter._betaDeposit(amount - alphaAmount);
+    // Cache balance in memory
+    uint256 childOneBalance = cachedChildOneBalance;
+
+    // Do we want to deposit into childOne at all? If yes, continue
+    if (childOneBalance < MAX_AMOUNT_FOR_CHILD_ONE) {
+      // Will depositing the full amount result in exceeding the MAX? If yes, continue
+      if (childOneBalance + _amount > MAX_AMOUNT_FOR_CHILD_ONE) {
+        // How much room if left to hit the USDC cap in childOne
+        uint256 childOneAmount = MAX_AMOUNT_FOR_CHILD_ONE - childOneBalance;
+
+        // Deposit amount that will make us hit the cap for childOne
+        AlphaBetaSplitter._childOneDeposit(childOneAmount);
+
+        // Deposit leftover USDC into childTwo
+        AlphaBetaSplitter._childTwoDeposit(_amount - childOneAmount);
       } else {
-        // Deposit all in alpha
-        AlphaBetaSplitter._alphaDeposit(amount);
+        // Deposit all in childOne if depositing full amount will not make us exceed the cap
+        AlphaBetaSplitter._childOneDeposit(_amount);
       }
     } else {
-      // Deposit all in beta
-      AlphaBetaSplitter._betaDeposit(amount);
+      // Deposit all in childTwo (childOne deposit isn't used at all)
+      AlphaBetaSplitter._childTwoDeposit(_amount);
     }
   }
 
-  function _betaDeposit(uint256 amount) internal virtual override {
-    uint256 betaBalance = cachedChildTwoBalance;
-
-    if (MAX_AMOUNT_FOR_BETA == 0) {
-      // Deposit all in beta
-      AlphaBetaSplitter._betaDeposit(amount);
+  /// @notice Transfer USDC to one or both childs based on `MAX_AMOUNT_FOR_CHILD_TWO`
+  /// @param _amount Amount of USDC to deposit
+  function _childTwoDeposit(uint256 _amount) internal virtual override {
+    // If childTwo doesn't have a limit we can deposit all USDC in there
+    if (MAX_AMOUNT_FOR_CHILD_TWO == NO_LIMIT) {
+      // Deposit all USDC in childTwo
+      AlphaBetaSplitter._childTwoDeposit(_amount);
+      return;
     }
-    // Do we want to deposit into beta at all?
-    else if (betaBalance < MAX_AMOUNT_FOR_BETA) {
-      // Deposit total amount will be too much!
-      if (betaBalance + amount > MAX_AMOUNT_FOR_BETA) {
-        uint256 betaAmount = MAX_AMOUNT_FOR_BETA - betaBalance;
-        AlphaBetaSplitter._betaDeposit(betaAmount);
 
-        // Deposit rest in alpha
-        AlphaBetaSplitter._alphaDeposit(amount - betaAmount);
+    // Cache balance in memory
+    uint256 childTwoBalance = cachedChildTwoBalance;
+
+    // Do we want to deposit into childTwo at all? If yes, continue
+    if (childTwoBalance < MAX_AMOUNT_FOR_CHILD_TWO) {
+      // Will depositing the full amount result in exceeding the MAX? If yes, continue
+      if (childTwoBalance + _amount > MAX_AMOUNT_FOR_CHILD_TWO) {
+        // How much room if left to hit the USDC cap in childTwo
+        uint256 childTwoAmount = MAX_AMOUNT_FOR_CHILD_TWO - childTwoBalance;
+
+        // Deposit amount that will make us hit the cap for childTwo
+        AlphaBetaSplitter._childTwoDeposit(childTwoAmount);
+
+        // Deposit leftover USDC into childOne
+        AlphaBetaSplitter._childOneDeposit(_amount - childTwoAmount);
       } else {
-        // Deposit all in beta
-        AlphaBetaSplitter._betaDeposit(amount);
+        // Deposit all in childTwo if depositing full amount will not make us exceed the cap
+        AlphaBetaSplitter._childTwoDeposit(_amount);
       }
     } else {
-      // Deposit all in alpha
-      AlphaBetaSplitter._alphaDeposit(amount);
+      // Deposit all in childOne (childTwo deposit isn't used at all)
+      AlphaBetaSplitter._childOneDeposit(_amount);
     }
   }
 }

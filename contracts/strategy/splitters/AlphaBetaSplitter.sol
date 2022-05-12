@@ -8,45 +8,68 @@ pragma solidity 0.8.10;
 
 import '../base/BaseSplitter.sol';
 
-/// Always withdraw from childOne first
-/// Only to deposit to childTwo if childOne balance is lower
+/**
+  ChildOne is the first node that is being used to withdraw from
+  Only when ChildOne balance = 0 it will start withdrawing from ChildTwo
+
+  It will deposit in the child that returns the lowest balance
+*/
 contract AlphaBetaSplitter is BaseSplitter {
+  /// @param _initialParent Contract that will be the parent in the tree structure
+  /// @param _initialChildOne Contract that will be the initial childOne in the tree structure
+  /// @param _initialChildTwo Contract that will be the initial childTwo in the tree structure
   constructor(
     IMaster _initialParent,
     INode _initialChildOne,
     INode _initialChildTwo
   ) BaseSplitter(_initialParent, _initialChildOne, _initialChildTwo) {}
 
+  /// @notice Signal to withdraw `_amount` of USDC from the underlying nodes into core
+  /// @param _amount Amount of USDC to withdraw
   function _withdraw(uint256 _amount) internal virtual override {
-    uint256 alphaBalance = cachedChildOneBalance;
-    uint256 betaBalance = cachedChildTwoBalance;
+    // First in line for liquidations
+    uint256 childOneBalance = cachedChildOneBalance;
 
-    // withdraws will send the USDC to core
-    if (_amount > alphaBalance) {
-      childTwo.withdraw(_amount - childOne.withdrawAll());
+    // If the amount exceeds childOne balance, it will start withdrawing from childTwo
+    if (_amount > childOneBalance) {
+      // Withdraw all USDC from childOne
+      if (childOneBalance != 0) childOne.withdrawAll();
+
+      // Withdraw USDC from childTwo when childOne balance hits zero
+      childTwo.withdraw(_amount - childOneBalance);
     } else {
+      // Withdraw from childOne
       childOne.withdraw(_amount);
     }
   }
 
-  function _alphaDeposit(uint256 amount) internal virtual {
-    want.transfer(address(childOne), amount);
+  /// @notice Transfer USDC to childOne and call deposit
+  /// @param _amount Amount of USDC to deposit
+  function _childOneDeposit(uint256 _amount) internal virtual {
+    // Transfer USDC to childOne
+    want.transfer(address(childOne), _amount);
+
+    // Signal childOne it received a deposit
     childOne.deposit();
   }
 
-  function _betaDeposit(uint256 amount) internal virtual {
-    want.transfer(address(childTwo), amount);
+  /// @notice Transfer USDC to childTwo and call deposit
+  /// @param _amount Amount of USDC to deposit
+  function _childTwoDeposit(uint256 _amount) internal virtual {
+    // Transfer USDC to childTwo
+    want.transfer(address(childTwo), _amount);
+
+    // Signal childOne it received a deposit
     childTwo.deposit();
   }
 
+  /// @notice Deposit USDC into one or both childs
   function _deposit() internal virtual override {
-    uint256 alphaBalance = cachedChildOneBalance;
-    uint256 betaBalance = cachedChildTwoBalance;
-
-    if (alphaBalance < betaBalance) {
-      _alphaDeposit(want.balanceOf(address(this)));
+    // Deposit USDC into strategy that has the lowest balance
+    if (cachedChildOneBalance < cachedChildTwoBalance) {
+      _childOneDeposit(want.balanceOf(address(this)));
     } else {
-      _betaDeposit(want.balanceOf(address(this)));
+      _childTwoDeposit(want.balanceOf(address(this)));
     }
   }
 }
