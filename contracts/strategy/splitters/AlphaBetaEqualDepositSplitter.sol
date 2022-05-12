@@ -32,9 +32,11 @@ contract AlphaBetaEqualDepositSplitter is AlphaBetaSplitter {
     INode _initialChildTwo,
     uint256 _MIN_AMOUNT_FOR_EQUAL_SPLIT
   ) AlphaBetaSplitter(_initialParent, _initialChildOne, _initialChildTwo) {
+    // Write variable to storage
     MIN_AMOUNT_FOR_EQUAL_SPLIT = _MIN_AMOUNT_FOR_EQUAL_SPLIT;
   }
 
+  /// @notice Deposit USDC into one or both childs
   function _deposit() internal virtual override {
     // Amount of USDC in the contract
     uint256 amount = want.balanceOf(address(this));
@@ -64,15 +66,15 @@ contract AlphaBetaEqualDepositSplitter is AlphaBetaSplitter {
           /**
             Example
 
-            Alpha = 180k USDC
-            Beta = 220k USDC
+            One = 180k USDC
+            Two = 220k USDC
             amount = 100k USDC
 
             childTwoAdd = (100 - (220 - 180)) / 2 = 30k
             childOneAdd = 100k - 30k = 70k
             ---+
-            Alpha = 250k USDC
-            Beta = 250k USDC
+            One = 250k USDC
+            Two = 250k USDC
           */
           uint256 childTwoAdd = (amount - childTwoBalanceExtra) / 2;
           // Deposit USDC into childTwo

@@ -72,7 +72,9 @@ contract TreeStrategyMockCustom is BaseStrategyMock, IStrategy {
   uint256 public siblingRemovedCalled;
   bool public override setupCompleted;
 
-  function prepareBalanceCache() external override returns (uint256) {}
+  function prepareBalanceCache() external override returns (uint256) {
+    return want.balanceOf(address(this));
+  }
 
   function expireBalanceCache() external override {}
 
@@ -110,10 +112,20 @@ contract TreeStrategyMockCustom is BaseStrategyMock, IStrategy {
 
   function withdraw(uint256 _amount) external override {
     withdrawCalled++;
+    if (want.balanceOf(address(this)) != 0) {
+      want.transfer(address(core), _amount);
+    }
   }
 
   function withdrawAll() external override returns (uint256) {
     withdrawAllCalled++;
+
+    uint256 b = want.balanceOf(address(this));
+    if (b != 0) {
+      want.transfer(address(core), b);
+      return b;
+    }
+
     return type(uint256).max;
   }
 

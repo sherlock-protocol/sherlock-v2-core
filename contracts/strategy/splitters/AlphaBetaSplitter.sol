@@ -12,7 +12,7 @@ import '../base/BaseSplitter.sol';
   ChildOne is the first node that is being used to withdraw from
   Only when ChildOne balance = 0 it will start withdrawing from ChildTwo
 
-  It will deposit in the child that returns the lowest balance
+  It will deposit in the child that returns the lowest balance (childOne first)
 */
 contract AlphaBetaSplitter is BaseSplitter {
   /// @param _initialParent Contract that will be the parent in the tree structure
@@ -63,10 +63,10 @@ contract AlphaBetaSplitter is BaseSplitter {
     childTwo.deposit();
   }
 
-  /// @notice Deposit USDC into one or both childs
+  /// @notice Deposit USDC into one child
   function _deposit() internal virtual override {
     // Deposit USDC into strategy that has the lowest balance
-    if (cachedChildOneBalance < cachedChildTwoBalance) {
+    if (cachedChildOneBalance <= cachedChildTwoBalance) {
       _childOneDeposit(want.balanceOf(address(this)));
     } else {
       _childTwoDeposit(want.balanceOf(address(this)));
