@@ -783,6 +783,20 @@ describe('AlphaBetaEqualDepositMaxSplitter - childTwoMax', function () {
       expect(await this.strategy.depositCalled()).to.eq(2);
       expect(await this.strategy2.depositCalled()).to.eq(2);
     });
+    it('Deposit split amount with exceeded max', async function () {
+      await this.erc20.transfer(this.master.address, amount.mul(80));
+      await this.master.deposit();
+
+      expect(await this.erc20.balanceOf(this.strategy.address)).to.eq(amount.mul(194));
+      expect(await this.erc20.balanceOf(this.strategy2.address)).to.eq(amount.mul(50));
+
+      // It will deposit strategy 2 times as it's trying to balance 80 between 114 and 50
+      // Because 50 + 80 exceeds 114
+      // If we were to deposit 60, we would have a single deposit call
+      // Multideposits are showcased in the next section
+      expect(await this.strategy.depositCalled()).to.eq(4);
+      expect(await this.strategy2.depositCalled()).to.eq(2);
+    });
   });
   describe('Deposit() - Max ChildTwo - Split - Multi', function () {
     before(async function () {
@@ -833,6 +847,7 @@ describe('AlphaBetaEqualDepositMaxSplitter - childTwoMax', function () {
   });
 });
 
+// Copy of the previous test block but testing the other way around
 describe('AlphaBetaEqualDepositMaxSplitter - childOneMax', function () {
   before(async function () {
     timeTraveler = new TimeTraveler(network.provider);
@@ -934,7 +949,7 @@ describe('AlphaBetaEqualDepositMaxSplitter - childOneMax', function () {
       expect(await this.strategy.depositCalled()).to.eq(2);
     });
   });
-  describe('Deposit() - Max ChildOne - Split', function () {
+  describe('Deposit() - Max ChildOne - amount->split', function () {
     before(async function () {
       await timeTraveler.revertSnapshot();
 
@@ -978,8 +993,22 @@ describe('AlphaBetaEqualDepositMaxSplitter - childOneMax', function () {
       expect(await this.strategy2.depositCalled()).to.eq(2);
       expect(await this.strategy.depositCalled()).to.eq(2);
     });
+    it('Deposit split amount with exceeded max', async function () {
+      await this.erc20.transfer(this.master.address, amount.mul(80));
+      await this.master.deposit();
+
+      expect(await this.erc20.balanceOf(this.strategy2.address)).to.eq(amount.mul(194));
+      expect(await this.erc20.balanceOf(this.strategy.address)).to.eq(amount.mul(50));
+
+      // It will deposit strategy2 2 times as it's trying to balance 80 between 114 and 50
+      // Because 50 + 80 exceeds 114
+      // If we were to deposit 60, we would have a single deposit call
+      // Multideposits are showcased in the next section
+      expect(await this.strategy2.depositCalled()).to.eq(4);
+      expect(await this.strategy.depositCalled()).to.eq(2);
+    });
   });
-  describe('Deposit() - Max ChildOne - Split - Multi', function () {
+  describe('Deposit() - Max ChildOne - amount->split - Multi', function () {
     before(async function () {
       await timeTraveler.revertSnapshot();
 
