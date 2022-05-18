@@ -465,7 +465,7 @@ describe('AlphaBetaEqualDepositMaxSplitter - childTwoMax', function () {
           constants.AddressZero,
           constants.AddressZero,
           amount.mul(4),
-          0,
+          constants.MaxUint256,
           amount.mul(50),
         ],
       ],
@@ -880,7 +880,7 @@ describe('AlphaBetaEqualDepositMaxSplitter - childOneMax', function () {
           constants.AddressZero,
           amount.mul(4),
           amount.mul(50),
-          0,
+          constants.MaxUint256,
         ],
       ],
     ]);

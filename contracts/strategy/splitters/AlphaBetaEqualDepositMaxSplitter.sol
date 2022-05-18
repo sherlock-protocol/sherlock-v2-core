@@ -24,19 +24,19 @@ import './AlphaBetaEqualDepositSplitter.sol';
   if the initial amount is at least `MIN_AMOUNT_FOR_EQUAL_SPLIT` USDC
 */
 contract AlphaBetaEqualDepositMaxSplitter is AlphaBetaEqualDepositSplitter {
-  uint256 private constant NO_LIMIT = 0;
-  // Max amount of USDC childOne can hold (0 = no limit)
+  uint256 private constant NO_LIMIT = type(uint256).max;
+  // Max amount of USDC childOne can hold (type(uint256).max = no limit)
   uint256 public immutable MAX_AMOUNT_FOR_CHILD_ONE;
-  // Max amount of USDC childTwo can hold (0 = no limit)
+  // Max amount of USDC childTwo can hold (type(uint256).max = no limit)
   uint256 public immutable MAX_AMOUNT_FOR_CHILD_TWO;
 
   /// @param _initialParent Contract that will be the parent in the tree structure
   /// @param _initialChildOne Contract that will be the initial childOne in the tree structure
   /// @param _initialChildTwo Contract that will be the initial childTwo in the tree structure
   /// @param _MIN_AMOUNT_FOR_EQUAL_SPLIT Min USDC deposit amount to activate logic to equal out balances
-  /// @param _MAX_AMOUNT_FOR_CHILD_ONE Max amount of USDC childOne can hold (0 = no limit)
-  /// @param _MAX_AMOUNT_FOR_CHILD_TWO Max amount of USDC childTwo can hold (0 = no limit)
-  /// @notice Either `_MAX_AMOUNT_FOR_CHILD_ONE` or `_MAX_AMOUNT_FOR_CHILD_TWO` has to be 0
+  /// @param _MAX_AMOUNT_FOR_CHILD_ONE Max amount of USDC childOne can hold (type(uint256).max = no limit)
+  /// @param _MAX_AMOUNT_FOR_CHILD_TWO Max amount of USDC childTwo can hold (type(uint256).max = no limit)
+  /// @notice Either `_MAX_AMOUNT_FOR_CHILD_ONE` or `_MAX_AMOUNT_FOR_CHILD_TWO` has to be type(uint256).max
   constructor(
     IMaster _initialParent,
     INode _initialChildOne,
@@ -52,12 +52,12 @@ contract AlphaBetaEqualDepositMaxSplitter is AlphaBetaEqualDepositSplitter {
       _MIN_AMOUNT_FOR_EQUAL_SPLIT
     )
   {
-    // Either `_MAX_AMOUNT_FOR_CHILD_ONE` or `_MAX_AMOUNT_FOR_CHILD_TWO` has to be 0
+    // Either `_MAX_AMOUNT_FOR_CHILD_ONE` or `_MAX_AMOUNT_FOR_CHILD_TWO` has to be type(uint256).max
     if (_MAX_AMOUNT_FOR_CHILD_ONE != NO_LIMIT && _MAX_AMOUNT_FOR_CHILD_TWO != NO_LIMIT) {
       revert InvalidArg();
     }
 
-    // Either `_MAX_AMOUNT_FOR_CHILD_ONE` or `_MAX_AMOUNT_FOR_CHILD_TWO` has to be non 0
+    // Either `_MAX_AMOUNT_FOR_CHILD_ONE` or `_MAX_AMOUNT_FOR_CHILD_TWO` has to be non type(uint256).max
     if (_MAX_AMOUNT_FOR_CHILD_ONE == NO_LIMIT && _MAX_AMOUNT_FOR_CHILD_TWO == NO_LIMIT) {
       revert InvalidArg();
     }
@@ -70,13 +70,6 @@ contract AlphaBetaEqualDepositMaxSplitter is AlphaBetaEqualDepositSplitter {
   /// @notice Transfer USDC to one or both childs based on `MAX_AMOUNT_FOR_CHILD_ONE`
   /// @param _amount Amount of USDC to deposit
   function _childOneDeposit(uint256 _amount) internal virtual override {
-    // If childOne doesn't have a limit we can deposit all USDC in there
-    if (MAX_AMOUNT_FOR_CHILD_ONE == NO_LIMIT) {
-      // Deposit all USDC in childOne
-      AlphaBetaSplitter._childOneDeposit(_amount);
-      return;
-    }
-
     // Cache balance in memory
     uint256 childOneBalance = cachedChildOneBalance;
 
@@ -105,13 +98,6 @@ contract AlphaBetaEqualDepositMaxSplitter is AlphaBetaEqualDepositSplitter {
   /// @notice Transfer USDC to one or both childs based on `MAX_AMOUNT_FOR_CHILD_TWO`
   /// @param _amount Amount of USDC to deposit
   function _childTwoDeposit(uint256 _amount) internal virtual override {
-    // If childTwo doesn't have a limit we can deposit all USDC in there
-    if (MAX_AMOUNT_FOR_CHILD_TWO == NO_LIMIT) {
-      // Deposit all USDC in childTwo
-      AlphaBetaSplitter._childTwoDeposit(_amount);
-      return;
-    }
-
     // Cache balance in memory
     uint256 childTwoBalance = cachedChildTwoBalance;
 
