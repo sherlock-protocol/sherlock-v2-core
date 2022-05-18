@@ -31,6 +31,11 @@ interface INode {
   error NotChild();
   error InvalidParentAddress();
   error SetupNotCompleted(INode instance);
+  error NonZeroBalance();
+
+  /*//////////////////////////////////////////////////////////////
+                        CONSTRUCTOR VARIABLES
+  //////////////////////////////////////////////////////////////*/
 
   /// @return Returns the token type being deposited into a node
   function want() external view returns (IERC20);
@@ -42,9 +47,34 @@ interface INode {
   /// @notice View core controller of funds
   function core() external view returns (address);
 
+  /*//////////////////////////////////////////////////////////////
+                        TREE STRUCTURE LOGIC
+  //////////////////////////////////////////////////////////////*/
+
+  /// @notice Replace the node
+  /// @notice If this is executed on a strategy, the funds will be withdrawn
+  /// @notice If this is executed on a splitter, the children are expected to be the same
+  function replace(INode _node) external;
+
+  /// @notice Replace the node
+  /// @notice If this is executed on a strategy, attempt is made to withdraw the funds
+  /// @notice If this is executed on a splitter, check of children is skipped
+  function replaceForce(INode _node) external;
+
+  function setupCompleted() external view returns (bool);
+
+  /// @notice Move the current node as the child of `_node`
+  function replaceAsChild(ISplitter _node) external;
+
   /// @notice Update parent of node
   /// @dev Can only be called by current parent
   function updateParent(IMaster _node) external;
+
+  function siblingRemoved() external;
+
+  /*//////////////////////////////////////////////////////////////
+                        YIELD STRATEGY LOGIC
+  //////////////////////////////////////////////////////////////*/
 
   /// @return Returns the token balance managed by this contract
   /// @dev For Splitter this will be the sum of balances of the children
@@ -70,23 +100,6 @@ interface INode {
   /// @dev Splitter will deposit the tokens in their children
   /// @dev Strategy will deposit the tokens into a yield strategy
   function deposit() external;
-
-  /// @notice Replace the node
-  /// @notice If this is executed on a strategy, the funds will be withdrawn
-  /// @notice If this is executed on a splitter, the children are expected to be the same
-  function replace(INode _node) external;
-
-  /// @notice Replace the node
-  /// @notice If this is executed on a strategy, attempt is made to withdraw the funds
-  /// @notice If this is executed on a splitter, check of children is skipped
-  function replaceForce(INode _node) external;
-
-  /// @notice Move the current node as the child of `_node`
-  function replaceAsChild(ISplitter _node) external;
-
-  function siblingRemoved() external;
-
-  function setupCompleted() external view returns (bool);
 
   function prepareBalanceCache() external returns (uint256);
 

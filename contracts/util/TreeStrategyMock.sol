@@ -22,6 +22,7 @@ contract TreeStrategyMock is BaseStrategyMock, BaseStrategy {
   uint256 public internalWithdrawAllCalled;
   uint256 public internalWithdrawCalled;
   uint256 public internalDepositCalled;
+  bool public notWithdraw;
 
   function setupCompleted() external view override returns (bool) {
     return true;
@@ -29,12 +30,13 @@ contract TreeStrategyMock is BaseStrategyMock, BaseStrategy {
 
   constructor(IMaster _initialParent) BaseNode(_initialParent) {}
 
-  function balanceOf() public view override returns (uint256) {
+  function _balanceOf() internal view override returns (uint256) {
     return want.balanceOf(address(this));
   }
 
   function _withdrawAll() internal override returns (uint256 amount) {
-    amount = balanceOf();
+    if (notWithdraw) return 0;
+    amount = _balanceOf();
     want.transfer(msg.sender, amount);
 
     internalWithdrawAllCalled++;
@@ -57,6 +59,10 @@ contract TreeStrategyMock is BaseStrategyMock, BaseStrategy {
 
   function mockSetParent(IMaster _newParent) external {
     parent = _newParent;
+  }
+
+  function setNotWithdraw(bool _do) external {
+    notWithdraw = _do;
   }
 }
 

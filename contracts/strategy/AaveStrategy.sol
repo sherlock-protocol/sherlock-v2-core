@@ -65,7 +65,7 @@ contract AaveStrategy is BaseStrategy {
   /// @notice View the current balance of this strategy in USDC
   /// @dev Will return wrong balance if this contract somehow has USDC instead of only aUSDC
   /// @return Amount of USDC in this strategy
-  function balanceOf() public view override returns (uint256) {
+  function _balanceOf() internal view override returns (uint256) {
     // 1 aUSDC = 1 USDC
     return aWant.balanceOf(address(this));
   }
@@ -95,7 +95,7 @@ contract AaveStrategy is BaseStrategy {
   /// @return Amount of USDC withdrawn
   function _withdrawAll() internal override returns (uint256) {
     ILendingPool lp = getLp();
-    if (balanceOf() == 0) {
+    if (_balanceOf() == 0) {
       return 0;
     }
     // Withdraws all USDC from Aave's lending pool and sends it to core

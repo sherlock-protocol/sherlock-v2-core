@@ -1391,7 +1391,17 @@ describe('BaseStrategy', function () {
         'Ownable: caller is not the owner',
       );
     });
+    it('Invalid balance', async function () {
+      await this.erc20.transfer(this.strategy.address, 1);
+      await this.strategy.setNotWithdraw(true);
+
+      await expect(this.strategy.connect(this.alice).remove()).to.be.revertedWith(
+        'NonZeroBalance()',
+      );
+    });
     it('Do', async function () {
+      await this.strategy.setNotWithdraw(false);
+
       expect(await this.strategy.internalWithdrawAllCalled()).to.eq(0);
       expect(await this.splitterCustom.childRemovedCalled()).to.eq(0);
 
@@ -1415,7 +1425,17 @@ describe('BaseStrategy', function () {
         this.strategy.connect(this.alice).replace(constants.AddressZero),
       ).to.be.revertedWith('ZeroArg()');
     });
+    it('Invalid balance', async function () {
+      await this.erc20.transfer(this.strategy.address, 1);
+      await this.strategy.setNotWithdraw(true);
+
+      await expect(
+        this.strategy.connect(this.alice).replace(this.strategyCustom.address),
+      ).to.be.revertedWith('NonZeroBalance()');
+    });
     it('Do', async function () {
+      await this.strategy.setNotWithdraw(false);
+
       await this.strategyCustom.setSetupCompleted(true);
       await this.strategyCustom.setParent(this.splitterCustom.address);
       await this.strategyCustom.setCore(this.core.address);

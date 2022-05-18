@@ -34,11 +34,13 @@ abstract contract BaseStrategy is IStrategy, BaseNode, Pausable {
 
   function remove() external virtual override onlyOwner {
     _withdrawAll();
+    if (_balanceOf() != 0) revert NonZeroBalance();
     parent.childRemoved();
   }
 
   function replace(INode _newNode) external virtual override onlyOwner {
     _withdrawAll();
+    if (_balanceOf() != 0) revert NonZeroBalance();
     _replace(_newNode);
   }
 
