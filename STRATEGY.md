@@ -42,25 +42,156 @@ The first part takes care of the tree structure modularity, settings the referen
 
 The second part is the operational logic, how does the USDC flow into different strategies, how is the USDC pulled from these strategies.
 
+## Tree structure
+
+To mutate the tree stucture over time we expose the following functions. Keep in mind that the structure can not have any downtime while making these changes.
+
+- `replace()` Replace the current node with another node.
+- `replaceAsChild(_node)` Replace the current node with `_node` and make a parent-->child relationship with `_node`-->`old`
+- `remove()` This is **Strategy only**; remove a strategy (and it's parent) from the tree structure
+
+With these functions we are able to execute the following business logic
+
+### Remove a strategy
+
+```
+    m
+    |
+    1
+   / \
+  y   z
+
+
+    m
+    |
+    z
+```
+
+> changing 1 bidirectional relationship
+
+When `remove()` is called on strategy `y`, it will
+
+- Call `childRemoved()` on it's parent splitter `1`
+- `1` will call `z` with `siblingRemoved()`
+  - `z` will update it's parent from `1` to `m` (z->m)
+- `1` will call `m` with `updateChild(z)`
+  - `m` will update it's child from `1` to `z` (z<-m)
+
+Both `y` and `1` will be obsolete after this process (not active in the tree)
+
+### Add a strategy
+
+```
+    m
+    |
+    1
+   / \
+  y   z
+
+
+    m
+    |
+    1
+   / \
+  y   2
+     / \
+    z   x
+```
+
+> changing 3 bidirectional relationships
+
+- Deploy new splitter `2` with
+  - `z` as initial child (2->z)
+  - `1` as parent (2->1)
+- Deploy new strategy `x` with `2` as parent (2<-x)
+- Call `2` setChild(`x`) (2->x)
+- Call `replaceAsChild()` on `z`
+  - Will call `updateChild(2)` on `1` (2<-1)
+  - Will make `2` it's parent (2<-z)
+
+No nodes will be obsolete after this process
+
+### Replace a strategy
+
+```
+    m
+    |
+    1
+   / \
+  y   z
+
+    m
+    |
+    1
+   / \
+  y   x
+```
+
+> changing 1 bidirectional relationship
+
+- Deploy new strategy `x` with `1` as parent (1<-x)
+- Call `replace(x)` on `z`
+  - Will call `updateChild(x)` on `1` (1->x)
+
+Node `z` will be obsolete after this process
+
+### Replace a splitter
+
+```
+    m
+    |
+    1
+   / \
+  y   z
+
+
+    m
+    |
+    2
+   / \
+  y   z
+```
+
+> changing 3 bidirectional relationships
+
+- Deploy new splitter `2` with
+  - `z` as initial child (2->z)
+  - `y` as initial child (2->y)
+  - `m` as parent (2->m)
+- Call `replace(2)` on `1`
+  - Will `updateChild()` on `m` (2<-m)
+  - Will `updateParent()` on `z` (2<-z)
+  - Will `updateParent()` on `y` (2<-y)
+
+Node `1` will be obsolete after this process
+
 ## Current implementations
 
-Withdraws are always right to left. Liquidation in order
+There are currently 3 splitter implementations.
 
-We have 3 different deposit implementations
+- `AlphaBetaSplitter` Liquidate childOne first, deposit into child with lowest balance
+- `AlphaBetaEqualDepositSplitter` Liquidate childOne first, deposit into
+  child with lowest balance but deposit in both child if the amount is at least `X`
+- `AlphaBetaEqualDepositMaxSplitter` Liquidate childOne first, deposit into child with lowest balance but deposit in both child if the amount is at least `X` and have one child that can hold up to `Y` USDC
 
-## Code risks
+We have 5 strategy implementations (USDC)
 
-- Admin functions that are not admin protected
-- `BalanceOf()` calls can revert
+- `AaveStrategy` - https://aave.com/
+- `CompoundStrategy` - https://compound.finance/
+- `EulerStrategy` - https://www.euler.finance/
+- `MapleStrategy` - https://www.maple.finance/
+- `TrueFiStrategy` - https://truefi.io/
 
-TODO
+All of these 8 implementations inherit from the `Base` contracts, which gives the implementations the right functions to fit in the tree structure.
 
-- Add actual code logic
+There are 4 base contracts
 
-TODO
+- `BaseNode` The base logic for any contract in the tree structure
+- `BaseMaster` The base logic for the master (single child)
+- `BaseSplitter` The base logic for any splitter
+- `BaseStrategy` The base logic for any strategy
 
-- [ ] Write about the concept of the tree
-- [ ] Describe how the `base` contracts are formatted (and cdouble check implementation)
+![Dependency graph](https://i.imgur.com/MHlbMXR.png)
 
 ## Tests
 
@@ -68,11 +199,12 @@ TODO
 
 **BaseTreeStrategyIntegration.js** - Integration testing of all the base tree structure related code (`/strategy/base`)
 
-TODO
+**strategy/splitters.js** - Testing different splitter implementations
 
-- [ ] Splitter tests `/strategy/splitters`
-- [ ] e2e mainnet fork tests with 5 strategies
+## Initial deployment setup
 
-TODO
+![Initial tree strategy](https://i.imgur.com/U7Pcrzv.png)
 
-- [ ] Unit test both cache function on accessability. https://github.com/sherlock-protocol/sherlock-v2-core/pull/25/files
+Other resources
+
+- https://github.com/sherlock-protocol/sherlock-v2-core/issues/24
