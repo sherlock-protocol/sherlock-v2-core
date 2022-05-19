@@ -193,6 +193,12 @@ There are 4 base contracts
 
 ![Dependency graph](https://i.imgur.com/MHlbMXR.png)
 
+### Pausable
+
+Splitters are **not** pausable
+
+Strategies are pausable, only depositing into the yield protocol will be paused.
+
 ## Tests
 
 **BaseTreeStrategy.js** - Unit testing all base tree structure related code (`/strategy/base`)
