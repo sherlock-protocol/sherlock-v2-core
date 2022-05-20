@@ -12,13 +12,18 @@ import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 
 import '../../interfaces/strategy/INode.sol';
 
+// Interface used by every node
 abstract contract BaseNode is INode, Ownable {
   using SafeERC20 for IERC20;
 
+  // Parent node
   IMaster public override parent;
+  // Which token the strategy uses (USDC)
   IERC20 public immutable override want;
+  // Reference to core (Sherlock.sol)
   address public immutable override core;
 
+  /// @param _initialParent The initial parent of this node
   constructor(IMaster _initialParent) {
     if (address(_initialParent) == address(0)) revert ZeroArg();
 
@@ -44,33 +49,47 @@ abstract contract BaseNode is INode, Ownable {
                         TREE STRUCTURE LOGIC
   //////////////////////////////////////////////////////////////*/
 
-  /*
-    Replace as child ensures that (this) is the child of the _newParent.
-    It will also enfore a `_executeParentUpdate` to make that relation bi-directional
-
-    For the other child is does minimal checks, it only checks if it isn't the same as address(this)
-    We should check if the parent is the same as `_newParent`
-  */
+  /// @notice Replace this node to be a child of `_newParent`
+  /// @param _newParent address of the new parent
+  /// @dev Replace as child ensures that (this) is the child of the `_newParent`
+  /// @dev It will also enfore a `_executeParentUpdate` to make that relation bi-directional
+  /// @dev For the other child is does minimal checks, it only checks if it isn't the same as address(this)
   function replaceAsChild(ISplitter _newParent) external virtual override onlyOwner {
+    /*
+          m
+          |
+        this
+
+          m
+          |
+          1
+         / \
+        z  this
+    */
+
     // Gas savings
     IMaster _currentParent = parent;
 
     // Revert is parent is master
+    // The master is always at the root of the tree
     if (_newParent.isMaster()) revert IsMaster();
 
     // Verify if the new parent has the right connections
     _verifyParentUpdate(_currentParent, _newParent);
+    // Verify is childs of newParent are correct
     INode otherChild = _verifyNewParent(_newParent);
-    if (address(otherChild) != address(0)) {
-      if (otherChild.parent() != _newParent) revert InvalidParent();
-    }
 
-    // Revert if parent connection isn't there
-    // This is specific to `replaceAsChild` as it creates a connection between the parent and address(this)
+    // Revert if otherchild = 0
+    // Revert if the other child has the right parent reference too
+    // Check if `z` has the right parent (referencing comment on top function)
+    if (otherChild.parent() != _newParent) revert InvalidParent();
+
+    // Check if `_newParent` references our currentParent as their parent
+    // Check if `m` == `1`.parent() (referencing comment on top function)
     if (_currentParent != _newParent.parent()) revert InvalidParent();
 
     // Make sure the parent recognizes the new child
-    // This is specific to `replaceAsChild` as it creates a connection between the parent and address(this)
+    // Make sure `m` references `1` as it's child (referencing comment on top function)
     _currentParent.updateChild(_newParent);
 
     // Update parent
@@ -79,6 +98,9 @@ abstract contract BaseNode is INode, Ownable {
     emit ReplaceAsChild();
   }
 
+  /// @notice Replace parent of this node
+  /// @param _newParent Address of the new parent
+  /// @dev Only callable by current parent
   function updateParent(IMaster _newParent) external virtual override onlyParent {
     // Verify if the parent can be updated
     _verifyParentUpdate(IMaster(msg.sender), _newParent);
@@ -88,39 +110,58 @@ abstract contract BaseNode is INode, Ownable {
     _executeParentUpdate(IMaster(msg.sender), _newParent);
   }
 
+  /// @notice Get notified by parent that your sibling is removed
+  /// @dev This contract will take the position of the parent
+  /// @dev Only callable by current parent
   function siblingRemoved() external override onlyParent {
+    // Get current parent of parent
     IMaster _newParent = parent.parent();
 
+    // Take position of current parent
     _verifyParentUpdate(IMaster(msg.sender), _newParent);
     // NOTE: _verifyNewParent() is skipped on this call
-    // as address(this) should be added as a child after the callback
+    // As address(this) should be added as a child after the function returns
     _executeParentUpdate(IMaster(msg.sender), _newParent);
   }
 
+  /// @notice Verify if `_newParent` is able to be our new parent
+  /// @param _newParent Address of the new parent
+  /// @return otherChild Address of the child that isn't address(this)
   function _verifyNewParent(IMaster _newParent) internal view returns (INode otherChild) {
+    // The setup needs to be completed of parent
     if (_newParent.setupCompleted() == false) revert SetupNotCompleted(_newParent);
 
+    // get first child
     INode firstChild = _newParent.childOne();
     INode secondChild;
 
+    // is address(this) childOne?
     bool isFirstChild = address(firstChild) == address(this);
     bool isSecondChild = false;
 
+    // Parent only has a childTwo if it isn't master
     if (!_newParent.isMaster()) {
+      // get second child
       secondChild = ISplitter(address(_newParent)).childTwo();
+      // is address(this) childTwo?
       isSecondChild = address(secondChild) == address(this);
     }
 
-    // Verify if address(this) is a child
+    // Check if address(this) is referenced as both childs
     if (isFirstChild && isSecondChild) revert BothChild();
+    // Check if address(this) isn't referenced at all
     if (!isFirstChild && !isSecondChild) revert NotChild();
 
+    // return child that isn't address(this)
     if (isFirstChild) {
       return secondChild;
     }
     return firstChild;
   }
 
+  /// @notice Verify if `_newParent` can replace `_currentParent`
+  /// @param _currentParent Address of our current `parent`
+  /// @param _newParent Address of our future `parent`
   function _verifyParentUpdate(IMaster _currentParent, IMaster _newParent) internal view {
     // Revert if it's the same address
     if (address(_newParent) == address(this)) revert InvalidParentAddress();
@@ -132,12 +173,16 @@ abstract contract BaseNode is INode, Ownable {
     if (_currentParent.want() != _newParent.want()) revert InvalidWant();
   }
 
+  /// @notice Set parent in storage
+  /// @param _currentParent Address of our current `parent`
+  /// @param _newParent Address of our future `parent`
   function _executeParentUpdate(IMaster _currentParent, IMaster _newParent) internal {
     // Make `_newParent` our new parent
     parent = _newParent;
     emit ParentUpdate(_currentParent, _newParent);
   }
 
+  /// @notice Replace address(this) with `_newNode`
   function _replace(INode _newNode) internal {
     if (address(_newNode) == address(0)) revert ZeroArg();
     if (_newNode.setupCompleted() == false) revert SetupNotCompleted(_newNode);
@@ -146,6 +191,7 @@ abstract contract BaseNode is INode, Ownable {
     if (_newNode.core() != core) revert InvalidCore();
     if (_newNode.want() != want) revert InvalidWant();
 
+    // Make sure our parent references `_newNode` as it's child
     parent.updateChild(_newNode);
 
     emit Replace(_newNode);

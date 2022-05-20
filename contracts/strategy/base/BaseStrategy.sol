@@ -18,10 +18,12 @@ import './BaseNode.sol';
 abstract contract BaseStrategy is IStrategy, BaseNode, Pausable {
   using SafeERC20 for IERC20;
 
+  /// @dev Return balance of this strategy
   function prepareBalanceCache() external override onlyParent returns (uint256) {
     return _balanceOf();
   }
 
+  /// @dev No cache is used in strategies
   function expireBalanceCache() external override onlyParent {}
 
   function pause() external virtual onlyOwner {
