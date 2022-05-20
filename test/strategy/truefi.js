@@ -21,6 +21,8 @@ const trueFiToken = '0x4C19596f5aAfF459fA38B0f7eD92F11AE6543784';
 const usdcWhaleAddress = '0xe78388b4ce79068e89bf8aa7f218ef6b9ab0e9d0';
 const USDC = '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48';
 
+const MULTISIG = '0x666B8EbFbF4D5f0CE56962a25635CfF563F13161';
+
 const BLOCK = 14699000;
 const TIMESTAMP = 1651503884;
 const YEAR = 60 * 60 * 24 * 365;
@@ -273,18 +275,13 @@ describe('TrueFi', function () {
     before(async function () {
       await timeTraveler.revertSnapshot();
     });
-    it('Now owner', async function () {
-      await expect(this.truefi.connect(this.bob).claimReward()).to.be.revertedWith(
-        'Ownable: caller is not the owner',
-      );
-    });
     it('100 USDC deposit', async function () {
       await this.mintUSDC(this.truefi.address, parseUnits('100', 6));
       await this.splitter.deposit(this.truefi.address);
 
       expect(await this.tfFarm.claimable(this.tfUSDC.address, this.truefi.address)).to.eq(0);
       expect(await this.trueFiToken.balanceOf(this.truefi.address)).to.eq(0);
-      expect(await this.trueFiToken.balanceOf(this.alice.address)).to.eq(0);
+      expect(await this.trueFiToken.balanceOf(MULTISIG)).to.eq(0);
     });
     it('Year later', async function () {
       await timeTraveler.setNextBlockTimestamp(TIMESTAMP + YEAR);
@@ -295,7 +292,7 @@ describe('TrueFi', function () {
         parseUnits('0.1', 8),
       );
       expect(await this.trueFiToken.balanceOf(this.truefi.address)).to.eq(0);
-      expect(await this.trueFiToken.balanceOf(this.alice.address)).to.eq(0);
+      expect(await this.trueFiToken.balanceOf(MULTISIG)).to.eq(0);
     });
     it('100 USDC deposit', async function () {
       await this.mintUSDC(this.truefi.address, parseUnits('100', 6));
@@ -306,7 +303,7 @@ describe('TrueFi', function () {
         parseUnits('24.55', 8), //24.53220944 TrueFi tokens
         parseUnits('0.1', 8),
       );
-      expect(await this.trueFiToken.balanceOf(this.alice.address)).to.eq(0);
+      expect(await this.trueFiToken.balanceOf(MULTISIG)).to.eq(0);
     });
     it('Year later', async function () {
       await timeTraveler.setNextBlockTimestamp(TIMESTAMP + YEAR + YEAR);
@@ -320,7 +317,7 @@ describe('TrueFi', function () {
         parseUnits('24.55', 8), //24.53220944 TrueFi tokens
         parseUnits('0.1', 8),
       );
-      expect(await this.trueFiToken.balanceOf(this.alice.address)).to.eq(0);
+      expect(await this.trueFiToken.balanceOf(MULTISIG)).to.eq(0);
     });
     it('Claim', async function () {
       // claiming claimabe() + tokens already in the contract
@@ -328,7 +325,7 @@ describe('TrueFi', function () {
 
       expect(await this.tfFarm.claimable(this.tfUSDC.address, this.truefi.address)).to.eq(0);
       expect(await this.trueFiToken.balanceOf(this.truefi.address)).to.eq(0);
-      expect(await this.trueFiToken.balanceOf(this.alice.address)).to.be.closeTo(
+      expect(await this.trueFiToken.balanceOf(MULTISIG)).to.be.closeTo(
         parseUnits('40', 8),
         parseUnits('0.1', 8),
       );
@@ -339,7 +336,7 @@ describe('TrueFi', function () {
 
       expect(await this.tfFarm.claimable(this.tfUSDC.address, this.truefi.address)).to.eq(0);
       expect(await this.trueFiToken.balanceOf(this.truefi.address)).to.eq(0);
-      expect(await this.trueFiToken.balanceOf(this.alice.address)).to.be.closeTo(
+      expect(await this.trueFiToken.balanceOf(MULTISIG)).to.be.closeTo(
         parseUnits('40', 8),
         parseUnits('0.1', 8),
       );

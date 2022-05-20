@@ -65,6 +65,9 @@ contract TrueFiStrategy is BaseStrategy {
   // The TrueFi token
   IERC20 public constant rewardToken = IERC20(0x4C19596f5aAfF459fA38B0f7eD92F11AE6543784);
 
+  // Address to receive rewards
+  address public constant LIQUIDITY_MINING_RECEIVER = 0x666B8EbFbF4D5f0CE56962a25635CfF563F13161;
+
   /// @param _initialParent Contract that will be the parent in the tree structure
   constructor(IMaster _initialParent) BaseNode(_initialParent) {
     // Approve tfUSDC max amount of USDC
@@ -163,9 +166,8 @@ contract TrueFiStrategy is BaseStrategy {
   }
 
   /// @notice Claim TrueFi tokens earned by farming
-  /// @dev Can only be called by owner
-  /// @dev TrueFi tokens will be send to caller
-  function claimReward() external onlyOwner {
+  /// @dev TrueFi tokens will be send to LIQUIDITY_MINING_RECEIVER
+  function claimReward() external whenNotPaused {
     IERC20[] memory tokens = new IERC20[](1);
     tokens[0] = tfUSDC;
 
@@ -175,7 +177,7 @@ contract TrueFiStrategy is BaseStrategy {
     // How much TrueFi tokens does this contract hold
     uint256 rewardBalance = rewardToken.balanceOf(address(this));
 
-    // Send all TrueFi tokens to owner (msg.sender)
-    if (rewardBalance != 0) rewardToken.safeTransfer(msg.sender, rewardBalance);
+    // Send all TrueFi tokens to LIQUIDITY_MINING_RECEIVER
+    if (rewardBalance != 0) rewardToken.safeTransfer(LIQUIDITY_MINING_RECEIVER, rewardBalance);
   }
 }

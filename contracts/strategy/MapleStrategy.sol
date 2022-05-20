@@ -27,6 +27,9 @@ contract MapleStrategy is BaseStrategy {
   IPool public immutable maplePool;
   IMplRewards public immutable mapleRewards;
 
+  // Address to receive rewards
+  address public constant LIQUIDITY_MINING_RECEIVER = 0x666B8EbFbF4D5f0CE56962a25635CfF563F13161;
+
   /// @param _initialParent Contract that will be the parent in the tree structure
   /// @param _mapleRewards Maple rewards contract linked to USDC staking pool
   constructor(IMaster _initialParent, IMplRewards _mapleRewards) BaseNode(_initialParent) {
@@ -187,9 +190,8 @@ contract MapleStrategy is BaseStrategy {
   }
 
   /// @notice Claim Maple tokens earned by farming
-  /// @dev Can only be called by owner
-  /// @dev Maple tokens will be send to caller
-  function claimReward() external onlyOwner {
+  /// @dev Maple tokens will be send to LIQUIDITY_MINING_RECEIVER
+  function claimReward() external whenNotPaused {
     // Claim reward tokens
     mapleRewards.getReward();
 
@@ -199,7 +201,7 @@ contract MapleStrategy is BaseStrategy {
     // Query reward token balance
     uint256 balance = rewardToken.balanceOf(address(this));
 
-    // Send all reward tokens to sender (owner)
-    if (balance != 0) rewardToken.safeTransfer(msg.sender, balance);
+    // Send all reward tokens to LIQUIDITY_MINING_RECEIVER
+    if (balance != 0) rewardToken.safeTransfer(LIQUIDITY_MINING_RECEIVER, balance);
   }
 }

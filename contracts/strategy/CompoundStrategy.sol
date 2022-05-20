@@ -34,6 +34,9 @@ contract CompoundStrategy is BaseStrategy {
     IComptroller(0x3d9819210A31b4961b30EF54bE2aeD79B9c9Cd3B);
   IERC20 internal constant COMP = IERC20(0xc00e94Cb662C3520282E6f5717214004A7f26888);
 
+  // Address to receive rewards
+  address public constant LIQUIDITY_MINING_RECEIVER = 0x666B8EbFbF4D5f0CE56962a25635CfF563F13161;
+
   /// @param _initialParent Contract that will be the parent in the tree structure
   constructor(IMaster _initialParent) BaseNode(_initialParent) {
     // Approve max USDC to cUSDC
@@ -95,9 +98,8 @@ contract CompoundStrategy is BaseStrategy {
   }
 
   /// @notice Claim COMP tokens earned by supplying
-  /// @dev Can only be called by owner
-  /// @dev COMP tokens will be send to caller
-  function claimReward() external onlyOwner {
+  /// @dev COMP tokens will be send to LIQUIDITY_MINING_RECEIVER
+  function claimReward() external whenNotPaused {
     // Claim COMP for address(this)
     address[] memory holders = new address[](1);
     holders[0] = address(this);
@@ -113,7 +115,7 @@ contract CompoundStrategy is BaseStrategy {
     // How much COMP tokens does this contract hold
     uint256 rewardBalance = COMP.balanceOf(address(this));
 
-    // Send all COMP tokens to owner (msg.sender)
-    if (rewardBalance != 0) COMP.safeTransfer(msg.sender, rewardBalance);
+    // Send all COMP tokens to LIQUIDITY_MINING_RECEIVER
+    if (rewardBalance != 0) COMP.safeTransfer(LIQUIDITY_MINING_RECEIVER, rewardBalance);
   }
 }

@@ -22,6 +22,8 @@ const cUSDC = '0x39aa39c021dfbae8fac545936693ac917d5e7563';
 const COMP = '0xc00e94Cb662C3520282E6f5717214004A7f26888';
 const COMPTROLLER = '0x3d9819210A31b4961b30EF54bE2aeD79B9c9Cd3B';
 
+const MULTISIG = '0x666B8EbFbF4D5f0CE56962a25635CfF563F13161';
+
 const BLOCK = 13699000;
 const TIMESTAMP = 1638052444;
 const YEAR = 60 * 60 * 24 * 365;
@@ -260,7 +262,7 @@ describe('Compound', function () {
     });
     it('Initial state', async function () {
       expect(await this.COMP.balanceOf(this.compound.address)).to.eq(0);
-      expect(await this.COMP.balanceOf(this.alice.address)).to.eq(0);
+      expect(await this.COMP.balanceOf(MULTISIG)).to.eq(0);
     });
     it('Claim', async function () {
       await this.splitter.deposit(this.compound.address);
@@ -270,7 +272,7 @@ describe('Compound', function () {
 
       expect(await this.COMP.balanceOf(this.compound.address)).to.eq(0);
       // = 3800$ = 0.38% APY
-      expect(await this.COMP.balanceOf(this.alice.address)).to.be.closeTo(
+      expect(await this.COMP.balanceOf(MULTISIG)).to.be.closeTo(
         parseUnits('38.8', 18),
         parseUnits('0.1', 18),
       );
@@ -279,7 +281,7 @@ describe('Compound', function () {
       await this.compound.claimReward();
 
       expect(await this.COMP.balanceOf(this.compound.address)).to.eq(0);
-      expect(await this.COMP.balanceOf(this.alice.address)).to.be.closeTo(
+      expect(await this.COMP.balanceOf(MULTISIG)).to.be.closeTo(
         parseUnits('38.8', 18),
         parseUnits('0.1', 18),
       );
