@@ -193,10 +193,10 @@ abstract contract BaseSplitter is BaseMaster, ISplitter {
                         YIELD STRATEGY LOGIC
   //////////////////////////////////////////////////////////////*/
 
-  // Private variables to cache balances during runtime
+  // Internal variables to cache balances during runtime
   // Will always be 0 (except during runtime)
-  uint256 private cachedChildOneBalance;
-  uint256 private cachedChildTwoBalance;
+  uint256 internal cachedChildOneBalance;
+  uint256 internal cachedChildTwoBalance;
 
   /// @notice Cache balances of childs in storage
   /// @notice Can only be called by parent node
@@ -239,7 +239,6 @@ abstract contract BaseSplitter is BaseMaster, ISplitter {
   /// @notice Withdraw `_amount` funds
   /// @notice Can only be called by admin
   /// @notice Not implemented
-  /// @return amount Amount of USDC withdrawn
   /// @dev More context: https://github.com/sherlock-protocol/sherlock-v2-core/issues/24
   function withdrawByAdmin(uint256 _amount) external override onlyOwner {
     revert NotImplemented(msg.sig);
