@@ -26,7 +26,7 @@ The owner (governance) will be able to update other logic parts of the protocol,
 
 The task of this contract is to expose a fully 'automated' claim process where governance is not step in between.
 
-Protocol agents are able to submit a claim that first passes by the Sherlock Protocol Claims Committee (SPCC), a multisig of security people in the space. In the SPCC denies the claim the protocol agent can escalte to UMA court, which gives UMA tokens holders (independent party) the final say in the validity of the claim.
+Protocol agents are able to submit a claim that first passes by the Sherlock Protocol Claims Committee (SPCC), a multisig of security people in the space. In the SPCC denies the claim the protocol agent can escalate to UMA court, which gives UMA tokens holders (independent party) the final say in the validity of the claim.
 
 The UMA Halt Operator (UMAHO) is able to dismiss a validated claim by UMA. This role can be renounced by governance.
 

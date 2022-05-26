@@ -48,15 +48,15 @@ interface ISherlockGov {
   function updateSherDistributionManager(ISherDistributionManager _sherDistributionManager)
     external;
 
-  /// @notice Remove SHER token rewards
+  /// @notice Deletes the SHER distribution manager altogether (if Sherlock decides to no longer pay out SHER rewards)
   function removeSherDistributionManager() external;
 
   /// @notice Read SHER distribution manager
   /// @return Address of current SHER distribution manager
   function sherDistributionManager() external view returns (ISherDistributionManager);
 
-  /// @notice Update address eligble for non staker rewards from protocol premiums
-  /// @param _nonStakers Address eligble for non staker rewards
+  /// @notice Update address eligible for non staker rewards from protocol premiums
+  /// @param _nonStakers Address eligible for non staker rewards
   function updateNonStakersAddress(address _nonStakers) external;
 
   /// @notice View current non stakers address
@@ -81,9 +81,14 @@ interface ISherlockGov {
   function updateSherlockClaimManager(ISherlockClaimManager _claimManager) external;
 
   /// @notice Update yield strategy
-  /// @param _yieldStrategy News address of the strategy
+  /// @param _yieldStrategy New address of the strategy
   /// @dev try a yieldStrategyWithdrawAll() on old, ignore failure
   function updateYieldStrategy(IStrategyManager _yieldStrategy) external;
+
+  /// @notice Update yield strategy ignoring current state
+  /// @param _yieldStrategy New address of the strategy
+  /// @dev tries a yieldStrategyWithdrawAll() on old strategy, ignore failure
+  function updateYieldStrategyForce(IStrategyManager _yieldStrategy) external;
 
   /// @notice Read current strategy
   /// @return Address of current strategy

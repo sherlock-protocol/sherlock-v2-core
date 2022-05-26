@@ -6,6 +6,8 @@ pragma solidity 0.8.10;
 * Sherlock Protocol: https://sherlock.xyz
 /******************************************************************************/
 
+import './managers/IStrategyManager.sol';
+
 /// @title Sherlock core interface for yield strategy
 /// @author Evert Kors
 interface ISherlockStrategy {

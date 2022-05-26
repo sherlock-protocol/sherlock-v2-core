@@ -22,10 +22,14 @@ import '@openzeppelin/contracts/security/ReentrancyGuard.sol';
 contract SherlockClaimManager is ISherlockClaimManager, ReentrancyGuard, Manager {
   using SafeERC20 for IERC20;
 
-  // The bond required for a protocol agent to escalate a claim to UMA Optimistic Oracle (OO)
-  /// @dev at time of writing will result in a 20k cost of escalating
-  /// @dev the actual amount is based on the value returned here https://github.com/UMAprotocol/protocol/blob/master/packages/core/contracts/oracle/implementation/Store.sol#L131
-  uint256 internal constant BOND = 9_600 * 10**6; // 20k bond
+  /// @dev at time of writing, the escalation cost will be 22.2k
+  /// assuming BOND = 9600 and UMA's final fee = 1500
+  /// UMA's final fee can be changed in the future, which may result in lower or higher required staked amounts for escalating a claim.
+  /// The actual amount is 2 * (BOND + UMA's final fee), because:
+  /// 1. The first half is charged when calling UMA.requestAndProposePriceFor()
+  /// 2. The second half is charged when calling UMA.disputePriceFor()
+  /// UMA's fee can be found here: https://github.com/UMAprotocol/protocol/blob/master/packages/core/contracts/oracle/implementation/Store.sol#L131)
+  uint256 internal constant BOND = 9_600 * 10**6;
 
   // The amount of time the protocol agent has to escalate a claim
   uint256 public constant ESCALATE_TIME = 4 weeks;
@@ -124,7 +128,7 @@ contract SherlockClaimManager is ISherlockClaimManager, ReentrancyGuard, Manager
   // Checks to see if a claim can be escalated to the UMA OO
   // Claim must be either
   // 1) Denied by SPCC and within 4 weeks after denial
-  // 2) Beyond the designated time window for SPCC to respond
+  // 2) Pending by SPCC but beyond the designated time window for SPCC to respond
   function _isEscalateState(State _oldState, uint256 updated) internal view returns (bool) {
     if (_oldState == State.SpccDenied && block.timestamp <= updated + ESCALATE_TIME) return true;
 
@@ -296,7 +300,7 @@ contract SherlockClaimManager is ISherlockClaimManager, ReentrancyGuard, Manager
   /// @dev Even if the protocol agent role is tranferred during the lifecycle
   /// @dev This is done because a protocols coverage can end after an exploit, either wilfully or forcefully.
   /// @dev The protocol agent is still active for 7 days after coverage ends, so a claim can still be submitted.
-  /// @dev But in case the claim is approved after the 7 day period, `payoutClaim()` can not be called as the protocol agent is 0
+  /// @dev Approved claims after the 7 day period will still be paid, where the amount will be sent to the recevier.
   function startClaim(
     bytes32 _protocol,
     uint256 _amount,
@@ -331,6 +335,8 @@ contract SherlockClaimManager is ISherlockClaimManager, ReentrancyGuard, Manager
     // The max amount a protocol can claim is the higher of the current and previous coverage amounts
     uint256 maxClaim = current > previous ? current : previous;
     // True if a protocol is claiming based on its previous coverage amount (only used in event emission)
+    // Current coverage takes precedence over the previous one, which means the only case this is true
+    // is when claimed amount is greater than current coverage.
     bool prevCoverage = _amount > current;
     // Requires the amount claimed is less than or equal to the higher of the current and previous coverage amounts
     if (_amount > maxClaim) revert InvalidArgument();
@@ -434,7 +440,7 @@ contract SherlockClaimManager is ISherlockClaimManager, ReentrancyGuard, Manager
       0, // Reward is 0, Sherlock handles rewards on its own
       BOND, // Cost of making a request to the UMA OO (as decided by Sherlock)
       LIVENESS, // Proposal liveness
-      address(sherlockCore), // Sherlock core address
+      address(sherlockCore), // If escalated claim fails, bond amount gets sent to sherlockCore
       0 // price
     );
 
@@ -536,8 +542,8 @@ contract SherlockClaimManager is ISherlockClaimManager, ReentrancyGuard, Manager
 
   // Once requestAndProposePriceFor() is executed in UMA's contracts, this function gets called
   // We change the claim's state from UmaPriceProposed to ReadyToProposeUmaDispute
-  // Then we call the next function in the process, disputePriceFor()
-  // @note reentrancy is allowed for this call
+  // Then, the next callback in the process, disputePriceFor(), gets called by the UMA's contract.
+  // @note Does not have reentrancy protection because it is called by the OO contract which is non-reentrant.
   function priceProposed(
     bytes32 identifier,
     uint32 timestamp,
@@ -559,8 +565,8 @@ contract SherlockClaimManager is ISherlockClaimManager, ReentrancyGuard, Manager
 
   // Once disputePriceFor() is executed in UMA's contracts, this function gets called
   // We change the claim's state from UmaDisputeProposed to UmaPending
-  // Then we call the next function in the process, priceSettled()
-  // @note reentrancy is allowed for this call
+  // Then, the next callback in the process, priceSettled(), gets called by the UMA's contract.
+  // @note Does not have reentrancy protection because it is called by the OO contract which is non-reentrant.
   function priceDisputed(
     bytes32 identifier,
     uint32 timestamp,

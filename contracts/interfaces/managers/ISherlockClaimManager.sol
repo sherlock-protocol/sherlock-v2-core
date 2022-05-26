@@ -44,13 +44,13 @@ interface ISherlockClaimManager is IManager, OptimisticRequester {
     SpccPending, // Claim is created, SPCC is able to set state to valid
     SpccApproved, // Final state, claim is valid
     SpccDenied, // Claim denied by SPCC, claim can be escalated within 4 weeks
-    UmaPriceProposed, // Price is proposed by not escalated
-    ReadyToProposeUmaDispute, // Price is proposed, callback receiver, ready to submit dispute
-    UmaDisputeProposed, // Escaltion is done, waiting for confirmation
+    UmaPriceProposed, // Price is proposed but not escalated
+    ReadyToProposeUmaDispute, // Price is proposed, callback received, ready to submit dispute
+    UmaDisputeProposed, // Escalation is done, waiting for confirmation
     UmaPending, // Claim is escalated, in case Spcc denied or didn't act within 7 days.
     UmaApproved, // Final state, claim is valid, claim can be enacted after 1 day, umaHaltOperator has 1 day to change to denied
     UmaDenied, // Final state, claim is invalid
-    Halted, // UMHA can halt claim if state is UmaApproved
+    Halted, // UMAHO can halt claim if state is UmaApproved
     Cleaned // Claim is removed by protocol agent
   }
 
@@ -66,21 +66,31 @@ interface ISherlockClaimManager is IManager, OptimisticRequester {
     bytes ancillaryData;
   }
 
-  // requestAndProposePriceFor() --> proposer = protocolAgent
-  // disputePriceFor() --> disputor = sherlock.strategyManager() (current active one)
+  // requestAndProposePriceFor() --> proposer = sherlockCore (address to receive BOND if UMA denies claim)
+  // disputePriceFor() --> disputer = protocolAgent
   // priceSettled will be the the callback that contains the main data
 
-  // user has to pay 7.5k to dispute a claim, we will execute a safeTransferFrom(user, address(this), 7.5k)
-  // we need to approve the contract 7.5k as it will be transferred from address(this)  // + 2x final fee
-  // the bond will be 5k on requestAndProposePriceFor()                                 // + 1x final fee
-  // the bond will be 2.5k on disputePriceFor()                                         // + 1x final fee
-  // on settle eiter strategy gets 7.5k. or the proposer get their bond back.           // + 1x final fee
+  // Assume BOND = 9600, UMA's final fee = 1500.
+  // Claim initiator (Sherlock) has to pay 22.2k to dispute a claim,
+  // so we will execute a safeTransferFrom(claimInitiator, address(this), 22.2k).
+  // We need to approve the contract 22.2k as it will be transferred from address(this).
+
+  // The 22.2k consists of 2 * (BOND + final fee charged by UMA), as follows:
+  // 1. On requestAndProposePriceFor(), the fee will be 10k: 9600 BOND + 1500 UMA's final fee;
+  // 2. On disputePriceFor(), the fee will be the same 10k.
+  // note that half of the BOND (4800) + UMA's final fee (1500) is "burnt" and sent to UMA
+
+  // UMA's final fee can be changed in the future, which may result in lower or higher required staked amounts for escalating a claim.
+
+  // On settle, either the protocolAgent (dispute success) or sherlockCore (dispute failure)
+  // will receive 9600 + 4800 + 1500 = 15900. In addition, the protocolAgent will be entitled to
+  // the claimAmount if the dispute is successful/
 
   // lastClaimID <-- starts with 0, so initial id = 1
-  // have claim counter, easy to identify certain clams by their number
+  // have claim counter, easy to identify certain claims by their number
   // but use hash(callback.request.propose + callback.timestamp) as the internal UUID to handle the callbacks
 
-  // So SPCC and UHO are hardcoded (UHO can be renounced)
+  // So SPCC and UMAHO are hardcoded (UMAHO can be renounced)
   // In case these need to be updated, deploy different contract and upgrade it on the sherlock gov side.
 
   // On price proposed callback --> call disputePriceFor with callbackdata + sherlock.strategyManager() and address(this)

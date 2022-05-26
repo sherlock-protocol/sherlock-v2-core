@@ -68,7 +68,7 @@ contract AaveV2Strategy is IStrategyManager, Manager {
 
     // If allowance for this contract is too low, approve the max allowance
     if (want.allowance(address(this), address(lp)) < amount) {
-      want.safeApprove(address(lp), type(uint256).max);
+      want.safeIncreaseAllowance(address(lp), type(uint256).max);
     }
 
     // Deposits the full balance of USDC held in this contract into Aave's lending pool
@@ -90,7 +90,8 @@ contract AaveV2Strategy is IStrategyManager, Manager {
   /// @notice Withdraws a specific amount of USDC from Aave's lending pool back into the Sherlock core contract
   /// @param _amount Amount of USDC to withdraw
   function withdraw(uint256 _amount) external override onlySherlockCore {
-    // Why do we only check if _amount is equal to the max value?
+    // Ensures that it doesn't execute a withdrawAll() call
+    // AAVE V2 uses uint256.max as a magic number to withdraw max amount
     if (_amount == type(uint256).max) revert InvalidArgument();
 
     ILendingPool lp = getLp();
