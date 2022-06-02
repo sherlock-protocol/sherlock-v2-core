@@ -19,4 +19,8 @@ interface ITrueMultiFarm {
   function staked(IERC20 token, address staker) external view returns (uint256);
 
   function claimable(IERC20 token, address account) external view returns (uint256);
+
+  function getShare(IERC20 token) external view returns (uint256);
+
+  function setShares(IERC20[] calldata tokens, uint256[] calldata updatedShares) external;
 }

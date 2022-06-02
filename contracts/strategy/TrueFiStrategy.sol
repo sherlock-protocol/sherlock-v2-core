@@ -89,7 +89,14 @@ contract TrueFiStrategy is BaseStrategy {
     // https://github.com/trusttoken/contracts-pre22/blob/main/contracts/truefi2/TrueFiPool2.sol#L469
     tfUSDC.join(want.balanceOf(address(this)));
 
-    // How much tfUSDC did we receive because we joined the pool?
+    // Don't stake in the tfFarm if shares are 0
+    // This would make the function call revert
+    // https://github.com/trusttoken/contracts-pre22/blob/main/contracts/truefi2/TrueMultiFarm.sol#L101
+    if (tfFarm.getShare(tfUSDC) == 0) return;
+
+    // How much tfUSDC is in this contract
+    // Could both be tfUSDC that was already in here before the `_deposit()` call
+    // And new tfUSDC that was minted in the `tfUSDC.join()` call
     uint256 tfUsdcBalance = tfUSDC.balanceOf(address(this));
 
     // Stake all tfUSDC in the tfFarm
@@ -128,7 +135,9 @@ contract TrueFiStrategy is BaseStrategy {
     // https://docs.truefi.io/faq/main-lending-pools/developer-guide/truefipool2-contract#calculating-lending-pool-token-prices
 
     // How much USDC is locked in TrueFi
-    uint256 tfUsdcBalance = (tfUSDC.poolValue() * _viewTfUsdcStaked()) / tfUSDC.totalSupply();
+    // Based on staked tfUSDC + tfUSDC in this contract
+    uint256 tfUsdcBalance = (tfUSDC.poolValue() *
+      (_viewTfUsdcStaked() + tfUSDC.balanceOf(address(this)))) / tfUSDC.totalSupply();
 
     // How much USDC we get if we liquidate the full position
     tfUsdcBalance = (tfUsdcBalance * tfUSDC.liquidExitPenalty(tfUsdcBalance)) / BASIS_PRECISION;
@@ -151,16 +160,26 @@ contract TrueFiStrategy is BaseStrategy {
     // Exiting 0 tokens doesn't make sense
     if (_amount == 0) revert ZeroArg();
 
+    // Amount of tfUSDC in this contract
+    uint256 tfUsdcBalance = tfUSDC.balanceOf(address(this));
+    uint256 tfUsdcStaked = _viewTfUsdcStaked();
+
     // Exit MAX amount of tokens
     if (_amount == type(uint256).max) {
-      _amount = _viewTfUsdcStaked();
+      _amount = tfUsdcBalance + tfUsdcStaked;
       // Exiting 0 tokens doesn't make sense
       if (_amount == 0) revert InvalidState();
     }
+    // We can not withdraw more tfUSDC than we have access to
+    else if (_amount > tfUsdcBalance + tfUsdcStaked) revert InvalidArg();
 
-    // First unstake tfUSDC tokens from the farm
-    tfFarm.unstake(tfUSDC, _amount);
+    // Unstake tfUSDC if it isn't in the contract already
+    if (_amount > tfUsdcBalance) {
+      // Unstake tfUSDC from tfFarm so we are able to exit `_amount`
+      tfFarm.unstake(tfUSDC, _amount - tfUsdcBalance);
+    }
 
+    // At this point there should be at least `_amount` of tfUSDC in the contract
     // Unstake tfUSDC tokens from the pool, this will send USDC to this contract
     tfUSDC.liquidExit(_amount);
   }
