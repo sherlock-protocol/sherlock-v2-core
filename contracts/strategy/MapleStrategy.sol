@@ -191,7 +191,7 @@ contract MapleStrategy is BaseStrategy {
 
   /// @notice Claim Maple tokens earned by farming
   /// @dev Maple tokens will be send to LIQUIDITY_MINING_RECEIVER
-  function claimReward() external whenNotPaused {
+  function claimReward() external {
     // Claim reward tokens
     mapleRewards.getReward();
 

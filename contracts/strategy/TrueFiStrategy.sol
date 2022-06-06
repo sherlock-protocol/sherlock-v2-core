@@ -186,7 +186,7 @@ contract TrueFiStrategy is BaseStrategy {
 
   /// @notice Claim TrueFi tokens earned by farming
   /// @dev TrueFi tokens will be send to LIQUIDITY_MINING_RECEIVER
-  function claimReward() external whenNotPaused {
+  function claimReward() external {
     IERC20[] memory tokens = new IERC20[](1);
     tokens[0] = tfUSDC;
 

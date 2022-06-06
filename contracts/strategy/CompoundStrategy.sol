@@ -99,7 +99,7 @@ contract CompoundStrategy is BaseStrategy {
 
   /// @notice Claim COMP tokens earned by supplying
   /// @dev COMP tokens will be send to LIQUIDITY_MINING_RECEIVER
-  function claimReward() external whenNotPaused {
+  function claimReward() external {
     // Claim COMP for address(this)
     address[] memory holders = new address[](1);
     holders[0] = address(this);
