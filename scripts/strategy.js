@@ -120,11 +120,13 @@ async function deployStrategy(owner) {
   );
   await mapleStrategy.deployed();
   await secondSplitter.setInitialChildOne(mapleStrategy.address);
+  console.log('Maple strategy deployed at:', mapleStrategy.address);
 
   // Deploy TrueFi strategy
   const truefiStrategy = await TrueFiStrategy.deploy(secondSplitter.address);
   await truefiStrategy.deployed();
   await secondSplitter.setInitialChildTwo(truefiStrategy.address);
+  console.log('TrueFi strategy deployed at:', truefiStrategy.address);
 
   await rootSplitter.setInitialChildTwo(secondSplitter.address);
   await masterStrategy.setInitialChildOne(rootSplitter.address);

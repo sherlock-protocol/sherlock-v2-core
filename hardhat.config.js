@@ -4,6 +4,7 @@ require('hardhat-gas-reporter');
 require('hardhat-contract-sizer');
 require('@nomiclabs/hardhat-etherscan');
 require('dotenv').config();
+require("./tasks/automine");
 /**
  * @type import('hardhat/config').HardhatUserConfig
  */
