@@ -6,6 +6,7 @@ task('automine', 'Enable/disable automining')
     if (!blockTime) {
       console.log('Enabling automining...');
       await network.provider.send('evm_setAutomine', [true]);
+      await network.provider.send('evm_setIntervalMining', [0]);
       console.log('Done.');
     } else {
       console.log(`Mining blocks every ${blockTime} seconds...`);
