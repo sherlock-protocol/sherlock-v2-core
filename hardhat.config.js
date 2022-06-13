@@ -5,6 +5,7 @@ require('hardhat-contract-sizer');
 require('@nomiclabs/hardhat-etherscan');
 require('dotenv').config();
 require("./tasks/automine");
+require("./tasks/mine_year");
 /**
  * @type import('hardhat/config').HardhatUserConfig
  */
