@@ -6,6 +6,7 @@ require('@nomiclabs/hardhat-etherscan');
 require('dotenv').config();
 require("./tasks/automine");
 require("./tasks/mine_year");
+require("./tasks/mine");
 /**
  * @type import('hardhat/config').HardhatUserConfig
  */
@@ -34,7 +35,7 @@ module.exports = {
       },
       forking: {
         url: `https://eth-mainnet.alchemyapi.io/v2/${ALCHEMY_API_KEY_MAINNET}`,
-        blockNumber: 14928873
+        blockNumber: 15033460
       },
       chainId: 1
     },
