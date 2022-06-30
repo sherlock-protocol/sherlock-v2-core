@@ -116,7 +116,7 @@ contract AaveStrategy is BaseStrategy {
   }
 
   // Claims the stkAAVE rewards and sends them to the receiver address
-  function claimReward() external whenNotPaused {
+  function claimReward() external {
     // Creates an array with one slot
     address[] memory assets = new address[](1);
     // Sets the slot equal to the address of aUSDC

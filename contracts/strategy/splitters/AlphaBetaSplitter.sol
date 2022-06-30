@@ -15,6 +15,8 @@ import '../base/BaseSplitter.sol';
   It will deposit in the child that returns the lowest balance (childOne first)
 */
 contract AlphaBetaSplitter is BaseSplitter {
+  using SafeERC20 for IERC20;
+
   /// @param _initialParent Contract that will be the parent in the tree structure
   /// @param _initialChildOne Contract that will be the initial childOne in the tree structure
   /// @param _initialChildTwo Contract that will be the initial childTwo in the tree structure
@@ -47,7 +49,7 @@ contract AlphaBetaSplitter is BaseSplitter {
   /// @param _amount Amount of USDC to deposit
   function _childOneDeposit(uint256 _amount) internal virtual {
     // Transfer USDC to childOne
-    want.transfer(address(childOne), _amount);
+    want.safeTransfer(address(childOne), _amount);
 
     // Signal childOne it received a deposit
     childOne.deposit();
@@ -57,7 +59,7 @@ contract AlphaBetaSplitter is BaseSplitter {
   /// @param _amount Amount of USDC to deposit
   function _childTwoDeposit(uint256 _amount) internal virtual {
     // Transfer USDC to childTwo
-    want.transfer(address(childTwo), _amount);
+    want.safeTransfer(address(childTwo), _amount);
 
     // Signal childOne it received a deposit
     childTwo.deposit();

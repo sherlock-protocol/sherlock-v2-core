@@ -17,6 +17,7 @@ const { id, formatBytes32String, keccak256 } = require('ethers/lib/utils');
 
 const tfUSDC = '0xA991356d261fbaF194463aF6DF8f0464F8f1c742';
 const tfFarm = '0xec6c3FD795D6e6f202825Ddb56E01b3c128b0b10';
+const tfFarmOwnerAddress = '0x4a10ab6af3a7d1fea49aadc99059d581b3fba7e7';
 const trueFiToken = '0x4C19596f5aAfF459fA38B0f7eD92F11AE6543784';
 const usdcWhaleAddress = '0xe78388b4ce79068e89bf8aa7f218ef6b9ab0e9d0';
 const USDC = '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48';
@@ -40,6 +41,14 @@ describe('TrueFi', function () {
       method: 'hardhat_impersonateAccount',
       params: [usdcWhaleAddress],
     });
+    await timeTraveler.request({
+      method: 'hardhat_impersonateAccount',
+      params: [tfFarmOwnerAddress],
+    });
+    await timeTraveler.request({
+      method: 'hardhat_setBalance',
+      params: [tfFarmOwnerAddress, '0x100000000000000000000000000'],
+    });
 
     await prepare(this, ['TreeSplitterMockTest', 'TrueFiStrategy']);
 
@@ -61,6 +70,7 @@ describe('TrueFi', function () {
       await this.usdc.connect(usdcWhale).transfer(target, amount);
     };
 
+    this.tfFarmOwner = await ethers.provider.getSigner(tfFarmOwnerAddress);
     await timeTraveler.snapshot();
   });
   describe('setupCompleted()', async function () {
@@ -157,6 +167,66 @@ describe('TrueFi', function () {
         parseUnits('24.55', 8), //24.53220944 TrueFi tokens
         parseUnits('0.1', 8),
       );
+    });
+  });
+  describe('deposit(), no farm', async function () {
+    before(async function () {
+      await timeTraveler.revertSnapshot();
+
+      await this.tfFarm.connect(this.tfFarmOwner).setShares([tfUSDC], [0]);
+    });
+    it('Initial state', async function () {
+      expect(await this.truefi.balanceOf()).to.eq(0);
+      expect(await this.usdc.balanceOf(this.truefi.address)).to.eq(0);
+      expect(await this.tfUSDC.balanceOf(this.truefi.address)).to.eq(0);
+      expect(await this.tfFarm.staked(this.tfUSDC.address, this.truefi.address)).to.eq(0);
+    });
+    it('100 USDC deposit', async function () {
+      await this.mintUSDC(this.truefi.address, parseUnits('100', 6));
+
+      this.t0 = await meta(this.splitter.deposit(this.truefi.address));
+
+      // Taking into account exit fee
+      expect(await this.truefi.balanceOf()).to.be.closeTo(
+        parseUnits('100', 6),
+        parseUnits('0.1', 6),
+      );
+
+      expect(await this.usdc.balanceOf(this.truefi.address)).to.eq(0);
+      // Taking into account USDC to tfUSDC exchange rate
+      // https://github.com/trusttoken/contracts-pre22/blob/main/contracts/truefi2/TrueFiPool2.sol#L730
+      expect(await this.tfUSDC.balanceOf(this.truefi.address)).to.be.closeTo(
+        parseUnits('95', 6),
+        parseUnits('0.5', 6),
+      );
+      expect(await this.tfFarm.staked(this.tfUSDC.address, this.truefi.address)).to.eq(0);
+      expect(await this.tfFarm.claimable(this.tfUSDC.address, this.truefi.address)).to.eq(0);
+      expect(await this.trueFiToken.balanceOf(this.truefi.address)).to.eq(0);
+    });
+    it('Enable farm', async function () {
+      await this.tfFarm.connect(this.tfFarmOwner).setShares([tfUSDC], [1]);
+    });
+    it('100 USDC deposit', async function () {
+      await this.mintUSDC(this.truefi.address, parseUnits('100', 6));
+
+      this.t0 = await meta(this.splitter.deposit(this.truefi.address));
+
+      // Taking into account exit fee
+      expect(await this.truefi.balanceOf()).to.be.closeTo(
+        parseUnits('200', 6),
+        parseUnits('0.2', 6),
+      );
+
+      expect(await this.usdc.balanceOf(this.truefi.address)).to.eq(0);
+      expect(await this.tfUSDC.balanceOf(this.truefi.address)).to.eq(0);
+
+      // All token deposited into farm
+      expect(await this.tfFarm.staked(this.tfUSDC.address, this.truefi.address)).to.be.closeTo(
+        parseUnits('190', 6),
+        parseUnits('1.0', 6),
+      );
+      expect(await this.tfFarm.claimable(this.tfUSDC.address, this.truefi.address)).to.eq(0);
+      expect(await this.trueFiToken.balanceOf(this.truefi.address)).to.eq(0);
     });
   });
   describe('liquidExit()', async function () {
@@ -269,6 +339,72 @@ describe('TrueFi', function () {
       await expect(this.truefi.liquidExit(constants.MaxUint256)).to.be.revertedWith(
         'InvalidState()',
       );
+    });
+  });
+  describe('liquidExit(), no farm', async function () {
+    before(async function () {
+      await timeTraveler.revertSnapshot();
+
+      await this.tfFarm.connect(this.tfFarmOwner).setShares([tfUSDC], [1]);
+    });
+    it('Initial state', async function () {
+      expect(await this.truefi.balanceOf()).to.eq(0);
+      expect(await this.usdc.balanceOf(this.truefi.address)).to.eq(0);
+      expect(await this.tfUSDC.balanceOf(this.truefi.address)).to.eq(0);
+      expect(await this.tfFarm.staked(this.tfUSDC.address, this.truefi.address)).to.eq(0);
+    });
+    it('100 USDC deposit (into farm)', async function () {
+      await this.mintUSDC(this.truefi.address, parseUnits('100', 6));
+
+      this.t0 = await meta(this.splitter.deposit(this.truefi.address));
+    });
+    it('Enable farm', async function () {
+      await this.tfFarm.connect(this.tfFarmOwner).setShares([tfUSDC], [0]);
+    });
+    it('100 USDC deposit (into contract)', async function () {
+      await this.mintUSDC(this.truefi.address, parseUnits('100', 6));
+
+      this.t0 = await meta(this.splitter.deposit(this.truefi.address));
+    });
+    it('Exit too much', async function () {
+      await expect(this.truefi.liquidExit(parseUnits('201', 6))).to.be.revertedWith('InvalidArg()');
+    });
+    it('Exit 20 tfUSDC', async function () {
+      // 20tfUSDC will be removed from contract balance
+      await this.truefi.liquidExit(parseUnits('20', 6));
+
+      // Stays the same
+      expect(await this.truefi.balanceOf()).to.be.closeTo(
+        parseUnits('200', 6),
+        parseUnits('0.2', 6),
+      );
+      expect(await this.usdc.balanceOf(this.truefi.address)).to.be.closeTo(
+        parseUnits('21', 6),
+        parseUnits('0.1', 6),
+      );
+      expect(await this.tfUSDC.balanceOf(this.truefi.address)).to.be.closeTo(
+        parseUnits('75', 6), // Deduct 20
+        parseUnits('0.5', 6),
+      );
+      expect(await this.tfFarm.staked(this.tfUSDC.address, this.truefi.address)).to.be.closeTo(
+        parseUnits('95', 6),
+        parseUnits('0.5', 6),
+      );
+    });
+    it('Exit max tfUSDC', async function () {
+      await this.truefi.liquidExit(constants.MaxUint256);
+
+      // Stays the same
+      expect(await this.truefi.balanceOf()).to.be.closeTo(
+        parseUnits('200', 6),
+        parseUnits('0.2', 6),
+      );
+      expect(await this.usdc.balanceOf(this.truefi.address)).to.be.closeTo(
+        parseUnits('200', 6),
+        parseUnits('0.2', 6),
+      );
+      expect(await this.tfUSDC.balanceOf(this.truefi.address)).to.eq(0);
+      expect(await this.tfFarm.staked(this.tfUSDC.address, this.truefi.address)).to.eq(0);
     });
   });
   describe('claimReward()', async function () {
