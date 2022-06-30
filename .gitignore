@@ -7,3 +7,4 @@ artifacts
 
 coverage/
 coverage.json
+.vscode/
