@@ -16,15 +16,13 @@ const { TimeTraveler } = require('../utilities/snapshot');
 const { id, formatBytes32String, keccak256 } = require('ethers/lib/utils');
 
 // steps to run
-// npx hardhat node --fork mainnet --fork-block-number 14804703
+// npx hardhat node --fork mainnet --fork-block-number 15056000
 // npx hardhat run --network local scripts/6_strat.deploy.js
 // npx hardhat --network local test
 const masterStrategy = '0xee4b70AE96fFC70563f70964ebDD8635033Bc6b4';
 const aave = '0xE3C37e951F1404b162DFA71A13F0c99c9798Db82';
 const comp = '0x8AEA96da625791103a29a16C06c5cfC8B25f6832';
 const euler = '0x9a902e8Aae5f1aB423c7aFB29C0Af50e0d3Fea7e';
-const truefi = '0x1eC37c35BeE1b8b18fC01740db7750Cf93943254';
-const maple = '0xfa01268bd200d0D0f13A6F9758Ba3C09F928E2f7';
 
 // Mainnet addresses
 const sherlock = '0x0865a889183039689034dA55c1Fd12aF5083eabF';
@@ -43,8 +41,6 @@ describe.skip('Deployment strategy test', function () {
     this.aave = await ethers.getContractAt('BaseStrategy', aave);
     this.comp = await ethers.getContractAt('BaseStrategy', comp);
     this.euler = await ethers.getContractAt('BaseStrategy', euler);
-    this.truefi = await ethers.getContractAt('BaseStrategy', truefi);
-    this.maple = await ethers.getContractAt('BaseStrategy', maple);
 
     this.mintUSDC = async (target, amount) => {
       const usdcWhale = await ethers.provider.getSigner(usdcWhaleAddress);
@@ -63,23 +59,23 @@ describe.skip('Deployment strategy test', function () {
   });
   it('Update', async function () {
     expect(await this.sherlock.totalTokenBalanceStakers()).to.be.closeTo(
-      parseUnits('20145000', 6), // 20.1m
+      parseUnits('20224000', 6), // 20.24m
       parseUnits('10000', 6),
     );
     expect(await this.usdc.balanceOf(this.sherlock.address)).to.be.closeTo(
-      parseUnits('50000', 6), // 50k
+      parseUnits('59000', 6), // 59k
       parseUnits('5000', 6),
     );
 
     await this.sherlock.connect(owner).updateYieldStrategy(this.strategy.address);
 
     expect(await this.sherlock.totalTokenBalanceStakers()).to.be.closeTo(
-      parseUnits('20145000', 6), // 20.1m
+      parseUnits('20224000', 6), // 20.24m
       parseUnits('10000', 6),
     );
     // All usdc withdrawn
     expect(await this.usdc.balanceOf(this.sherlock.address)).to.be.closeTo(
-      parseUnits('20101900', 6), // 20.145m - premiums
+      parseUnits('20134000', 6), // 20.13m - premiums
       parseUnits('10000', 6),
     );
   });
@@ -88,37 +84,27 @@ describe.skip('Deployment strategy test', function () {
     await this.sherlock.connect(owner).yieldStrategyDeposit(MILLIE.mul(20));
 
     expect(await this.sherlock.totalTokenBalanceStakers()).to.be.closeTo(
-      parseUnits('20135000', 6), // ~10k less than previous, because of truefi discount factor
+      parseUnits('20224000', 6),
       parseUnits('10000', 6),
     );
     expect(await this.usdc.balanceOf(this.sherlock.address)).to.be.closeTo(
-      parseUnits('145000', 6), // 145k (it claimPremiumsForStakers)
+      parseUnits('225000', 6), // 225k (it claimPremiumsForStakers)
       parseUnits('10000', 6),
     );
   });
   it('Verify balances', async function () {
     expect(await this.aave.balanceOf()).to.be.closeTo(
-      parseUnits('5000000', 6), // 5m
+      parseUnits('9000000', 6), // 9m
       parseUnits('10000', 6),
     );
 
     expect(await this.comp.balanceOf()).to.be.closeTo(
-      parseUnits('5000000', 6), // 5m
+      parseUnits('9000000', 6), // 9m
       parseUnits('10000', 6),
     );
 
     expect(await this.euler.balanceOf()).to.be.closeTo(
       parseUnits('2000000', 6), // 2m
-      parseUnits('10000', 6),
-    );
-
-    expect(await this.truefi.balanceOf()).to.be.closeTo(
-      parseUnits('3988000', 6), // 3.98m (12k less)
-      parseUnits('10000', 6),
-    );
-
-    expect(await this.maple.balanceOf()).to.be.closeTo(
-      parseUnits('4000000', 6), // 4m
       parseUnits('10000', 6),
     );
   });

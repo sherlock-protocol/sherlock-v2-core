@@ -209,7 +209,7 @@ Strategies are pausable, only depositing into the yield protocol will be paused.
 
 ## Initial deployment setup
 
-![Initial tree strategy](https://i.imgur.com/U7Pcrzv.png)
+![Initial tree strategy](https://i.imgur.com/R4SdF14.png)
 
 Other resources
 
