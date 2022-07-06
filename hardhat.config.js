@@ -2,17 +2,21 @@ require('@nomiclabs/hardhat-waffle');
 require('solidity-coverage');
 require('hardhat-gas-reporter');
 require('hardhat-contract-sizer');
-require('@nomiclabs/hardhat-etherscan');
 require('dotenv').config();
+require('@nomiclabs/hardhat-etherscan');
+
 require('./tasks/advance_time_with_days');
 require('./tasks/automine');
-require('@nomiclabs/hardhat-etherscan');
+require('./tasks/spccResolveClaim');
+require('./tasks/addNewProtocol');
+require('./tasks/provideUSDC');
+require('./tasks/cleanup_claim');
+require('./tasks/umaResolve');
 
 /**
  * @type import('hardhat/config').HardhatUserConfig
  */
 
-const ETHERSCAN_API = process.env.ETHERSCAN_API || '';
 const ALCHEMY_API_KEY_MAINNET = process.env.ALCHEMY_API_KEY_MAINNET || '';
 const ALCHEMY_API_KEY_GOERLI = process.env.ALCHEMY_API_KEY_GOERLI || '';
 const PRIVATE_KEY = process.env.PRIVATE_KEY || '';
@@ -36,10 +40,10 @@ module.exports = {
           'apart turn peace asthma useful mother tank math engine usage prefer orphan exile fold squirrel',
       },
       forking: {
-        url: `https://eth-goerli.alchemyapi.io/v2/${ALCHEMY_API_KEY_GOERLI}`,
-        // url: `https://eth-mainnet.alchemyapi.io/v2/${ALCHEMY_API_KEY_MAINNET}`,
-        // blockNumber: 14617159,
-        blockNumber: 6800270,
+        // url: `https://eth-goerli.alchemyapi.io/v2/${ALCHEMY_API_KEY_GOERLI}`,
+        // blockNumber: 6800270,
+        url: `https://eth-mainnet.alchemyapi.io/v2/${ALCHEMY_API_KEY_MAINNET}`,
+        blockNumber: 14310500,
       },
       allowUnlimitedContractSize: true,
     },
@@ -56,12 +60,7 @@ module.exports = {
       timeout: 999999999,
       url: `https://eth-mainnet.alchemyapi.io/v2/${ALCHEMY_API_KEY_MAINNET}`,
       gasPrice: 100000000000,
-      accounts: [PRIVATE_KEY_MAINNET].filter((item) => item !== ''),
-    },
-    goerli: {
-      url: `https://eth-goerli.alchemyapi.io/v2/${ALCHEMY_API_KEY_GOERLI}`,
-      gasPrice: 9000000000,
-      accounts: [PRIVATE_KEY_GOERLI].filter((item) => item !== ''),
+      accounts: [PRIVATE_KEY].filter((item) => item !== ''),
     },
     goerli: {
       url: `https://eth-mainnet.alchemyapi.io/v2/${ALCHEMY_API_KEY_GOERLI}`,
@@ -79,10 +78,5 @@ module.exports = {
     currency: 'USD',
     gasPrice: 100,
     coinmarketcap: process.env.COINMARKETCAP,
-  },
-  etherscan: {
-    // Your API key for Etherscan
-    // Obtain one at https://etherscan.io/
-    apiKey: ETHERSCAN_API,
   },
 };
