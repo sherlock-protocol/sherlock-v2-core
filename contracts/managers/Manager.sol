@@ -52,11 +52,11 @@ abstract contract Manager is IManager, Ownable, Pausable {
     if (success == false) revert InvalidConditions();
   }
 
-  function pause() external onlySherlockCore {
+  function pause() external virtual onlySherlockCore {
     _pause();
   }
 
-  function unpause() external onlySherlockCore {
+  function unpause() external virtual onlySherlockCore {
     _unpause();
   }
 }

@@ -12,6 +12,8 @@ require('./tasks/addNewProtocol');
 require('./tasks/provideUSDC');
 require('./tasks/cleanup_claim');
 require('./tasks/umaResolve');
+require("./tasks/mine_year");
+require("./tasks/mine");
 
 /**
  * @type import('hardhat/config').HardhatUserConfig
