@@ -52,6 +52,7 @@ task('restake', 'Send restaking transaction').setAction(async (taskArgs) => {
       continue;
     }
 
+    console.log('restaking.. ', element['id']);
     try {
       await sherlock.connect(RELAY_SIGNER).arbRestake(element['id']);
     } catch (err) {
