@@ -30,19 +30,8 @@ const RELAY_SIGNER = new DefenderRelaySigner(RELAY_CREDENTIALS, RELAY_PROVIDER, 
  * @type import('hardhat/config').HardhatUserConfig
  */
 
-const AaveV2Strategy = '0xF02d3A6288D998B412ce749cfF244c8ef799f582';
-
 task('restake', 'Send restaking transaction').setAction(async (taskArgs) => {
   const sherlock = await ethers.getContractAt('Sherlock', Sherlock);
-  const aave = await ethers.getContractAt('StrategyMockGoerli', AaveV2Strategy);
-  try {
-    //await sherlock.connect(RELAY_SIGNER).arbRestake(1);
-    await aave.connect(RELAY_SIGNER).deposit();
-  } catch (err) {
-    console.log(err);
-  }
-  console.log('x');
-  return;
   const NOW = Date.now();
 
   const response = await rp({ uri: 'http://mainnet.indexer.sherlock.xyz/status', json: true });
@@ -63,7 +52,11 @@ task('restake', 'Send restaking transaction').setAction(async (taskArgs) => {
       continue;
     }
 
-    await sherlock.connect(RELAY_SIGNER).arbRestake(element['id']);
+    try {
+      await sherlock.connect(RELAY_SIGNER).arbRestake(element['id']);
+    } catch (err) {
+      console.log(err);
+    }
   }
 });
 
