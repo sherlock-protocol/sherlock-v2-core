@@ -25,10 +25,12 @@
   "dependencies": {
     "@nomiclabs/hardhat-etherscan": "^3.0.1",
     "@openzeppelin/contracts": "^4.4.2",
-    "dotenv": "^8.2.0",
     "@rari-capital/solmate": "https://github.com/Rari-Capital/solmate#e802bcf2fb24dda2bf7e513bea86d15c48b57486",
+    "defender-relay-client": "^1.27.1",
+    "dotenv": "^8.2.0",
     "hardhat-gas-reporter": "^1.0.4",
     "prettier-plugin-solidity": "^1.0.0-beta.18",
+    "request-promise": "^4.2.6",
     "solidity-coverage": "^0.7.17"
   }
 }

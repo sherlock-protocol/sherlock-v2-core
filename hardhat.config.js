@@ -4,15 +4,68 @@ require('hardhat-gas-reporter');
 require('hardhat-contract-sizer');
 require('@nomiclabs/hardhat-etherscan');
 require('dotenv').config();
-/**
- * @type import('hardhat/config').HardhatUserConfig
- */
+const { DefenderRelaySigner, DefenderRelayProvider } = require('defender-relay-client/lib/ethers');
+const rp = require('request-promise');
+
+const Sherlock = '0x0865a889183039689034dA55c1Fd12aF5083eabF';
+const TWO_WEEKS = 12096e5;
+const FOUR_HOURS_IN_SECONDS = 4 * 60 * 60;
 
 const ETHERSCAN_API = process.env.ETHERSCAN_API || '';
 const ALCHEMY_API_KEY_MAINNET = process.env.ALCHEMY_API_KEY_MAINNET || '';
 const ALCHEMY_API_KEY_GOERLI = process.env.ALCHEMY_API_KEY_GOERLI || '';
 const PRIVATE_KEY_GOERLI = process.env.PRIVATE_KEY_GOERLI || '';
 const PRIVATE_KEY_MAINNET = process.env.PRIVATE_KEY_MAINNET || '';
+const RELAY_CREDENTIALS = {
+  apiKey: process.env.RELAY_API_KEY,
+  apiSecret: process.env.RELAY_API_SECRET,
+};
+const RELAY_PROVIDER = new DefenderRelayProvider(RELAY_CREDENTIALS);
+const RELAY_SIGNER = new DefenderRelaySigner(RELAY_CREDENTIALS, RELAY_PROVIDER, {
+  speed: 'fast',
+  validForSeconds: FOUR_HOURS_IN_SECONDS,
+});
+
+/**
+ * @type import('hardhat/config').HardhatUserConfig
+ */
+
+const AaveV2Strategy = '0xF02d3A6288D998B412ce749cfF244c8ef799f582';
+
+task('restake', 'Send restaking transaction').setAction(async (taskArgs) => {
+  const sherlock = await ethers.getContractAt('Sherlock', Sherlock);
+  const aave = await ethers.getContractAt('StrategyMockGoerli', AaveV2Strategy);
+  try {
+    //await sherlock.connect(RELAY_SIGNER).arbRestake(1);
+    await aave.connect(RELAY_SIGNER).deposit();
+  } catch (err) {
+    console.log(err);
+  }
+  console.log('x');
+  return;
+  const NOW = Date.now();
+
+  const response = await rp({ uri: 'http://mainnet.indexer.sherlock.xyz/status', json: true });
+  if (!response['ok']) {
+    console.log('Invalid response');
+    return;
+  }
+  for (const element of response['data']['staking_positions']) {
+    // lockup_end (in milisecond) + TWO WEEKS
+    const ARB_RESTAKE = element['lockup_end'] * 1000 + TWO_WEEKS;
+    if (NOW < ARB_RESTAKE) {
+      continue;
+    }
+
+    const result = await sherlock.viewRewardForArbRestake(element['id']);
+    if (!result[1]) {
+      console.log('Not able to restake', element['id']);
+      continue;
+    }
+
+    await sherlock.connect(RELAY_SIGNER).arbRestake(element['id']);
+  }
+});
 
 module.exports = {
   solidity: {
