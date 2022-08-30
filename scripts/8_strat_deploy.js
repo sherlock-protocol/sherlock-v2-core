@@ -63,51 +63,17 @@ aave  comp
     constants.AddressZero,
     parseUnits('10000000', 6), // 10m USDC
     constants.MaxUint256,
-    parseUnits('10000000', 6), // 10m USDC (5m maple, 5m truefi)
+    parseUnits('5000000', 6), // 5m USDC (5m maple)
   );
   await splitter0.deployed();
   console.log('Splitter 0', splitter0.address);
 
-  // Deploy Splitter 2
-  /*
- (live structure)
-    m
-    |
-    1
-   / \
-aave  comp
-
-  (non-live structure)
-     m
-     | (0 --> m conn)
-     0
-   /    \ (0 --> 1 conn)
-  2      1
- / \    /  \
-       ave comp
-   */
-
-  const splitter2 = await this.splitterEqual.deploy(
-    splitter0.address,
-    constants.AddressZero,
-    constants.AddressZero,
-    parseUnits('100000', 6), // 100k USDC
-  );
-  await splitter2.deployed();
-  console.log('Splitter 2', splitter2.address);
-
   // Deploy Maple & Truefi
-  const maple = await this.maple.deploy(splitter2.address, Maven11);
+  const maple = await this.maple.deploy(splitter0.address, Maven11);
   await maple.deployed();
   console.log('Maple', maple.address);
 
-  const truefi = await this.truefi.deploy(splitter2.address);
-  await truefi.deployed();
-  console.log('Truefi', truefi.address);
-
-  await splitter2.setInitialChildOne(truefi.address);
-  await splitter2.setInitialChildTwo(maple.address);
-  await splitter0.setInitialChildTwo(splitter2.address);
+  await splitter0.setInitialChildTwo(maple.address);
 
   /*
     Transfering ownerships
@@ -116,14 +82,8 @@ aave  comp
   await (await splitter0.transferOwnership(TIMELOCK)).wait();
   console.log('0 - Transferred splitter0 ownership');
 
-  await (await splitter2.transferOwnership(TIMELOCK)).wait();
-  console.log('1 - Transferred splitter2 ownership');
-
   await (await maple.transferOwnership(TIMELOCK)).wait();
   console.log('3 - Transferred maple ownership');
-
-  await (await truefi.transferOwnership(TIMELOCK)).wait();
-  console.log('4 - Transferred truefi ownership');
 
   console.log('--------------------------------------------');
   console.log('------------TRANSFER = DONE-----------------');
@@ -160,14 +120,23 @@ aave  comp
   console.log('splitter1 > childTwo - ', await splitter1.childTwo());
   console.log('splitter1 > parent - ', await splitter1.parent());
 
-  console.log('splitter2 > childOne - ', await splitter2.childOne());
-  console.log('splitter2 > childTwo - ', await splitter2.childTwo());
-  console.log('splitter2 > parent - ', await splitter2.parent());
-
   console.log('comp > parent - ', await comp.parent());
   console.log('aave > parent - ', await aave.parent());
-  console.log('truefi > parent - ', await truefi.parent());
   console.log('maple > parent - ', await maple.parent());
+
+  const core = await ethers.getContractAt('Sherlock', '0x0865a889183039689034dA55c1Fd12aF5083eabF');
+
+  await core.connect(this.timelock).yieldStrategyWithdraw(parseUnits('20300000', 6)); // 10m
+  await core.connect(this.timelock).yieldStrategyDeposit(parseUnits('20360000', 6)); // 10m + 60k
+
+  const mapleBalance = await maple.balanceOf();
+  console.log('maple', mapleBalance.toString());
+
+  const aaveB = await aave.balanceOf();
+  console.log('aaveB', aaveB.toString());
+
+  const compB = await comp.balanceOf();
+  console.log('compB', compB.toString());
 }
 
 main()
