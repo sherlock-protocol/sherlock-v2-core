@@ -427,7 +427,7 @@ contract Sherlock is ISherlock, ERC721, Ownable, Pausable {
 
     // pullReward() calcs then actually transfers the SHER tokens to this contract
     // in case this call fails, whole (re)staking transaction fails
-    _sher = sherDistributionManager.pullReward(_amount, _period, _id, _receiver);
+    _sher = sherDistributionManager.pullReward(_amount * 2, _period, _id, _receiver);
 
     // actualAmount should represent the amount of SHER tokens transferred to this contract for the current stake position
     uint256 actualAmount = sher.balanceOf(address(this)) - before;
